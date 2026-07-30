@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,11 +37,10 @@ class ActivityManagerTest {
                 LocalDate.of(2026, 8, 15), start, end, EnergyRating.of(4), SensoryRating.of(3), null, null);
     }
 
-    private static FlexibleActivity newFlexibleActivity(int id, LocalTime earliestStart, LocalTime latestEnd)
-            throws Exception {
-        return new FlexibleActivity(id, "Finish assignment 1", ActivityCategory.ACADEMIC,
-                LocalDate.of(2026, 8, 15), earliestStart, latestEnd, 90,
-                EnergyRating.of(5), SensoryRating.of(2), null, null);
+    private static FlexibleActivity newFlexibleActivity(int id, String description, LocalTime earliestStart,
+            LocalTime latestEnd) throws Exception {
+        return new FlexibleActivity(id, description, ActivityCategory.ACADEMIC, LocalDate.of(2026, 8, 15),
+                earliestStart, latestEnd, 90, EnergyRating.of(5), SensoryRating.of(2), null, null);
     }
 
     @Test
@@ -124,19 +125,22 @@ class ActivityManagerTest {
     @Test
     public void add_exactDuplicateFlexibleActivity_throwsDuplicateActivityException() throws Exception {
         ActivityManager manager = new ActivityManager();
-        manager.add(newFlexibleActivity(manager.getNextId(), LocalTime.of(10, 0), LocalTime.of(18, 0)));
+        manager.add(newFlexibleActivity(manager.getNextId(), "Finish assignment 1",
+                LocalTime.of(10, 0), LocalTime.of(18, 0)));
 
         assertThrows(DuplicateActivityException.class,
-                () -> manager.add(newFlexibleActivity(manager.getNextId(), LocalTime.of(10, 0),
-                        LocalTime.of(18, 0))));
+                () -> manager.add(newFlexibleActivity(manager.getNextId(), "Finish assignment 1",
+                        LocalTime.of(10, 0), LocalTime.of(18, 0))));
     }
 
     @Test
     public void add_overlappingFlexibleActivities_bothSucceed() throws Exception {
         ActivityManager manager = new ActivityManager();
-        manager.add(newFlexibleActivity(manager.getNextId(), LocalTime.of(10, 0), LocalTime.of(18, 0)));
+        manager.add(newFlexibleActivity(manager.getNextId(), "Finish assignment 1",
+                LocalTime.of(10, 0), LocalTime.of(18, 0)));
 
-        manager.add(newFlexibleActivity(manager.getNextId(), LocalTime.of(11, 0), LocalTime.of(19, 0)));
+        manager.add(newFlexibleActivity(manager.getNextId(), "Finish assignment 1",
+                LocalTime.of(11, 0), LocalTime.of(19, 0)));
 
         assertEquals(2, manager.size());
     }
@@ -365,5 +369,111 @@ class ActivityManagerTest {
         List<Activity> result = manager.find(List.of(), new ActivityFilter(null, null, null, null), null);
 
         assertEquals(1, result.size());
+    }
+
+    @Test
+    public void next_fixedActivityInProgress_isSelectedOverUpcomingOnes() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "In progress", LocalTime.of(9, 0), LocalTime.of(11, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Later today", LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 10, 0);
+
+        Optional<Activity> result = manager.next(now);
+
+        assertTrue(result.isPresent());
+        assertEquals(1, result.get().getId());
+    }
+
+    @Test
+    public void next_noActivityInProgress_selectsNearestUpcomingFixed() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Later", LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Sooner", LocalTime.of(12, 0), LocalTime.of(13, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 10, 0);
+
+        Optional<Activity> result = manager.next(now);
+
+        assertTrue(result.isPresent());
+        assertEquals(2, result.get().getId());
+    }
+
+    @Test
+    public void next_noFixedCandidates_selectsFlexibleWithSoonestWindowEnd() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFlexibleActivity(manager.getNextId(), "Later deadline",
+                LocalTime.of(10, 0), LocalTime.of(20, 0)));
+        manager.add(newFlexibleActivity(manager.getNextId(), "Sooner deadline",
+                LocalTime.of(11, 0), LocalTime.of(18, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        Optional<Activity> result = manager.next(now);
+
+        assertTrue(result.isPresent());
+        assertEquals(2, result.get().getId());
+    }
+
+    @Test
+    public void next_flexibleTie_choosesEarlierStartThenLowerId() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFlexibleActivity(manager.getNextId(), "Later start, same deadline",
+                LocalTime.of(12, 0), LocalTime.of(18, 0)));
+        manager.add(newFlexibleActivity(manager.getNextId(), "Earlier start, same deadline",
+                LocalTime.of(10, 0), LocalTime.of(18, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        Optional<Activity> result = manager.next(now);
+
+        assertTrue(result.isPresent());
+        assertEquals(2, result.get().getId());
+    }
+
+    @Test
+    public void next_completedActivityIsExcluded() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Sooner but complete",
+                LocalTime.of(12, 0), LocalTime.of(13, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Later but incomplete",
+                LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        manager.mark(1);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        Optional<Activity> result = manager.next(now);
+
+        assertTrue(result.isPresent());
+        assertEquals(2, result.get().getId());
+    }
+
+    @Test
+    public void next_overdueActivityIsExcluded() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Already passed",
+                LocalTime.of(7, 0), LocalTime.of(8, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        Optional<Activity> result = manager.next(now);
+
+        assertFalse(result.isPresent());
+    }
+
+    @Test
+    public void next_noQualifyingActivities_returnsEmpty() {
+        ActivityManager manager = new ActivityManager();
+
+        assertFalse(manager.next(LocalDateTime.of(2026, 8, 15, 9, 0)).isPresent());
+    }
+
+    @Test
+    public void countOverdueIncomplete_countsOnlyIncompleteAndOverdue() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Overdue incomplete",
+                LocalTime.of(6, 0), LocalTime.of(7, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Overdue but complete",
+                LocalTime.of(7, 30), LocalTime.of(8, 0)));
+        manager.mark(2);
+        manager.add(newFixedActivity(manager.getNextId(), "Not yet due",
+                LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        assertEquals(1, manager.countOverdueIncomplete(now));
     }
 }

@@ -1,10 +1,12 @@
 package seedu.unienable.logic;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
@@ -250,6 +252,125 @@ public class ActivityManager {
             return ((FlexibleActivity) activity).getEarliestStart();
         }
         throw new IllegalStateException("unknown activity type: " + activity.getClass());
+    }
+
+    /**
+     * Selects the next relevant activity: an incomplete fixed activity in progress, otherwise the
+     * nearest upcoming incomplete fixed activity, otherwise the incomplete flexible activity whose
+     * window ends soonest. Completed and overdue activities are never selected.
+     *
+     * @param now the current date and time
+     * @return the next relevant activity, or empty if none qualifies
+     */
+    public Optional<Activity> next(LocalDateTime now) {
+        Optional<FixedActivity> inProgress = findFixedInProgress(now);
+        if (inProgress.isPresent()) {
+            return Optional.of(inProgress.get());
+        }
+        Optional<FixedActivity> upcoming = findNearestUpcomingFixed(now);
+        if (upcoming.isPresent()) {
+            return Optional.of(upcoming.get());
+        }
+        return findSoonestEndingFlexible(now).map(activity -> activity);
+    }
+
+    /**
+     * Counts incomplete activities whose allowed time has already fully passed.
+     *
+     * @param now the current date and time
+     * @return the number of overdue incomplete activities
+     */
+    public int countOverdueIncomplete(LocalDateTime now) {
+        int count = 0;
+        for (Activity activity : activities) {
+            if (!activity.isComplete() && isOverdue(activity, now)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean isOverdue(Activity activity, LocalDateTime now) {
+        if (activity instanceof FixedActivity) {
+            FixedActivity fixed = (FixedActivity) activity;
+            return LocalDateTime.of(fixed.getDate(), fixed.getEndTime()).isBefore(now);
+        }
+        if (activity instanceof FlexibleActivity) {
+            FlexibleActivity flexible = (FlexibleActivity) activity;
+            return LocalDateTime.of(flexible.getDate(), flexible.getLatestEnd()).isBefore(now);
+        }
+        return false;
+    }
+
+    private Optional<FixedActivity> findFixedInProgress(LocalDateTime now) {
+        for (Activity activity : activities) {
+            if (!(activity instanceof FixedActivity) || activity.isComplete()) {
+                continue;
+            }
+            FixedActivity fixed = (FixedActivity) activity;
+            if (!fixed.getDate().equals(now.toLocalDate())) {
+                continue;
+            }
+            LocalTime nowTime = now.toLocalTime();
+            if (!nowTime.isBefore(fixed.getStartTime()) && nowTime.isBefore(fixed.getEndTime())) {
+                return Optional.of(fixed);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<FixedActivity> findNearestUpcomingFixed(LocalDateTime now) {
+        FixedActivity nearest = null;
+        LocalDateTime nearestStart = null;
+        for (Activity activity : activities) {
+            if (!(activity instanceof FixedActivity) || activity.isComplete()) {
+                continue;
+            }
+            FixedActivity fixed = (FixedActivity) activity;
+            LocalDateTime start = LocalDateTime.of(fixed.getDate(), fixed.getStartTime());
+            if (!start.isAfter(now)) {
+                continue;
+            }
+            if (nearest == null || start.isBefore(nearestStart)
+                    || (start.isEqual(nearestStart) && fixed.getId() < nearest.getId())) {
+                nearest = fixed;
+                nearestStart = start;
+            }
+        }
+        return Optional.ofNullable(nearest);
+    }
+
+    private Optional<FlexibleActivity> findSoonestEndingFlexible(LocalDateTime now) {
+        FlexibleActivity best = null;
+        LocalDateTime bestEnd = null;
+        for (Activity activity : activities) {
+            if (!(activity instanceof FlexibleActivity) || activity.isComplete()) {
+                continue;
+            }
+            FlexibleActivity flexible = (FlexibleActivity) activity;
+            LocalDateTime end = LocalDateTime.of(flexible.getDate(), flexible.getLatestEnd());
+            if (!end.isAfter(now)) {
+                continue;
+            }
+            if (best == null || isBetterFlexibleCandidate(flexible, end, best, bestEnd)) {
+                best = flexible;
+                bestEnd = end;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    private boolean isBetterFlexibleCandidate(FlexibleActivity candidate, LocalDateTime candidateEnd,
+            FlexibleActivity current, LocalDateTime currentEnd) {
+        if (!candidateEnd.isEqual(currentEnd)) {
+            return candidateEnd.isBefore(currentEnd);
+        }
+        LocalDateTime candidateStart = LocalDateTime.of(candidate.getDate(), candidate.getEarliestStart());
+        LocalDateTime currentStart = LocalDateTime.of(current.getDate(), current.getEarliestStart());
+        if (!candidateStart.isEqual(currentStart)) {
+            return candidateStart.isBefore(currentStart);
+        }
+        return candidate.getId() < current.getId();
     }
 
     /** Returns the number of stored activities. */

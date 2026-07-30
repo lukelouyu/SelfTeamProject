@@ -186,6 +186,46 @@ public class ActivityManager {
         return result;
     }
 
+    /**
+     * Finds activities matching every given keyword (each keyword matching description, topic, or
+     * note, case-insensitively and partially) and the given filter, ordered as requested.
+     *
+     * @param keywords the keywords that must all match; may be empty to rely on filter alone
+     * @param filter the filter criteria; null fields mean "no filter" for that field
+     * @param order the one-shot order override, or null to use the saved default order
+     * @return the matching activities in the requested order
+     */
+    public List<Activity> find(List<String> keywords, ActivityFilter filter, ActivityOrder order) {
+        List<Activity> result = new ArrayList<>();
+        for (Activity activity : activities) {
+            if (filter.matches(activity) && matchesAllKeywords(activity, keywords)) {
+                result.add(activity);
+            }
+        }
+        sort(result, order == null ? defaultOrder : order);
+        return result;
+    }
+
+    private boolean matchesAllKeywords(Activity activity, List<String> keywords) {
+        for (String keyword : keywords) {
+            if (!matchesAnyField(activity, keyword)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean matchesAnyField(Activity activity, String keyword) {
+        String lowerKeyword = keyword.toLowerCase();
+        return containsIgnoreCase(activity.getDescription(), lowerKeyword)
+                || containsIgnoreCase(activity.getTopic(), lowerKeyword)
+                || containsIgnoreCase(activity.getNote(), lowerKeyword);
+    }
+
+    private boolean containsIgnoreCase(String field, String lowerKeyword) {
+        return field != null && field.toLowerCase().contains(lowerKeyword);
+    }
+
     private void sort(List<Activity> matched, ActivityOrder order) {
         switch (order) {
         case TIME:

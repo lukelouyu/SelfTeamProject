@@ -292,4 +292,78 @@ class ActivityManagerTest {
         assertEquals(2, result.get(0).getId());
         assertEquals(1, result.get(1).getId());
     }
+
+    private static FixedActivity newSearchableActivity(int id, String description, String topic, String note)
+            throws Exception {
+        LocalTime start = LocalTime.of(8, 0).plusHours(id);
+        return new FixedActivity(id, description, ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), start, start.plusHours(1),
+                EnergyRating.of(4), SensoryRating.of(3), topic, note);
+    }
+
+    @Test
+    public void find_keywordMatchesDescription_isCaseInsensitiveAndPartial() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newSearchableActivity(manager.getNextId(), "Finish assignment 1", null, null));
+
+        List<Activity> result = manager.find(List.of("ASSIGN"), new ActivityFilter(null, null, null, null), null);
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    public void find_keywordMatchesTopicOrNote() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newSearchableActivity(manager.getNextId(), "Lecture", "CG3207", null));
+        manager.add(newSearchableActivity(manager.getNextId(), "Consultation", null, "Bring laptop"));
+
+        assertEquals(1, manager.find(List.of("cg3207"), new ActivityFilter(null, null, null, null), null).size());
+        assertEquals(1, manager.find(List.of("laptop"), new ActivityFilter(null, null, null, null), null).size());
+    }
+
+    @Test
+    public void find_multipleKeywords_requiresAllToMatch() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newSearchableActivity(manager.getNextId(), "Finish assignment 1", null, null));
+        manager.add(newSearchableActivity(manager.getNextId(), "Finish reading", null, null));
+
+        List<Activity> result = manager.find(List.of("finish", "assignment"),
+                new ActivityFilter(null, null, null, null), null);
+
+        assertEquals(1, result.size());
+        assertEquals(1, result.get(0).getId());
+    }
+
+    @Test
+    public void find_keywordAndFilterCombine_withAnd() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newSearchableActivity(manager.getNextId(), "Finish assignment 1", "CG3207", null));
+        manager.add(newSearchableActivity(manager.getNextId(), "Finish assignment 2", "CS2113", null));
+
+        List<Activity> result = manager.find(List.of("finish"),
+                new ActivityFilter(null, null, "CG3207", null), null);
+
+        assertEquals(1, result.size());
+        assertEquals(1, result.get(0).getId());
+    }
+
+    @Test
+    public void find_noKeywordMatch_returnsEmptyList() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newSearchableActivity(manager.getNextId(), "Finish assignment 1", null, null));
+
+        List<Activity> result = manager.find(List.of("unrelated"), new ActivityFilter(null, null, null, null), null);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    public void find_emptyKeywords_reliesOnFilterAlone() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newSearchableActivity(manager.getNextId(), "Finish assignment 1", null, null));
+
+        List<Activity> result = manager.find(List.of(), new ActivityFilter(null, null, null, null), null);
+
+        assertEquals(1, result.size());
+    }
 }

@@ -30,6 +30,23 @@ public class ActivityManager {
     }
 
     /**
+     * Replaces every stored activity with the given previously-saved activities, without
+     * re-validating duplicates or overlaps, and syncs the next-ID counter past the highest loaded
+     * ID. Used to restore trusted data at startup; ordinary mutation should go through add()
+     * instead, which does validate.
+     *
+     * @param loadedActivities the activities loaded from storage
+     */
+    public void loadAll(List<Activity> loadedActivities) {
+        activities.clear();
+        activities.addAll(loadedActivities);
+        nextId = 1;
+        for (Activity activity : activities) {
+            nextId = Math.max(nextId, activity.getId() + 1);
+        }
+    }
+
+    /**
      * Adds the given activity and consumes its ID from the assignment counter.
      *
      * @param activity the activity to add, constructed using getNextId()'s current value

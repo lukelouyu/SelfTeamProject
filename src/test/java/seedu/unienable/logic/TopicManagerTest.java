@@ -168,4 +168,27 @@ class TopicManagerTest {
 
         assertThrows(InvalidIndexException.class, () -> manager.delete(ActivityCategory.ACADEMIC, "CG3207"));
     }
+
+    @Test
+    public void loadAll_populatesCategoriesFromGivenTopics() {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        Topic cg3207 = new Topic(ActivityCategory.ACADEMIC, "CG3207");
+        Topic computingClub = new Topic(ActivityCategory.CCA, "Computing Club");
+
+        manager.loadAll(List.of(cg3207, computingClub));
+
+        assertTrue(manager.exists(ActivityCategory.ACADEMIC, "CG3207"));
+        assertTrue(manager.exists(ActivityCategory.CCA, "Computing Club"));
+    }
+
+    @Test
+    public void loadAll_replacesPreviouslyLoadedTopics() {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.loadAll(List.of(new Topic(ActivityCategory.ACADEMIC, "First load")));
+
+        manager.loadAll(List.of(new Topic(ActivityCategory.ACADEMIC, "Second load")));
+
+        assertFalse(manager.exists(ActivityCategory.ACADEMIC, "First load"));
+        assertTrue(manager.exists(ActivityCategory.ACADEMIC, "Second load"));
+    }
 }

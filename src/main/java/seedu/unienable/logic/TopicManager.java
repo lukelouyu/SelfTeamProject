@@ -25,6 +25,22 @@ public class TopicManager {
     }
 
     /**
+     * Replaces every stored topic with the given previously-saved topics, without re-validating
+     * duplicate names. Used to restore trusted data at startup; ordinary mutation should go
+     * through add() instead, which does validate.
+     *
+     * @param loadedTopics the topics loaded from storage
+     */
+    public void loadAll(List<Topic> loadedTopics) {
+        for (List<Topic> topics : topicsByCategory.values()) {
+            topics.clear();
+        }
+        for (Topic topic : loadedTopics) {
+            topicsByCategory.get(topic.getCategory()).add(topic);
+        }
+    }
+
+    /**
      * Creates a topic under the given category.
      *
      * @param category the category to create the topic under

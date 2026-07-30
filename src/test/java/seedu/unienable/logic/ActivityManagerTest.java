@@ -523,4 +523,47 @@ class ActivityManagerTest {
 
         assertThrows(InvalidIndexException.class, () -> manager.replace(999, replacement));
     }
+
+    @Test
+    public void loadAll_populatesActivitiesAndSyncsNextIdPastHighestLoadedId() throws Exception {
+        ActivityManager manager = new ActivityManager();
+
+        manager.loadAll(List.of(newFixedActivity(3, "Loaded", LocalTime.of(9, 0), LocalTime.of(10, 0)),
+                newFixedActivity(7, "Loaded later", LocalTime.of(11, 0), LocalTime.of(12, 0))));
+
+        assertEquals(2, manager.size());
+        assertEquals(8, manager.getNextId());
+    }
+
+    @Test
+    public void loadAll_doesNotRevalidateDuplicatesOrOverlaps() throws Exception {
+        ActivityManager manager = new ActivityManager();
+
+        manager.loadAll(List.of(newFixedActivity(1, "Same slot", LocalTime.of(9, 0), LocalTime.of(10, 0)),
+                newFixedActivity(2, "Same slot", LocalTime.of(9, 0), LocalTime.of(10, 0))));
+
+        assertEquals(2, manager.size());
+    }
+
+    @Test
+    public void loadAll_emptyList_resetsNextIdToOne() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId()));
+
+        manager.loadAll(List.of());
+
+        assertEquals(0, manager.size());
+        assertEquals(1, manager.getNextId());
+    }
+
+    @Test
+    public void loadAll_replacesPreviouslyLoadedActivities() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(5, "First load", LocalTime.of(9, 0), LocalTime.of(10, 0))));
+
+        manager.loadAll(List.of(newFixedActivity(1, "Second load", LocalTime.of(9, 0), LocalTime.of(10, 0))));
+
+        assertEquals(1, manager.size());
+        assertEquals("Second load", manager.getById(1).getDescription());
+    }
 }

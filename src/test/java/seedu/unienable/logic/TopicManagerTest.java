@@ -133,4 +133,35 @@ class TopicManagerTest {
         assertThrows(DuplicateActivityException.class,
                 () -> manager.rename(ActivityCategory.ACADEMIC, "CG3207", "CS2113"));
     }
+
+    @Test
+    public void delete_unusedTopic_removesFromRegistry() throws Exception {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        manager.delete(ActivityCategory.ACADEMIC, "cg3207");
+
+        assertFalse(manager.exists(ActivityCategory.ACADEMIC, "CG3207"));
+    }
+
+    @Test
+    public void delete_topicStillInUse_throwsDuplicateActivityExceptionWithCount() throws Exception {
+        ActivityManager activityManager = new ActivityManager();
+        activityManager.add(newActivity(activityManager.getNextId(), ActivityCategory.ACADEMIC, "CG3207"));
+        activityManager.add(newActivity(activityManager.getNextId(), ActivityCategory.ACADEMIC, "CG3207"));
+        TopicManager topicManager = new TopicManager(activityManager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> topicManager.delete(ActivityCategory.ACADEMIC, "CG3207"));
+        assertEquals("Topic CG3207 is used by 2 activities.", exception.getMessage());
+        assertTrue(topicManager.exists(ActivityCategory.ACADEMIC, "CG3207"));
+    }
+
+    @Test
+    public void delete_unknownTopic_throwsInvalidIndexException() {
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertThrows(InvalidIndexException.class, () -> manager.delete(ActivityCategory.ACADEMIC, "CG3207"));
+    }
 }

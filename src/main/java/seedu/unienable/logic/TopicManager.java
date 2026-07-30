@@ -98,6 +98,39 @@ public class TopicManager {
         return updated;
     }
 
+    /**
+     * Deletes a topic from the registry. Confirmation prompts, if any, are the caller's
+     * responsibility; this performs the deletion outright.
+     *
+     * @param category the category the topic belongs to
+     * @param name the topic name
+     * @throws InvalidIndexException if the topic does not exist under that category
+     * @throws DuplicateActivityException if any activity under that category is still assigned
+     *     to it
+     */
+    public void delete(ActivityCategory category, String name)
+            throws InvalidIndexException, DuplicateActivityException {
+        int index = indexOf(category, name);
+        if (index == -1) {
+            throw new InvalidIndexException("Topic \"" + name + "\" does not exist under " + category + ".");
+        }
+        int usageCount = countActivitiesUsing(category, name);
+        if (usageCount > 0) {
+            throw new DuplicateActivityException("Topic " + name + " is used by " + usageCount + " activities.");
+        }
+        topicsByCategory.get(category).remove(index);
+    }
+
+    private int countActivitiesUsing(ActivityCategory category, String name) {
+        int count = 0;
+        for (Activity activity : activityManager.getAll()) {
+            if (activity.getCategory() == category && name.equalsIgnoreCase(activity.getTopic())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private int indexOf(ActivityCategory category, String name) {
         List<String> topics = topicsByCategory.get(category);
         for (int i = 0; i < topics.size(); i++) {

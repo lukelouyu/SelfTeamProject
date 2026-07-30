@@ -196,4 +196,43 @@ class ActivityCommandParserTest {
 
         assertThrows(InvalidCommandException.class, () -> parser.parseDelete(manager, "abc"));
     }
+
+    @Test
+    public void parseMark_validId_returnsWorkingMarkCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Briefing", ActivityCategory.WORK_INTERNSHIP,
+                LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null));
+
+        parser.parseMark(manager, "1").execute();
+
+        assertEquals(true, manager.getById(1).isComplete());
+    }
+
+    @Test
+    public void parseMark_nonNumericId_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseMark(manager, "abc"));
+    }
+
+    @Test
+    public void parseUnmark_validId_returnsWorkingUnmarkCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Briefing", ActivityCategory.WORK_INTERNSHIP,
+                LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null));
+        manager.mark(1);
+
+        parser.parseUnmark(manager, "1").execute();
+
+        assertEquals(false, manager.getById(1).isComplete());
+    }
+
+    @Test
+    public void parseUnmark_missingId_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseUnmark(manager, ""));
+    }
 }

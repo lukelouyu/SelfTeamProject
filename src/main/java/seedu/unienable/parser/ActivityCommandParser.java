@@ -5,6 +5,8 @@ import java.time.LocalTime;
 
 import seedu.unienable.command.AddCommand;
 import seedu.unienable.command.DeleteCommand;
+import seedu.unienable.command.MarkCommand;
+import seedu.unienable.command.UnmarkCommand;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -102,6 +104,34 @@ public class ActivityCommandParser {
     public DeleteCommand parseDelete(ActivityManager activityManager, String args)
             throws MissingInputException, InvalidCommandException {
         return new DeleteCommand(activityManager, parseId(args));
+    }
+
+    /**
+     * Parses a mark command's argument text into a MarkCommand.
+     *
+     * @param activityManager the manager the resulting command will mark in
+     * @param args the text after the "mark" command word
+     * @return the parsed MarkCommand
+     * @throws MissingInputException if no ID is supplied
+     * @throws InvalidCommandException if the supplied ID is not a whole number
+     */
+    public MarkCommand parseMark(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidCommandException {
+        return new MarkCommand(activityManager, parseId(args));
+    }
+
+    /**
+     * Parses an unmark command's argument text into an UnmarkCommand.
+     *
+     * @param activityManager the manager the resulting command will unmark in
+     * @param args the text after the "unmark" command word
+     * @return the parsed UnmarkCommand
+     * @throws MissingInputException if no ID is supplied
+     * @throws InvalidCommandException if the supplied ID is not a whole number
+     */
+    public UnmarkCommand parseUnmark(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidCommandException {
+        return new UnmarkCommand(activityManager, parseId(args));
     }
 
     private int parseId(String args) throws MissingInputException, InvalidCommandException {

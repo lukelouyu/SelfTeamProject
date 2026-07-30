@@ -7,13 +7,17 @@ import java.util.List;
 import java.util.Map;
 
 import seedu.unienable.exception.DuplicateActivityException;
+import seedu.unienable.exception.InvalidIndexException;
+import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.enums.ActivityCategory;
 
 /** Manages the in-memory registry of topics, scoped per category. A topic name is unique within its category. */
 public class TopicManager {
     private final Map<ActivityCategory, List<String>> topicsByCategory = new LinkedHashMap<>();
+    private final ActivityManager activityManager;
 
-    public TopicManager() {
+    public TopicManager(ActivityManager activityManager) {
+        this.activityManager = activityManager;
         for (ActivityCategory category : ActivityCategory.values()) {
             topicsByCategory.put(category, new ArrayList<>());
         }
@@ -58,5 +62,49 @@ public class TopicManager {
      */
     public List<String> list(ActivityCategory category) {
         return Collections.unmodifiableList(topicsByCategory.get(category));
+    }
+
+    /**
+     * Renames a topic, cascading the change to every activity currently assigned to it under the
+     * same category.
+     *
+     * @param category the category the topic belongs to
+     * @param oldName the topic's current name
+     * @param newName the topic's new name
+     * @return the number of activities updated
+     * @throws InvalidIndexException if oldName does not exist under that category
+     * @throws DuplicateActivityException if newName already exists (case-insensitively) under
+     *     that category as a different topic
+     */
+    public int rename(ActivityCategory category, String oldName, String newName)
+            throws InvalidIndexException, DuplicateActivityException {
+        int index = indexOf(category, oldName);
+        if (index == -1) {
+            throw new InvalidIndexException("Topic \"" + oldName + "\" does not exist under " + category + ".");
+        }
+        if (!oldName.equalsIgnoreCase(newName) && exists(category, newName)) {
+            throw new DuplicateActivityException(
+                    "Topic \"" + newName + "\" already exists under " + category + ".");
+        }
+        topicsByCategory.get(category).set(index, newName);
+
+        int updated = 0;
+        for (Activity activity : activityManager.getAll()) {
+            if (activity.getCategory() == category && oldName.equalsIgnoreCase(activity.getTopic())) {
+                activity.setTopic(newName);
+                updated++;
+            }
+        }
+        return updated;
+    }
+
+    private int indexOf(ActivityCategory category, String name) {
+        List<String> topics = topicsByCategory.get(category);
+        for (int i = 0; i < topics.size(); i++) {
+            if (topics.get(i).equalsIgnoreCase(name)) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

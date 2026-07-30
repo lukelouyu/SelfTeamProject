@@ -1,0 +1,42 @@
+FACILITY|F01|AS1|Faculty of Arts and Social Sciences, Block 1
+FEATURE|F01|STEP_FREE_ENTRANCE|YES|Ground floor entrance
+FEATURE|F01|LIFT|NO|Building has no lift; floors 4-5 are not accessible
+
+FACILITY|F02|AS2|Faculty of Arts and Social Sciences, Block 2
+FEATURE|F02|STEP_FREE_ENTRANCE|YES|Ground floor entrance
+FEATURE|F02|LIFT|NO|Building has no lift
+
+FACILITY|F03|AS3|Faculty of Arts and Social Sciences, Block 3
+FEATURE|F03|STEP_FREE_ENTRANCE|YES|Ground floor entrance
+FEATURE|F03|LIFT|YES|Lift serves the main floors
+
+FACILITY|F04|AS4|Faculty of Arts and Social Sciences, Block 4
+FEATURE|F04|STEP_FREE_ENTRANCE|YES|Ground floor entrance
+FEATURE|F04|LIFT|YES|Lift serves floors 1-6
+FEATURE|F04|ACCESSIBLE_WASHROOM|YES|Floors 3-6
+
+FACILITY|F05|AS5|Faculty of Arts and Social Sciences, Block 5
+FEATURE|F05|STEP_FREE_ENTRANCE|YES|Ground floor entrance
+FEATURE|F05|LIFT|YES|Floor 6 is not accessible
+FEATURE|F05|ACCESSIBLE_WASHROOM|YES|Near the lift lobby
+
+FACILITY|F06|AS6|Computing Drive link building (School of Computing)
+FEATURE|F06|STEP_FREE_ENTRANCE|YES|Ground floor entrance
+FEATURE|F06|LIFT|YES|Floors 1, B1, and 6 are not accessible
+FEATURE|F06|ACCESSIBLE_WASHROOM|YES|Upper floor, shared with SoC
+
+FACILITY|F07|AS7|The Shaw Foundation Building
+FEATURE|F07|STEP_FREE_ENTRANCE|YES|Ground floor entrance
+FEATURE|F07|LIFT|YES|Basement (B1) is not accessible
+FEATURE|F07|ACCESSIBLE_WASHROOM|YES|Ground floor
+
+FACILITY|F08|AS8|Faculty of Arts and Social Sciences, Block 8
+FEATURE|F08|STEP_FREE_ENTRANCE|YES|Kent Ridge Crescent entrance
+FEATURE|F08|LIFT|YES|Lift serves floors 1-4
+FEATURE|F08|ACCESSIBLE_WASHROOM|YES|Near the lift lobby
+FEATURE|F08|REST_POINT|YES|PitStop@FASS
+
+FACILITY|F09|CLB|Central Library
+FEATURE|F09|STEP_FREE_ENTRANCE|YES|Main entrance
+FEATURE|F09|LIFT|YES|Shared upper floors linked to School of Computing
+FEATURE|F09|ACCESSIBLE_WASHROOM|YES|4th floor toilet requires staff card access

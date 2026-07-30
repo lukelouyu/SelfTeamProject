@@ -62,4 +62,13 @@ class EditCommandTest {
 
         assertEquals(5, command.getId());
     }
+
+    @Test
+    public void getNewActivity_returnsConstructorReplacement() throws Exception {
+        FixedActivity replacement = newFixedActivity(5, "New", LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+        EditCommand command = new EditCommand(new ActivityManager(), 5, replacement);
+
+        assertEquals(replacement, command.getNewActivity());
+    }
 }

@@ -1,5 +1,7 @@
 package seedu.unienable.ui;
 
+import java.util.Objects;
+
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
@@ -97,6 +99,73 @@ public class MessageFormatter {
                 .append(activity.getSensoryRating()).append(" | Note: ")
                 .append(activity.getNote() == null ? "None" : activity.getNote());
         return result.toString();
+    }
+
+    /**
+     * Formats the fields that differ between an activity's stored version and a proposed
+     * replacement, as "Before: field = old" / "After : field = new" pairs, one pair per changed
+     * field. Unchanged fields are omitted entirely. Used to build edit's confirmation preview.
+     *
+     * @param oldActivity the currently stored activity
+     * @param newActivity the proposed replacement
+     * @return the formatted diff, or an empty string if nothing differs
+     */
+    public static String formatChanges(Activity oldActivity, Activity newActivity) {
+        StringBuilder result = new StringBuilder();
+        appendChange(result, "description", oldActivity.getDescription(), newActivity.getDescription());
+        appendChange(result, "category", oldActivity.getCategory(), newActivity.getCategory());
+        appendChange(result, "date", oldActivity.getDate(), newActivity.getDate());
+        appendChange(result, "type", oldActivity.getScheduleType(), newActivity.getScheduleType());
+        appendTimingChanges(result, oldActivity, newActivity);
+        appendChange(result, "energy", oldActivity.getEnergyRating(), newActivity.getEnergyRating());
+        appendChange(result, "sensory", oldActivity.getSensoryRating(), newActivity.getSensoryRating());
+        appendChange(result, "topic", orNone(oldActivity.getTopic()), orNone(newActivity.getTopic()));
+        appendChange(result, "note", orNone(oldActivity.getNote()), orNone(newActivity.getNote()));
+        if (result.length() > 0) {
+            result.setLength(result.length() - 1);
+        }
+        return result.toString();
+    }
+
+    private static void appendTimingChanges(StringBuilder result, Activity oldActivity, Activity newActivity) {
+        if (oldActivity.getScheduleType() != newActivity.getScheduleType()) {
+            appendChange(result, "schedule", scheduleSummary(oldActivity), scheduleSummary(newActivity));
+            return;
+        }
+        if (oldActivity instanceof FixedActivity) {
+            FixedActivity oldFixed = (FixedActivity) oldActivity;
+            FixedActivity newFixed = (FixedActivity) newActivity;
+            appendChange(result, "start", oldFixed.getStartTime(), newFixed.getStartTime());
+            appendChange(result, "end", oldFixed.getEndTime(), newFixed.getEndTime());
+            return;
+        }
+        FlexibleActivity oldFlexible = (FlexibleActivity) oldActivity;
+        FlexibleActivity newFlexible = (FlexibleActivity) newActivity;
+        appendChange(result, "earliest", oldFlexible.getEarliestStart(), newFlexible.getEarliestStart());
+        appendChange(result, "latest", oldFlexible.getLatestEnd(), newFlexible.getLatestEnd());
+        appendChange(result, "dur", oldFlexible.getDurationMinutes(), newFlexible.getDurationMinutes());
+    }
+
+    private static String scheduleSummary(Activity activity) {
+        if (activity instanceof FixedActivity) {
+            FixedActivity fixed = (FixedActivity) activity;
+            return fixed.getStartTime() + "-" + fixed.getEndTime();
+        }
+        FlexibleActivity flexible = (FlexibleActivity) activity;
+        return flexible.getEarliestStart() + "-" + flexible.getLatestEnd()
+                + " (" + flexible.getDurationMinutes() + " min)";
+    }
+
+    private static void appendChange(StringBuilder result, String label, Object oldValue, Object newValue) {
+        if (Objects.equals(String.valueOf(oldValue), String.valueOf(newValue))) {
+            return;
+        }
+        result.append("Before: ").append(label).append(" = ").append(oldValue).append('\n');
+        result.append("After : ").append(label).append(" = ").append(newValue).append('\n');
+    }
+
+    private static String orNone(String value) {
+        return value == null ? "None" : value;
     }
 
     private static void appendTopicSuffix(StringBuilder result, String topic) {

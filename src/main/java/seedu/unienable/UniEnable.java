@@ -124,12 +124,18 @@ public class UniEnable {
         }
         if (command instanceof EditCommand) {
             EditCommand edit = (EditCommand) command;
-            return confirm(scanner, ui, "Save changes to activity [" + edit.getId() + "]? (y/n)");
+            Activity oldActivity = activityManager.getById(edit.getId());
+            String diff = MessageFormatter.formatChanges(oldActivity, edit.getNewActivity());
+            if (diff.isEmpty()) {
+                ui.showFramed("No changes to activity [" + edit.getId() + "].");
+                return false;
+            }
+            return confirm(scanner, ui, diff + "\nSave changes? (y/n)");
         }
         if (command instanceof TopicRenameCommand) {
             TopicRenameCommand rename = (TopicRenameCommand) command;
-            return confirm(scanner, ui, "Rename topic \"" + rename.getOldName() + "\" to \""
-                    + rename.getNewName() + "\" under " + rename.getCategory() + "? (y/n)");
+            String diff = "Before: topic = " + rename.getOldName() + "\nAfter : topic = " + rename.getNewName();
+            return confirm(scanner, ui, diff + "\nSave changes? (y/n)");
         }
         if (command instanceof TopicDeleteCommand) {
             TopicDeleteCommand delete = (TopicDeleteCommand) command;

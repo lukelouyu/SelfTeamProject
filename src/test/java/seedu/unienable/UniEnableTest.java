@@ -92,4 +92,65 @@ class UniEnableTest {
         assertTrue(output.contains("Known facilities in the local reference:"));
         assertTrue(output.contains("AS1"));
     }
+
+    @Test
+    public void run_editWithConfirmation_showsBeforeAfterDiffAndSavesOnY() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "edit 1 energy/5\n"
+                        + "y\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Before: energy = 4/5"));
+        assertTrue(output.contains("After : energy = 5/5"));
+        assertTrue(output.contains("Save changes? (y/n)"));
+        assertTrue(output.contains("Activity [1] has been updated."));
+
+        Storage storage = new Storage(tempDir);
+        Activity activity = storage.loadActivities().getRecords().get(0);
+        assertEquals(5, activity.getEnergyRating().getValue());
+    }
+
+    @Test
+    public void run_editCancelledWithN_leavesActivityUnchangedOnDisk() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "edit 1 energy/5\n"
+                        + "n\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Cancelled. No changes were made."));
+
+        Storage storage = new Storage(tempDir);
+        Activity activity = storage.loadActivities().getRecords().get(0);
+        assertEquals(4, activity.getEnergyRating().getValue());
+    }
+
+    @Test
+    public void run_editWithNoActualChange_skipsConfirmationAndReportsNoChanges() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "edit 1 energy/4\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("No changes to activity [1]."));
+        assertTrue(!output.contains("Save changes? (y/n)"));
+    }
+
+    @Test
+    public void run_topicRenameWithConfirmation_showsBeforeAfterDiffAndSavesOnY() {
+        String output = runWithInput(
+                "topic add c/ACADEMIC n/CS2113\n"
+                        + "topic rename c/ACADEMIC old/CS2113 new/CS3207\n"
+                        + "y\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Before: topic = CS2113"));
+        assertTrue(output.contains("After : topic = CS3207"));
+        assertTrue(output.contains("Save changes? (y/n)"));
+        assertTrue(output.contains("Topic renamed from CS2113 to CS3207."));
+    }
 }

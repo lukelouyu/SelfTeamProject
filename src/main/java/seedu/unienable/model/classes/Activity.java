@@ -1,8 +1,12 @@
-package seedu.unienable.model;
+package seedu.unienable.model.classes;
 
 import java.time.LocalDate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.CompletionStatus;
+import seedu.unienable.model.enums.ScheduleType;
 
 /** Base type for all itinerary activities, holding the fields shared by every scheduling type. */
 public abstract class Activity {

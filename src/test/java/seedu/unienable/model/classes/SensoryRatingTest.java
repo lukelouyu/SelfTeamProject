@@ -1,4 +1,4 @@
-package seedu.unienable.model;
+package seedu.unienable.model.classes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

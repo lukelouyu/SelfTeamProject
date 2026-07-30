@@ -1,4 +1,4 @@
-package seedu.unienable.model.activities;
+package seedu.unienable.model.classes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,11 +8,8 @@ import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
-import seedu.unienable.model.Activity;
-import seedu.unienable.model.ActivityCategory;
-import seedu.unienable.model.EnergyRating;
-import seedu.unienable.model.ScheduleType;
-import seedu.unienable.model.SensoryRating;
+import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ScheduleType;
 
 class FlexibleActivityTest {
     private static FlexibleActivity newFlexibleActivity() throws Exception {

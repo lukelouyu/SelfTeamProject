@@ -1,4 +1,4 @@
-package seedu.unienable.model;
+package seedu.unienable.model.classes;
 
 import seedu.unienable.exception.InvalidActivityException;
 

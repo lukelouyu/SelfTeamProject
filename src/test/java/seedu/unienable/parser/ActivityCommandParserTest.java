@@ -1,0 +1,171 @@
+package seedu.unienable.parser;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import org.junit.jupiter.api.Test;
+
+import seedu.unienable.command.AddCommand;
+import seedu.unienable.exception.InvalidActivityException;
+import seedu.unienable.exception.InvalidCommandException;
+import seedu.unienable.exception.InvalidDateTimeException;
+import seedu.unienable.exception.MissingInputException;
+import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.FixedActivity;
+import seedu.unienable.model.classes.FlexibleActivity;
+import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ScheduleType;
+
+class ActivityCommandParserTest {
+    private final ActivityCommandParser parser = new ActivityCommandParser();
+
+    @Test
+    public void parseAdd_fixedActivity_buildsMatchingActivity() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        AddCommand command = parser.parseAdd(manager,
+                "n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3 topic/CG3207 note/Bring laptop");
+
+        command.execute();
+
+        Activity activity = manager.getById(1);
+        assertEquals(ScheduleType.FIXED, activity.getScheduleType());
+        assertEquals("CG3207 lecture", activity.getDescription());
+        assertEquals(ActivityCategory.ACADEMIC, activity.getCategory());
+        assertEquals(LocalDate.of(2026, 8, 15), activity.getDate());
+        assertEquals(LocalTime.of(9, 0), ((FixedActivity) activity).getStartTime());
+        assertEquals(LocalTime.of(11, 0), ((FixedActivity) activity).getEndTime());
+        assertEquals(4, activity.getEnergyRating().getValue());
+        assertEquals(3, activity.getSensoryRating().getValue());
+        assertEquals("CG3207", activity.getTopic());
+        assertEquals("Bring laptop", activity.getNote());
+    }
+
+    @Test
+    public void parseAdd_flexibleActivity_buildsMatchingActivity() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        AddCommand command = parser.parseAdd(manager,
+                "n/Finish assignment 1 c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
+                        + "dur/90 energy/5 sensory/2 topic/CG3207");
+
+        command.execute();
+
+        Activity activity = manager.getById(1);
+        assertEquals(ScheduleType.FLEXIBLE, activity.getScheduleType());
+        assertEquals(LocalTime.of(10, 0), ((FlexibleActivity) activity).getEarliestStart());
+        assertEquals(LocalTime.of(18, 0), ((FlexibleActivity) activity).getLatestEnd());
+        assertEquals(90, ((FlexibleActivity) activity).getDurationMinutes());
+        assertEquals("CG3207", activity.getTopic());
+        assertNull(activity.getNote());
+    }
+
+    @Test
+    public void parseAdd_noteWithoutTopic_parsesNoteCorrectly() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        AddCommand command = parser.parseAdd(manager,
+                "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2 note/Bring headphones");
+
+        command.execute();
+
+        Activity activity = manager.getById(1);
+        assertNull(activity.getTopic());
+        assertEquals("Bring headphones", activity.getNote());
+    }
+
+    @Test
+    public void parseAdd_topicWithoutNote_parsesTopicCorrectly() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        AddCommand command = parser.parseAdd(manager,
+                "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2 topic/Misc");
+
+        command.execute();
+
+        Activity activity = manager.getById(1);
+        assertEquals("Misc", activity.getTopic());
+        assertNull(activity.getNote());
+    }
+
+    @Test
+    public void parseAdd_missingDescription_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager,
+                "c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_missingType_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager,
+                "n/Lecture c/ACADEMIC date/2026-08-15"));
+    }
+
+    @Test
+    public void parseAdd_invalidType_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager,
+                "n/Lecture c/ACADEMIC date/2026-08-15 type/BOGUS from/09:00 to/11:00 energy/4 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_endNotAfterStart_throwsInvalidActivityException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+                "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/11:00 to/09:00 energy/4 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_invalidCategory_throwsInvalidActivityException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+                "n/Lecture c/BOGUS date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_invalidDate_throwsInvalidDateTimeException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
+                "n/Lecture c/ACADEMIC date/15-08-2026 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_invalidEnergyRating_throwsInvalidActivityException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+                "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/7 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_flexibleInvalidDuration_throwsInvalidActivityException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+                "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
+                        + "dur/0 energy/5 sensory/2"));
+    }
+
+    @Test
+    public void parseAdd_flexibleMissingDurationEntirely_throwsInvalidDateTimeException() {
+        // dur/ is dropped entirely, so latest/'s end marker ("dur/") is never found and its
+        // extraction greedily captures the trailing "energy/5 sensory/2" text, which then fails
+        // time parsing before a dedicated "dur is required" check is ever reached.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
+                "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
+                        + "energy/5 sensory/2"));
+    }
+}

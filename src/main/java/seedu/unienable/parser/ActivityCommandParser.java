@@ -1,5 +1,156 @@
 package seedu.unienable.parser;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import seedu.unienable.command.AddCommand;
+import seedu.unienable.exception.InvalidActivityException;
+import seedu.unienable.exception.InvalidCommandException;
+import seedu.unienable.exception.InvalidDateTimeException;
+import seedu.unienable.exception.MissingInputException;
+import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.model.classes.EnergyRating;
+import seedu.unienable.model.classes.FixedActivity;
+import seedu.unienable.model.classes.FlexibleActivity;
+import seedu.unienable.model.classes.SensoryRating;
+import seedu.unienable.model.enums.ActivityCategory;
+
 /** Parses activity-related commands (add, list, find, edit, delete, mark, unmark, next) into Command objects. */
 public class ActivityCommandParser {
+    /**
+     * Parses an add command's argument text into an AddCommand. Fields must appear in the order
+     * documented in the User Guide.
+     *
+     * @param activityManager the manager the resulting command will add to
+     * @param args the text after the "add" command word
+     * @return the parsed AddCommand
+     * @throws MissingInputException if a required field is missing
+     * @throws InvalidActivityException if a field value fails validation
+     * @throws InvalidDateTimeException if the date or a time value is invalid
+     * @throws InvalidCommandException if type is neither FIXED nor FLEXIBLE
+     */
+    public AddCommand parseAdd(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
+            InvalidCommandException {
+        String description = requireField(args, "n/", "c/", "description");
+        ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category"));
+        LocalDate date = DateTimeParser.parseDate(requireField(args, "date/", "type/", "date"));
+        String type = firstToken(requireField(args, "type/", null, "type"));
+
+        int id = activityManager.getNextId();
+        if ("FIXED".equalsIgnoreCase(type)) {
+            return new AddCommand(activityManager, parseFixed(args, id, description, category, date));
+        }
+        if ("FLEXIBLE".equalsIgnoreCase(type)) {
+            return new AddCommand(activityManager, parseFlexible(args, id, description, category, date));
+        }
+        throw new InvalidCommandException("type must be FIXED or FLEXIBLE.");
+    }
+
+    private FixedActivity parseFixed(String args, int id, String description, ActivityCategory category,
+            LocalDate date) throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
+        LocalTime start = DateTimeParser.parseTime(requireField(args, "from/", "to/", "from"));
+        LocalTime end = DateTimeParser.parseTime(requireField(args, "to/", "energy/", "to"));
+        if (!end.isAfter(start)) {
+            throw new InvalidActivityException("end time must be later than start time.");
+        }
+        CommonTail tail = parseCommonTail(args, "energy/");
+        return new FixedActivity(id, description, category, date, start, end, tail.energy, tail.sensory,
+                tail.topic, tail.note);
+    }
+
+    private FlexibleActivity parseFlexible(String args, int id, String description, ActivityCategory category,
+            LocalDate date) throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
+        LocalTime earliestStart = DateTimeParser.parseTime(requireField(args, "earliest/", "latest/", "earliest"));
+        LocalTime latestEnd = DateTimeParser.parseTime(requireField(args, "latest/", "dur/", "latest"));
+        if (!latestEnd.isAfter(earliestStart)) {
+            throw new InvalidActivityException("latest end time must be after earliest start time.");
+        }
+        int durationMinutes = parsePositiveInt(requireField(args, "dur/", "energy/", "dur"), "dur");
+        CommonTail tail = parseCommonTail(args, "energy/");
+        return new FlexibleActivity(id, description, category, date, earliestStart, latestEnd, durationMinutes,
+                tail.energy, tail.sensory, tail.topic, tail.note);
+    }
+
+    private CommonTail parseCommonTail(String args, String energyMarker)
+            throws MissingInputException, InvalidActivityException {
+        EnergyRating energy = RatingParser.parseEnergyRating(requireField(args, energyMarker, "sensory/", "energy"));
+
+        String sensoryEndMarker = firstPresentMarker(args, "sensory/", "topic/", "note/");
+        SensoryRating sensory = RatingParser.parseSensoryRating(
+                requireField(args, "sensory/", sensoryEndMarker, "sensory"));
+
+        String topic = null;
+        if (args.contains("topic/")) {
+            String topicEndMarker = firstPresentMarker(args, "topic/", "note/");
+            topic = FieldParser.extractField(args, "topic/", topicEndMarker);
+        }
+        String note = FieldParser.extractField(args, "note/", null);
+        return new CommonTail(energy, sensory, topic, note);
+    }
+
+    private String requireField(String args, String startMarker, String endMarker, String fieldName)
+            throws MissingInputException {
+        String value = FieldParser.extractField(args, startMarker, endMarker);
+        if (value == null || value.isEmpty()) {
+            throw new MissingInputException(fieldName + " is required.");
+        }
+        return value;
+    }
+
+    private ActivityCategory parseCategory(String text) throws InvalidActivityException {
+        try {
+            return ActivityCategory.valueOf(text.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidActivityException("category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.");
+        }
+    }
+
+    private int parsePositiveInt(String text, String fieldName) throws InvalidActivityException {
+        try {
+            int value = Integer.parseInt(text);
+            if (value <= 0) {
+                throw new NumberFormatException();
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            throw new InvalidActivityException(fieldName + " must be a positive whole number of minutes.");
+        }
+    }
+
+    private String firstToken(String text) {
+        return text.trim().split("\\s+", 2)[0];
+    }
+
+    private String firstPresentMarker(String text, String afterMarker, String... candidates) {
+        int searchFrom = text.indexOf(afterMarker);
+        if (searchFrom == -1) {
+            return null;
+        }
+        searchFrom += afterMarker.length();
+        String best = null;
+        int bestIndex = -1;
+        for (String candidate : candidates) {
+            int index = text.indexOf(candidate, searchFrom);
+            if (index != -1 && (bestIndex == -1 || index < bestIndex)) {
+                bestIndex = index;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private static final class CommonTail {
+        private final EnergyRating energy;
+        private final SensoryRating sensory;
+        private final String topic;
+        private final String note;
+
+        private CommonTail(EnergyRating energy, SensoryRating sensory, String topic, String note) {
+            this.energy = energy;
+            this.sensory = sensory;
+            this.topic = topic;
+            this.note = note;
+        }
+    }
 }

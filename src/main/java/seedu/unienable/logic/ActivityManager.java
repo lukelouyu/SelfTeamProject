@@ -1,7 +1,9 @@
 package seedu.unienable.logic;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import seedu.unienable.exception.DuplicateActivityException;
@@ -9,6 +11,7 @@ import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
+import seedu.unienable.model.enums.ActivityOrder;
 
 /** Manages the in-memory collection of activities: stable ID assignment plus basic CRUD access. */
 public class ActivityManager {
@@ -17,6 +20,7 @@ public class ActivityManager {
 
     private final List<Activity> activities = new ArrayList<>();
     private int nextId = 1;
+    private ActivityOrder defaultOrder = ActivityOrder.CHRONOLOGICAL;
 
     /** Returns the ID the next added activity will receive. */
     public int getNextId() {
@@ -150,20 +154,62 @@ public class ActivityManager {
         return Collections.unmodifiableList(activities);
     }
 
+    /** Returns the saved default order used by list/find when no one-shot override is supplied. */
+    public ActivityOrder getDefaultOrder() {
+        return defaultOrder;
+    }
+
     /**
-     * Returns activities matching the given filter, in current storage (input) order.
+     * Sets the saved default order used by list/find when no one-shot override is supplied.
+     *
+     * @param order the new default order
+     */
+    public void setDefaultOrder(ActivityOrder order) {
+        defaultOrder = order;
+    }
+
+    /**
+     * Returns activities matching the given filter, ordered as requested.
      *
      * @param filter the filter criteria; null fields mean "no filter" for that field
-     * @return the matching activities
+     * @param order the one-shot order override, or null to use the saved default order
+     * @return the matching activities in the requested order
      */
-    public List<Activity> list(ActivityFilter filter) {
+    public List<Activity> list(ActivityFilter filter, ActivityOrder order) {
         List<Activity> result = new ArrayList<>();
         for (Activity activity : activities) {
             if (filter.matches(activity)) {
                 result.add(activity);
             }
         }
+        sort(result, order == null ? defaultOrder : order);
         return result;
+    }
+
+    private void sort(List<Activity> matched, ActivityOrder order) {
+        switch (order) {
+        case TIME:
+            matched.sort(Comparator.comparing(ActivityManager::getSortTime).thenComparingInt(Activity::getId));
+            break;
+        case CHRONOLOGICAL:
+            matched.sort(Comparator.comparing(Activity::getDate)
+                    .thenComparing(ActivityManager::getSortTime)
+                    .thenComparingInt(Activity::getId));
+            break;
+        case INPUT:
+        default:
+            break;
+        }
+    }
+
+    private static LocalTime getSortTime(Activity activity) {
+        if (activity instanceof FixedActivity) {
+            return ((FixedActivity) activity).getStartTime();
+        }
+        if (activity instanceof FlexibleActivity) {
+            return ((FlexibleActivity) activity).getEarliestStart();
+        }
+        throw new IllegalStateException("unknown activity type: " + activity.getClass());
     }
 
     /** Returns the number of stored activities. */

@@ -19,6 +19,7 @@ import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.model.enums.CompletionStatus;
 
 class ActivityManagerTest {
@@ -215,7 +216,7 @@ class ActivityManagerTest {
         manager.add(newFixedActivity(manager.getNextId(), "First", LocalTime.of(9, 0), LocalTime.of(10, 0)));
         manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(11, 0), LocalTime.of(12, 0)));
 
-        List<Activity> result = manager.list(new ActivityFilter(null, null, null, null));
+        List<Activity> result = manager.list(new ActivityFilter(null, null, null, null), ActivityOrder.INPUT);
 
         assertEquals(2, result.size());
     }
@@ -227,9 +228,68 @@ class ActivityManagerTest {
         manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(11, 0), LocalTime.of(12, 0)));
         manager.mark(1);
 
-        List<Activity> result = manager.list(new ActivityFilter(CompletionStatus.COMPLETE, null, null, null));
+        List<Activity> result = manager.list(
+                new ActivityFilter(CompletionStatus.COMPLETE, null, null, null), ActivityOrder.INPUT);
 
         assertEquals(1, result.size());
         assertEquals(1, result.get(0).getId());
+    }
+
+    @Test
+    public void getDefaultOrder_startsAsChronological() {
+        assertEquals(ActivityOrder.CHRONOLOGICAL, new ActivityManager().getDefaultOrder());
+    }
+
+    @Test
+    public void list_inputOrder_preservesAddedSequence() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Later time", LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Earlier time", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+
+        List<Activity> result = manager.list(new ActivityFilter(null, null, null, null), ActivityOrder.INPUT);
+
+        assertEquals(1, result.get(0).getId());
+        assertEquals(2, result.get(1).getId());
+    }
+
+    @Test
+    public void list_timeOrder_sortsByStartTimeThenId() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Later time", LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Earlier time", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+
+        List<Activity> result = manager.list(new ActivityFilter(null, null, null, null), ActivityOrder.TIME);
+
+        assertEquals(2, result.get(0).getId());
+        assertEquals(1, result.get(1).getId());
+    }
+
+    @Test
+    public void list_chronologicalOrder_sortsByDateThenTime() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        FixedActivity laterDate = new FixedActivity(manager.getNextId(), "Later date", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 16), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null);
+        manager.add(laterDate);
+        manager.add(newFixedActivity(manager.getNextId(), "Earlier date", LocalTime.of(14, 0), LocalTime.of(15, 0)));
+
+        List<Activity> result = manager.list(new ActivityFilter(null, null, null, null),
+                ActivityOrder.CHRONOLOGICAL);
+
+        assertEquals(2, result.get(0).getId());
+        assertEquals(1, result.get(1).getId());
+    }
+
+    @Test
+    public void list_nullOrder_usesSavedDefault() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Later time", LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Earlier time", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        manager.setDefaultOrder(ActivityOrder.TIME);
+
+        List<Activity> result = manager.list(new ActivityFilter(null, null, null, null), null);
+
+        assertEquals(2, result.get(0).getId());
+        assertEquals(1, result.get(1).getId());
     }
 }

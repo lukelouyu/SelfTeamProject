@@ -16,6 +16,7 @@ import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.parser.activity.ActivityCommandParser;
 import seedu.unienable.parser.common.Parser;
+import seedu.unienable.parser.topic.TopicCommandParser;
 
 /** Routes one full line of user input to the right parser, returning the Command it produces. */
 public class CommandDispatcher {

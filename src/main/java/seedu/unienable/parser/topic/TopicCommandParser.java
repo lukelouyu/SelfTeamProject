@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.topic;
 
 import seedu.unienable.command.topic.TopicAddCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;

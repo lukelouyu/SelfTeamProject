@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.topic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

@@ -1,5 +1,8 @@
 package seedu.unienable.storage;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -96,5 +99,61 @@ public class Storage {
      */
     public LoadResult<Connection> loadConnections() throws StorageException {
         return connectionStorage.load(connectionsFile);
+    }
+
+    /**
+     * Copies the bundled default facilities.txt and connections.txt into the data directory, for
+     * each file that does not already exist there. An existing file is left untouched, so manual
+     * edits made between application runs are preserved.
+     *
+     * @throws StorageException if the data directory cannot be created, a bundled default is
+     *     missing from the application, or a default file cannot be written
+     */
+    public void copyDefaultAccessibilityDataIfMissing() throws StorageException {
+        copyResourceIfMissing("facilities.txt", facilitiesFile);
+        copyResourceIfMissing("connections.txt", connectionsFile);
+    }
+
+    /**
+     * Ensures every data file exists before the first load: creates empty activities.txt and
+     * topics.txt if missing (there is no bundled default user data), and copies the bundled
+     * default facilities.txt/connections.txt if missing. Existing files are always left untouched.
+     *
+     * @throws StorageException if the data directory or a file cannot be created
+     */
+    public void prepareDataFiles() throws StorageException {
+        createEmptyFileIfMissing(activitiesFile);
+        createEmptyFileIfMissing(topicsFile);
+        copyDefaultAccessibilityDataIfMissing();
+    }
+
+    private void createEmptyFileIfMissing(Path file) throws StorageException {
+        if (Files.exists(file)) {
+            return;
+        }
+        try {
+            Files.createDirectories(file.getParent());
+            Files.createFile(file);
+        } catch (IOException e) {
+            throw new StorageException("could not create " + file, e);
+        }
+    }
+
+    private void copyResourceIfMissing(String resourceName, Path destination) throws StorageException {
+        if (Files.exists(destination)) {
+            return;
+        }
+        try {
+            Files.createDirectories(destination.getParent());
+            try (InputStream resource = getClass().getResourceAsStream("/" + resourceName)) {
+                if (resource == null) {
+                    throw new StorageException("bundled default \"" + resourceName + "\" is missing "
+                            + "from the application");
+                }
+                Files.copy(resource, destination);
+            }
+        } catch (IOException e) {
+            throw new StorageException("could not create default " + destination, e);
+        }
     }
 }

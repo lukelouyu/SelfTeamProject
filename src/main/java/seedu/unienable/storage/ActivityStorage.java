@@ -18,8 +18,8 @@ import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.CompletionStatus;
-import seedu.unienable.parser.DateTimeParser;
-import seedu.unienable.parser.RatingParser;
+import seedu.unienable.parser.common.DateTimeParser;
+import seedu.unienable.parser.common.RatingParser;
 
 /**
  * Loads and saves Activity records from/to a pipe-delimited activities.txt-format file.

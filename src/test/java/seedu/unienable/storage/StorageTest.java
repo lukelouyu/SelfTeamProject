@@ -1,6 +1,8 @@
 package seedu.unienable.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -83,5 +85,56 @@ class StorageTest {
         assertEquals(AccessibilityStatus.YES, connection.getAccessibility());
         assertEquals(TraversalType.SHELTERED_RAMP, connection.getType());
         assertEquals(ShelterStatus.YES, connection.getShelter());
+    }
+
+    @Test
+    public void copyDefaultAccessibilityDataIfMissing_createsBothFilesFromBundledDefaults() throws Exception {
+        Storage storage = new Storage(tempDir);
+
+        storage.copyDefaultAccessibilityDataIfMissing();
+
+        assertTrue(Files.exists(tempDir.resolve("facilities.txt")));
+        assertTrue(Files.exists(tempDir.resolve("connections.txt")));
+        assertFalse(storage.loadFacilities().getRecords().isEmpty());
+        assertFalse(storage.loadConnections().getRecords().isEmpty());
+    }
+
+    @Test
+    public void copyDefaultAccessibilityDataIfMissing_existingFacilitiesFile_isNotOverwritten() throws Exception {
+        write("facilities.txt", "FACILITY|F99|CUSTOM|A manually edited facility");
+        Storage storage = new Storage(tempDir);
+
+        storage.copyDefaultAccessibilityDataIfMissing();
+
+        LoadResult<Facility> result = storage.loadFacilities();
+        assertEquals(1, result.getRecords().size());
+        assertEquals("CUSTOM", result.getRecords().get(0).getName());
+    }
+
+    @Test
+    public void prepareDataFiles_freshDataDirectory_createsAllFourFilesAndAllLoadSuccessfully() throws Exception {
+        Storage storage = new Storage(tempDir);
+
+        storage.prepareDataFiles();
+
+        assertTrue(Files.exists(tempDir.resolve("activities.txt")));
+        assertTrue(Files.exists(tempDir.resolve("topics.txt")));
+        assertTrue(storage.loadActivities().getRecords().isEmpty());
+        assertTrue(storage.loadTopics().getRecords().isEmpty());
+        assertFalse(storage.loadFacilities().getRecords().isEmpty());
+        assertFalse(storage.loadConnections().getRecords().isEmpty());
+    }
+
+    @Test
+    public void prepareDataFiles_existingActivitiesFile_isNotOverwritten() throws Exception {
+        Storage storage = new Storage(tempDir);
+        FixedActivity fixed = new FixedActivity(12, "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null);
+        storage.saveActivities(List.of(fixed));
+
+        storage.prepareDataFiles();
+
+        assertEquals(1, storage.loadActivities().getRecords().size());
     }
 }

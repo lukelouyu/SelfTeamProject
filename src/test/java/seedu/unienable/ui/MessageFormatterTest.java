@@ -138,4 +138,76 @@ class MessageFormatterTest {
 
         assertEquals(expected, MessageFormatter.formatDetail(activity));
     }
+
+    @Test
+    public void formatChanges_singleFieldChanged_showsOnlyThatField() throws Exception {
+        FixedActivity oldActivity = new FixedActivity(3, "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null);
+        FixedActivity newActivity = new FixedActivity(3, "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(2), null, null);
+
+        assertEquals("Before: energy = 3/5\nAfter : energy = 4/5",
+                MessageFormatter.formatChanges(oldActivity, newActivity));
+    }
+
+    @Test
+    public void formatChanges_multipleFieldsChanged_showsEachChangedField() throws Exception {
+        FixedActivity oldActivity = new FixedActivity(5, "Old name", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(3), null, null);
+        FixedActivity newActivity = new FixedActivity(5, "New name", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(2), null, null);
+
+        assertEquals("Before: description = Old name\n"
+                + "After : description = New name\n"
+                + "Before: energy = 3/5\n"
+                + "After : energy = 4/5\n"
+                + "Before: sensory = 3/5\n"
+                + "After : sensory = 2/5", MessageFormatter.formatChanges(oldActivity, newActivity));
+    }
+
+    @Test
+    public void formatChanges_noneToValueAndBack_usesNoneForMissingTopicOrNote() throws Exception {
+        FixedActivity oldActivity = new FixedActivity(7, "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), "CS2113", null);
+        FixedActivity newActivity = new FixedActivity(7, "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), "CS3207", "Bring laptop");
+
+        assertEquals("Before: topic = CS2113\n"
+                + "After : topic = CS3207\n"
+                + "Before: note = None\n"
+                + "After : note = Bring laptop", MessageFormatter.formatChanges(oldActivity, newActivity));
+    }
+
+    @Test
+    public void formatChanges_typeChanged_showsTypeAndScheduleSummaryInsteadOfGranularFields() throws Exception {
+        FixedActivity oldActivity = new FixedActivity(9, "Task", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null);
+        FlexibleActivity newActivity = new FlexibleActivity(9, "Task", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
+                EnergyRating.of(3), SensoryRating.of(2), null, null);
+
+        assertEquals("Before: type = FIXED\n"
+                + "After : type = FLEXIBLE\n"
+                + "Before: schedule = 09:00-11:00\n"
+                + "After : schedule = 10:00-18:00 (90 min)", MessageFormatter.formatChanges(oldActivity, newActivity));
+    }
+
+    @Test
+    public void formatChanges_noFieldsChanged_returnsEmptyString() throws Exception {
+        FixedActivity activity = new FixedActivity(11, "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null);
+        FixedActivity identicalReplacement = new FixedActivity(11, "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null);
+
+        assertTrue(MessageFormatter.formatChanges(activity, identicalReplacement).isEmpty());
+    }
 }

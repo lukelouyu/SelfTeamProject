@@ -107,6 +107,16 @@ public class ActivityManager {
         throw new InvalidIndexException("Activity [" + id + "] does not exist.");
     }
 
+    /**
+     * Deletes the activity with the given stable ID. Other activities' IDs are unaffected.
+     *
+     * @param id the stable activity ID
+     * @throws InvalidIndexException if no activity has that ID
+     */
+    public void delete(int id) throws InvalidIndexException {
+        activities.remove(getById(id));
+    }
+
     /** Returns an unmodifiable view of every stored activity, in input order. */
     public List<Activity> getAll() {
         return Collections.unmodifiableList(activities);

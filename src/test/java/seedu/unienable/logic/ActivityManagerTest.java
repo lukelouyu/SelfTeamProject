@@ -134,4 +134,33 @@ class ActivityManagerTest {
 
         assertEquals(2, manager.size());
     }
+
+    @Test
+    public void delete_existingId_removesActivity() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId()));
+
+        manager.delete(1);
+
+        assertEquals(0, manager.size());
+        assertThrows(InvalidIndexException.class, () -> manager.getById(1));
+    }
+
+    @Test
+    public void delete_doesNotChangeOtherActivityIds() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "First", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(11, 0), LocalTime.of(12, 0)));
+
+        manager.delete(1);
+
+        assertEquals(2, manager.getById(2).getId());
+    }
+
+    @Test
+    public void delete_unknownId_throwsInvalidIndexException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidIndexException.class, () -> manager.delete(999));
+    }
 }

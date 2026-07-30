@@ -14,7 +14,11 @@ public class SensoryRating {
     }
 
     /**
-     * Creates a SensoryRating after validating that the value is a whole number from 1 to 5.
+     * Creates a SensoryRating after validating the value.
+     *
+     * @param value the sensory-load rating to validate
+     * @return a SensoryRating wrapping the validated value
+     * @throws InvalidActivityException if value is not a whole number from 1 to 5
      */
     public static SensoryRating of(int value) throws InvalidActivityException {
         if (value < MIN_VALUE || value > MAX_VALUE) {

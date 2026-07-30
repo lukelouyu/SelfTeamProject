@@ -14,7 +14,11 @@ public class EnergyRating {
     }
 
     /**
-     * Creates an EnergyRating after validating that the value is a whole number from 1 to 5.
+     * Creates an EnergyRating after validating the value.
+     *
+     * @param value the energy-demand rating to validate
+     * @return an EnergyRating wrapping the validated value
+     * @throws InvalidActivityException if value is not a whole number from 1 to 5
      */
     public static EnergyRating of(int value) throws InvalidActivityException {
         if (value < MIN_VALUE || value > MAX_VALUE) {

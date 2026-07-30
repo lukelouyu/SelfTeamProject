@@ -15,6 +15,7 @@ import seedu.unienable.command.AddCommand;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
+import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.model.classes.Activity;
@@ -266,5 +267,121 @@ class ActivityCommandParserTest {
     @Test
     public void extractPresentFields_noMarkersPresent_returnsEmptyMap() {
         assertTrue(parser.extractPresentFields("nothing relevant here", "n/", "c/").isEmpty());
+    }
+
+    @Test
+    public void parseEdit_singleField_updatesOnlyThatField() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FlexibleActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
+                EnergyRating.of(5), SensoryRating.of(2), "CG3207", null));
+
+        parser.parseEdit(manager, "1 dur/60").execute();
+
+        Activity updated = manager.getById(1);
+        assertEquals(60, ((FlexibleActivity) updated).getDurationMinutes());
+        assertEquals("Finish assignment 1", updated.getDescription());
+        assertEquals("CG3207", updated.getTopic());
+    }
+
+    @Test
+    public void parseEdit_multipleFields_updatesAllGivenFields() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FlexibleActivity(manager.getNextId(), "Prepare slides", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
+                EnergyRating.of(3), SensoryRating.of(3), null, null));
+
+        parser.parseEdit(manager, "1 n/New activity name energy/4 sensory/2").execute();
+
+        Activity updated = manager.getById(1);
+        assertEquals("New activity name", updated.getDescription());
+        assertEquals(4, updated.getEnergyRating().getValue());
+        assertEquals(2, updated.getSensoryRating().getValue());
+    }
+
+    @Test
+    public void parseEdit_noteOnly_leavesOtherFieldsUnchanged() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Consultation", ActivityCategory.OTHERS,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), "Misc", null));
+
+        parser.parseEdit(manager, "1 note/Bring headphones").execute();
+
+        Activity updated = manager.getById(1);
+        assertEquals("Bring headphones", updated.getNote());
+        assertEquals("Misc", updated.getTopic());
+        assertEquals(LocalTime.of(9, 0), ((FixedActivity) updated).getStartTime());
+    }
+
+    @Test
+    public void parseEdit_preservesCompletionStatus() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FlexibleActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
+                EnergyRating.of(5), SensoryRating.of(2), null, null));
+        manager.mark(1);
+
+        parser.parseEdit(manager, "1 dur/60").execute();
+
+        assertTrue(manager.getById(1).isComplete());
+    }
+
+    @Test
+    public void parseEdit_changingTypeWithAllNewTimingFields_succeeds() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        parser.parseEdit(manager, "1 type/FLEXIBLE earliest/10:00 latest/18:00 dur/90").execute();
+
+        Activity updated = manager.getById(1);
+        assertEquals(ScheduleType.FLEXIBLE, updated.getScheduleType());
+        assertEquals(90, ((FlexibleActivity) updated).getDurationMinutes());
+    }
+
+    @Test
+    public void parseEdit_changingTypeWithoutNewTimingFields_throwsMissingInputException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, "1 type/FLEXIBLE"));
+    }
+
+    @Test
+    public void parseEdit_noFieldsSupplied_throwsMissingInputException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, "1"));
+    }
+
+    @Test
+    public void parseEdit_unknownId_throwsInvalidIndexException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidIndexException.class, () -> parser.parseEdit(manager, "999 dur/60"));
+    }
+
+    @Test
+    public void parseEdit_nonNumericId_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseEdit(manager, "abc dur/60"));
+    }
+
+    @Test
+    public void parseEdit_invalidNewCategory_throwsInvalidActivityException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 c/BOGUS"));
     }
 }

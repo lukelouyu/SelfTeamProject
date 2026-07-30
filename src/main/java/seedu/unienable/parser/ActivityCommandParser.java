@@ -10,21 +10,30 @@ import java.util.Map;
 
 import seedu.unienable.command.AddCommand;
 import seedu.unienable.command.DeleteCommand;
+import seedu.unienable.command.EditCommand;
 import seedu.unienable.command.MarkCommand;
 import seedu.unienable.command.UnmarkCommand;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
+import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ScheduleType;
 
 /** Parses activity-related commands (add, list, find, edit, delete, mark, unmark, next) into Command objects. */
 public class ActivityCommandParser {
+    private static final String[] EDIT_MARKERS = {
+        "n/", "c/", "date/", "type/", "from/", "to/", "earliest/", "latest/", "dur/",
+        "energy/", "sensory/", "topic/", "note/"
+    };
+
     /**
      * Parses an add command's argument text into an AddCommand. Fields must appear in the order
      * documented in the User Guide.
@@ -229,6 +238,128 @@ public class ActivityCommandParser {
             result.put(marker, FieldParser.extractField(text, marker, endMarker));
         }
         return result;
+    }
+
+    /**
+     * Parses an edit command's argument text into an EditCommand. Any subset of the 13 editable
+     * prefixes may be supplied, in any order; at least one is required. Changing type/ between
+     * FIXED and FLEXIBLE requires supplying every timing field the new type needs, since a value
+     * from the old type's timing fields cannot carry over.
+     *
+     * @param activityManager the manager holding the activity being edited
+     * @param args the text after the "edit" command word, starting with the activity ID
+     * @return the parsed EditCommand
+     * @throws MissingInputException if no ID, no fields, or a required new-type timing field is
+     *     missing
+     * @throws InvalidCommandException if the ID is not a whole number, or type is neither FIXED
+     *     nor FLEXIBLE
+     * @throws InvalidIndexException if no activity has that ID
+     * @throws InvalidActivityException if a field value fails validation
+     * @throws InvalidDateTimeException if a date or time value is invalid
+     */
+    public EditCommand parseEdit(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidCommandException, InvalidIndexException, InvalidActivityException,
+            InvalidDateTimeException {
+        String[] parts = args.trim().split("\\s+", 2);
+        int id = parseEditId(parts[0]);
+        String fieldsText = parts.length > 1 ? parts[1] : "";
+
+        Map<String, String> fields = extractPresentFields(fieldsText, EDIT_MARKERS);
+        if (fields.isEmpty()) {
+            throw new MissingInputException("at least one field must be supplied.");
+        }
+
+        Activity old = activityManager.getById(id);
+        String description = fields.getOrDefault("n/", old.getDescription());
+        ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : old.getCategory();
+        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : old.getDate();
+        EnergyRating energy = fields.containsKey("energy/")
+                ? RatingParser.parseEnergyRating(fields.get("energy/")) : old.getEnergyRating();
+        SensoryRating sensory = fields.containsKey("sensory/")
+                ? RatingParser.parseSensoryRating(fields.get("sensory/")) : old.getSensoryRating();
+        String topic = fields.getOrDefault("topic/", old.getTopic());
+        String note = fields.getOrDefault("note/", old.getNote());
+
+        ScheduleType oldType = old.getScheduleType();
+        ScheduleType newType = fields.containsKey("type/") ? parseScheduleType(fields.get("type/")) : oldType;
+        boolean typeChanged = newType != oldType;
+
+        Activity newActivity = newType == ScheduleType.FIXED
+                ? buildFixed(id, description, category, date, energy, sensory, topic, note, fields, old, typeChanged)
+                : buildFlexible(id, description, category, date, energy, sensory, topic, note, fields, old,
+                        typeChanged);
+
+        if (old.isComplete()) {
+            newActivity.mark();
+        }
+        return new EditCommand(activityManager, id, newActivity);
+    }
+
+    private FixedActivity buildFixed(int id, String description, ActivityCategory category, LocalDate date,
+            EnergyRating energy, SensoryRating sensory, String topic, String note, Map<String, String> fields,
+            Activity old, boolean typeChanged)
+            throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
+        LocalTime start = resolveRequiredTime(fields, "from/", typeChanged,
+                typeChanged ? null : ((FixedActivity) old).getStartTime());
+        LocalTime end = resolveRequiredTime(fields, "to/", typeChanged,
+                typeChanged ? null : ((FixedActivity) old).getEndTime());
+        if (!end.isAfter(start)) {
+            throw new InvalidActivityException("end time must be later than start time.");
+        }
+        return new FixedActivity(id, description, category, date, start, end, energy, sensory, topic, note);
+    }
+
+    private FlexibleActivity buildFlexible(int id, String description, ActivityCategory category, LocalDate date,
+            EnergyRating energy, SensoryRating sensory, String topic, String note, Map<String, String> fields,
+            Activity old, boolean typeChanged)
+            throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
+        LocalTime earliestStart = resolveRequiredTime(fields, "earliest/", typeChanged,
+                typeChanged ? null : ((FlexibleActivity) old).getEarliestStart());
+        LocalTime latestEnd = resolveRequiredTime(fields, "latest/", typeChanged,
+                typeChanged ? null : ((FlexibleActivity) old).getLatestEnd());
+        if (!latestEnd.isAfter(earliestStart)) {
+            throw new InvalidActivityException("latest end time must be after earliest start time.");
+        }
+        int durationMinutes;
+        if (fields.containsKey("dur/")) {
+            durationMinutes = parsePositiveInt(fields.get("dur/"), "dur");
+        } else if (typeChanged) {
+            throw new MissingInputException("dur/ is required when changing type to FLEXIBLE.");
+        } else {
+            durationMinutes = ((FlexibleActivity) old).getDurationMinutes();
+        }
+        return new FlexibleActivity(id, description, category, date, earliestStart, latestEnd, durationMinutes,
+                energy, sensory, topic, note);
+    }
+
+    private LocalTime resolveRequiredTime(Map<String, String> fields, String marker, boolean typeChanged,
+            LocalTime fallbackIfSameType) throws MissingInputException, InvalidDateTimeException {
+        if (fields.containsKey(marker)) {
+            return DateTimeParser.parseTime(fields.get(marker));
+        }
+        if (typeChanged) {
+            throw new MissingInputException(marker + " is required when changing type.");
+        }
+        return fallbackIfSameType;
+    }
+
+    private int parseEditId(String text) throws MissingInputException, InvalidCommandException {
+        if (text.isEmpty()) {
+            throw new MissingInputException("an activity ID is required.");
+        }
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            throw new InvalidCommandException("activity ID must be a whole number.");
+        }
+    }
+
+    private ScheduleType parseScheduleType(String text) throws InvalidCommandException {
+        try {
+            return ScheduleType.valueOf(text.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidCommandException("type must be FIXED or FLEXIBLE.");
+        }
     }
 
     private static final class CommonTail {

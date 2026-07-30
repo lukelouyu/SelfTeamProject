@@ -1,4 +1,4 @@
-package seedu.unienable.accessibility;
+package seedu.unienable.accessibility.enums;
 
 /** How a connection's route segment is physically travelled. */
 public enum TraversalType {

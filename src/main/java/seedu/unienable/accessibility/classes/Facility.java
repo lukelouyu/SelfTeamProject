@@ -1,4 +1,4 @@
-package seedu.unienable.accessibility;
+package seedu.unienable.accessibility.classes;
 
 import java.util.Collections;
 import java.util.List;

@@ -1,4 +1,4 @@
-package seedu.unienable.accessibility;
+package seedu.unienable.accessibility.classes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+
+import seedu.unienable.accessibility.enums.AccessibilityStatus;
 
 class FacilityTest {
     @Test

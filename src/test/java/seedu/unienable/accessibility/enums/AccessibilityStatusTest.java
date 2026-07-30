@@ -1,4 +1,4 @@
-package seedu.unienable.accessibility;
+package seedu.unienable.accessibility.enums;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 

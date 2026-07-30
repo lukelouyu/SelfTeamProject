@@ -1,4 +1,6 @@
-package seedu.unienable.accessibility;
+package seedu.unienable.accessibility.classes;
+
+import seedu.unienable.accessibility.enums.AccessibilityStatus;
 
 /** One accessibility feature recorded for a facility, such as a lift or ramp. Read-only reference data. */
 public class FacilityFeature {

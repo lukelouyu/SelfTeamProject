@@ -1,4 +1,8 @@
-package seedu.unienable.accessibility;
+package seedu.unienable.accessibility.classes;
+
+import seedu.unienable.accessibility.enums.AccessibilityStatus;
+import seedu.unienable.accessibility.enums.ShelterStatus;
+import seedu.unienable.accessibility.enums.TraversalType;
 
 /** A two-way route connection between two known facilities. Read-only reference data. */
 public class Connection {

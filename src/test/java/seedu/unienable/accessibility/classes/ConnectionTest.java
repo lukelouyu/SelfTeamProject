@@ -1,9 +1,13 @@
-package seedu.unienable.accessibility;
+package seedu.unienable.accessibility.classes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
+
+import seedu.unienable.accessibility.enums.AccessibilityStatus;
+import seedu.unienable.accessibility.enums.ShelterStatus;
+import seedu.unienable.accessibility.enums.TraversalType;
 
 class ConnectionTest {
     @Test

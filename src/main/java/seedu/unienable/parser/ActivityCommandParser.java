@@ -3,6 +3,7 @@ package seedu.unienable.parser;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 import seedu.unienable.command.AddCommand;
 import seedu.unienable.command.DeleteCommand;
 import seedu.unienable.command.EditCommand;
+import seedu.unienable.command.FindCommand;
 import seedu.unienable.command.ListCommand;
 import seedu.unienable.command.MarkCommand;
 import seedu.unienable.command.UnmarkCommand;
@@ -39,6 +41,7 @@ public class ActivityCommandParser {
         "energy/", "sensory/", "topic/", "note/"
     };
     private static final String[] LIST_MARKERS = { "view/", "status/", "c/", "topic/", "date/", "order/" };
+    private static final String[] FIND_MARKERS = { "k/", "c/", "topic/", "date/", "order/" };
 
     /**
      * Parses an add command's argument text into an AddCommand. Fields must appear in the order
@@ -212,6 +215,38 @@ public class ActivityCommandParser {
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("order must be input, time, or chronological.");
         }
+    }
+
+    /**
+     * Parses a find command's argument text into a FindCommand. At least one keyword or filter is
+     * required; find has no view/ option and always uses concise formatting.
+     *
+     * @param activityManager the manager the resulting command will read from
+     * @param args the text after the "find" command word
+     * @return the parsed FindCommand
+     * @throws MissingInputException if neither a keyword nor a filter is supplied
+     * @throws InvalidActivityException if the category is invalid
+     * @throws InvalidCommandException if order is invalid
+     * @throws InvalidDateTimeException if the date is invalid
+     */
+    public FindCommand parseFind(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidActivityException, InvalidCommandException,
+            InvalidDateTimeException {
+        Map<String, String> fields = extractPresentFields(args, FIND_MARKERS);
+        if (fields.isEmpty()) {
+            throw new MissingInputException("at least one keyword or filter is required.");
+        }
+
+        List<String> keywords = fields.containsKey("k/")
+                ? Arrays.asList(fields.get("k/").trim().split("\\s+"))
+                : List.of();
+        ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
+        String topic = fields.get("topic/");
+        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
+        ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
+
+        return new FindCommand(activityManager, keywords, new ActivityFilter(null, category, topic, date),
+                order, false);
     }
 
     private int parseId(String args) throws MissingInputException, InvalidCommandException {

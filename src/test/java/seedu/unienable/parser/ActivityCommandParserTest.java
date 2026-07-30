@@ -333,6 +333,54 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseFind_singleKeyword_findsMatchingActivity() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "k/assignment").execute();
+
+        assertTrue(result.getFeedback().contains("Finish assignment 1"));
+    }
+
+    @Test
+    public void parseFind_multiWordKeyword_splitsIntoAndedKeywords() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Finish reading", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "k/finish assignment").execute();
+
+        String feedback = result.getFeedback();
+        assertTrue(feedback.contains("Finish assignment 1"));
+        assertTrue(!feedback.contains("Finish reading"));
+    }
+
+    @Test
+    public void parseFind_filterOnlyNoKeyword_isAllowed() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
+
+        CommandResult result = parser.parseFind(manager, "c/ACADEMIC topic/CG3207").execute();
+
+        assertTrue(result.getFeedback().contains("CG3207 lecture"));
+    }
+
+    @Test
+    public void parseFind_neitherKeywordNorFilter_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseFind(manager, ""));
+    }
+
+    @Test
     public void extractPresentFields_singleField_returnsItsValue() {
         Map<String, String> fields = parser.extractPresentFields("dur/60", "n/", "dur/", "energy/");
 

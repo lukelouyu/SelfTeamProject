@@ -4,11 +4,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.FixedActivity;
+import seedu.unienable.model.classes.FlexibleActivity;
 
 /** Manages the in-memory collection of activities: stable ID assignment plus basic CRUD access. */
 public class ActivityManager {
+    private static final String DUPLICATE_MESSAGE = "An identical activity already exists.";
+    private static final String OVERLAP_MESSAGE = "This timing overlaps activity [%d], %s (%s–%s).";
+
     private final List<Activity> activities = new ArrayList<>();
     private int nextId = 1;
 
@@ -21,10 +27,68 @@ public class ActivityManager {
      * Adds the given activity and consumes its ID from the assignment counter.
      *
      * @param activity the activity to add, constructed using getNextId()'s current value
+     * @throws DuplicateActivityException if it exactly duplicates an existing activity, or (for a
+     *     FixedActivity) overlaps another fixed activity on the same date
      */
-    public void add(Activity activity) {
+    public void add(Activity activity) throws DuplicateActivityException {
+        if (isDuplicate(activity)) {
+            throw new DuplicateActivityException(DUPLICATE_MESSAGE);
+        }
+        if (activity instanceof FixedActivity) {
+            FixedActivity overlapping = findOverlap((FixedActivity) activity);
+            if (overlapping != null) {
+                throw new DuplicateActivityException(String.format(OVERLAP_MESSAGE, overlapping.getId(),
+                        overlapping.getDescription(), overlapping.getStartTime(), overlapping.getEndTime()));
+            }
+        }
         activities.add(activity);
         nextId++;
+    }
+
+    private boolean isDuplicate(Activity candidate) {
+        for (Activity existing : activities) {
+            if (hasSameSchedulingDetails(existing, candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasSameSchedulingDetails(Activity existing, Activity candidate) {
+        if (!existing.getDescription().equals(candidate.getDescription())
+                || !existing.getDate().equals(candidate.getDate())) {
+            return false;
+        }
+        if (existing instanceof FixedActivity && candidate instanceof FixedActivity) {
+            FixedActivity a = (FixedActivity) existing;
+            FixedActivity b = (FixedActivity) candidate;
+            return a.getStartTime().equals(b.getStartTime()) && a.getEndTime().equals(b.getEndTime());
+        }
+        if (existing instanceof FlexibleActivity && candidate instanceof FlexibleActivity) {
+            FlexibleActivity a = (FlexibleActivity) existing;
+            FlexibleActivity b = (FlexibleActivity) candidate;
+            return a.getEarliestStart().equals(b.getEarliestStart()) && a.getLatestEnd().equals(b.getLatestEnd())
+                    && a.getDurationMinutes() == b.getDurationMinutes();
+        }
+        return false;
+    }
+
+    private FixedActivity findOverlap(FixedActivity candidate) {
+        for (Activity existing : activities) {
+            if (!(existing instanceof FixedActivity)) {
+                continue;
+            }
+            FixedActivity fixedExisting = (FixedActivity) existing;
+            if (!fixedExisting.getDate().equals(candidate.getDate())) {
+                continue;
+            }
+            boolean overlaps = fixedExisting.getStartTime().isBefore(candidate.getEndTime())
+                    && candidate.getStartTime().isBefore(fixedExisting.getEndTime());
+            if (overlaps) {
+                return fixedExisting;
+            }
+        }
+        return null;
     }
 
     /**

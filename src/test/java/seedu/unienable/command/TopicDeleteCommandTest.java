@@ -52,4 +52,14 @@ class TopicDeleteCommandTest {
         assertThrows(InvalidIndexException.class,
                 () -> new TopicDeleteCommand(topicManager, ActivityCategory.ACADEMIC, "CG3207").execute());
     }
+
+    @Test
+    public void getters_returnConstructorValues() {
+        TopicManager topicManager = new TopicManager(new ActivityManager());
+
+        TopicDeleteCommand command = new TopicDeleteCommand(topicManager, ActivityCategory.CCA, "Computing Club");
+
+        assertEquals(ActivityCategory.CCA, command.getCategory());
+        assertEquals("Computing Club", command.getName());
+    }
 }

@@ -57,4 +57,16 @@ class TopicRenameCommandTest {
         assertThrows(DuplicateActivityException.class,
                 () -> new TopicRenameCommand(topicManager, ActivityCategory.ACADEMIC, "CG3207", "CS2113").execute());
     }
+
+    @Test
+    public void getters_returnConstructorValues() {
+        TopicManager topicManager = new TopicManager(new ActivityManager());
+
+        TopicRenameCommand command = new TopicRenameCommand(topicManager, ActivityCategory.ACADEMIC,
+                "CG3207", "CS3207");
+
+        assertEquals(ActivityCategory.ACADEMIC, command.getCategory());
+        assertEquals("CG3207", command.getOldName());
+        assertEquals("CS3207", command.getNewName());
+    }
 }

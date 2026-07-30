@@ -16,6 +16,11 @@ public class DeleteCommand extends Command {
         this.id = id;
     }
 
+    /** Returns the stable ID of the activity this command will delete, for the UI loop's preview. */
+    public int getId() {
+        return id;
+    }
+
     @Override
     public CommandResult execute() throws InvalidIndexException {
         activityManager.delete(id);

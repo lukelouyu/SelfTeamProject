@@ -53,4 +53,13 @@ class EditCommandTest {
 
         assertThrows(DuplicateActivityException.class, () -> new EditCommand(manager, 2, replacement).execute());
     }
+
+    @Test
+    public void getId_returnsConstructorId() throws Exception {
+        FixedActivity replacement = newFixedActivity(5, "New", LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+        EditCommand command = new EditCommand(new ActivityManager(), 5, replacement);
+
+        assertEquals(5, command.getId());
+    }
 }

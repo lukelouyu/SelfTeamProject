@@ -38,4 +38,11 @@ class DeleteCommandTest {
 
         assertThrows(InvalidIndexException.class, () -> new DeleteCommand(manager, 999).execute());
     }
+
+    @Test
+    public void getId_returnsConstructorId() {
+        DeleteCommand command = new DeleteCommand(new ActivityManager(), 7);
+
+        assertEquals(7, command.getId());
+    }
 }

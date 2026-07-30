@@ -23,6 +23,21 @@ public class TopicRenameCommand extends Command {
         this.newName = newName;
     }
 
+    /** Returns the category of the topic this command will rename, for the UI loop's preview. */
+    public ActivityCategory getCategory() {
+        return category;
+    }
+
+    /** Returns the topic's current name, for the UI loop's preview. */
+    public String getOldName() {
+        return oldName;
+    }
+
+    /** Returns the topic's proposed new name, for the UI loop's preview. */
+    public String getNewName() {
+        return newName;
+    }
+
     @Override
     public CommandResult execute() throws InvalidIndexException, DuplicateActivityException {
         int updated = topicManager.rename(category, oldName, newName);

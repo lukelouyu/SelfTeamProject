@@ -21,6 +21,16 @@ public class TopicDeleteCommand extends Command {
         this.name = name;
     }
 
+    /** Returns the category of the topic this command will delete, for the UI loop's preview. */
+    public ActivityCategory getCategory() {
+        return category;
+    }
+
+    /** Returns the name of the topic this command will delete, for the UI loop's preview. */
+    public String getName() {
+        return name;
+    }
+
     @Override
     public CommandResult execute() throws InvalidIndexException, DuplicateActivityException {
         topicManager.delete(category, name);

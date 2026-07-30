@@ -21,6 +21,11 @@ public class EditCommand extends Command {
         this.newActivity = newActivity;
     }
 
+    /** Returns the stable ID of the activity this command will update, for the UI loop's preview. */
+    public int getId() {
+        return id;
+    }
+
     @Override
     public CommandResult execute() throws InvalidIndexException, DuplicateActivityException {
         activityManager.replace(id, newActivity);

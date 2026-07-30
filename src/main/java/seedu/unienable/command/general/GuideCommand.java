@@ -1,8 +1,10 @@
-package seedu.unienable.command;
+package seedu.unienable.command.general;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.AccessibilityDisclaimer;
 
 /** Displays the built-in application guide: either the main numbered menu or one topic's text. */

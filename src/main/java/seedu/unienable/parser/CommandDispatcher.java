@@ -3,8 +3,8 @@ package seedu.unienable.parser;
 import java.time.LocalDateTime;
 
 import seedu.unienable.command.Command;
-import seedu.unienable.command.ExitCommand;
-import seedu.unienable.command.GuideCommand;
+import seedu.unienable.command.general.ExitCommand;
+import seedu.unienable.command.general.GuideCommand;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;

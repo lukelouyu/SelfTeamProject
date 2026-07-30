@@ -1,4 +1,7 @@
-package seedu.unienable.command;
+package seedu.unienable.command.general;
+
+import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandResult;
 
 /** Signals that the application should save and exit, per the User Guide's goodbye message. */
 public class ExitCommand extends Command {

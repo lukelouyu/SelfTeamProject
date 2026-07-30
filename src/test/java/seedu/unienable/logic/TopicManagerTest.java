@@ -16,6 +16,7 @@ import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.SensoryRating;
+import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
 
 class TopicManagerTest {
@@ -32,7 +33,10 @@ class TopicManagerTest {
         manager.add(ActivityCategory.ACADEMIC, "CG3207");
 
         assertTrue(manager.exists(ActivityCategory.ACADEMIC, "CG3207"));
-        assertEquals(List.of("CG3207"), manager.list(ActivityCategory.ACADEMIC));
+        List<Topic> topics = manager.list(ActivityCategory.ACADEMIC);
+        assertEquals(1, topics.size());
+        assertEquals(ActivityCategory.ACADEMIC, topics.get(0).getCategory());
+        assertEquals("CG3207", topics.get(0).getName());
     }
 
     @Test
@@ -113,7 +117,7 @@ class TopicManagerTest {
 
         manager.rename(ActivityCategory.ACADEMIC, "cg3207", "CG3207");
 
-        assertEquals(List.of("CG3207"), manager.list(ActivityCategory.ACADEMIC));
+        assertEquals("CG3207", manager.list(ActivityCategory.ACADEMIC).get(0).getName());
     }
 
     @Test

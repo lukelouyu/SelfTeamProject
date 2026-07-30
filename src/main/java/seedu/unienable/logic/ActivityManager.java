@@ -150,6 +150,22 @@ public class ActivityManager {
         return Collections.unmodifiableList(activities);
     }
 
+    /**
+     * Returns activities matching the given filter, in current storage (input) order.
+     *
+     * @param filter the filter criteria; null fields mean "no filter" for that field
+     * @return the matching activities
+     */
+    public List<Activity> list(ActivityFilter filter) {
+        List<Activity> result = new ArrayList<>();
+        for (Activity activity : activities) {
+            if (filter.matches(activity)) {
+                result.add(activity);
+            }
+        }
+        return result;
+    }
+
     /** Returns the number of stored activities. */
     public int size() {
         return activities.size();

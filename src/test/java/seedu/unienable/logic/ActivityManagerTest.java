@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +19,7 @@ import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.CompletionStatus;
 
 class ActivityManagerTest {
     private static FixedActivity newFixedActivity(int id) throws Exception {
@@ -205,5 +207,29 @@ class ActivityManagerTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(InvalidIndexException.class, () -> manager.mark(999));
+    }
+
+    @Test
+    public void list_withNoFilters_returnsEveryActivity() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "First", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(11, 0), LocalTime.of(12, 0)));
+
+        List<Activity> result = manager.list(new ActivityFilter(null, null, null, null));
+
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    public void list_withFilter_returnsOnlyMatchingActivities() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "First", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(11, 0), LocalTime.of(12, 0)));
+        manager.mark(1);
+
+        List<Activity> result = manager.list(new ActivityFilter(CompletionStatus.COMPLETE, null, null, null));
+
+        assertEquals(1, result.size());
+        assertEquals(1, result.get(0).getId());
     }
 }

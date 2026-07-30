@@ -112,7 +112,7 @@ public class ActivityCommandParser {
                 requireField(args, "sensory/", sensoryEndMarker, "sensory"));
 
         String topic = null;
-        if (args.contains("topic/")) {
+        if (FieldParser.indexOfMarker(args, "topic/", 0) != -1) {
             String topicEndMarker = firstPresentMarker(args, "topic/", "note/");
             topic = FieldParser.extractField(args, "topic/", topicEndMarker);
         }
@@ -341,7 +341,7 @@ public class ActivityCommandParser {
     }
 
     private String firstPresentMarker(String text, String afterMarker, String... candidates) {
-        int searchFrom = text.indexOf(afterMarker);
+        int searchFrom = FieldParser.indexOfMarker(text, afterMarker, 0);
         if (searchFrom == -1) {
             return null;
         }
@@ -349,7 +349,7 @@ public class ActivityCommandParser {
         String best = null;
         int bestIndex = -1;
         for (String candidate : candidates) {
-            int index = text.indexOf(candidate, searchFrom);
+            int index = FieldParser.indexOfMarker(text, candidate, searchFrom);
             if (index != -1 && (bestIndex == -1 || index < bestIndex)) {
                 bestIndex = index;
                 best = candidate;
@@ -372,11 +372,11 @@ public class ActivityCommandParser {
     Map<String, String> extractPresentFields(String text, String... markers) {
         List<String> present = new ArrayList<>();
         for (String marker : markers) {
-            if (text.contains(marker)) {
+            if (FieldParser.indexOfMarker(text, marker, 0) != -1) {
                 present.add(marker);
             }
         }
-        present.sort(Comparator.comparingInt(text::indexOf));
+        present.sort(Comparator.comparingInt(marker -> FieldParser.indexOfMarker(text, marker, 0)));
 
         Map<String, String> result = new LinkedHashMap<>();
         for (int i = 0; i < present.size(); i++) {

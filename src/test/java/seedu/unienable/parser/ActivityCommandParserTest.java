@@ -321,6 +321,20 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseList_topicFilterAloneWithNoExplicitCategory_doesNotThrow() throws Exception {
+        // Regression test: same root cause as parseEdit's - "topic/" alone (no c/) previously
+        // triggered a false "c/" match embedded inside the "topic/" marker text.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
+
+        CommandResult result = parser.parseList(manager, "topic/CG3207").execute();
+
+        assertTrue(result.getFeedback().contains("CG3207 lecture"));
+    }
+
+    @Test
     public void parseList_invalidStatus_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
 
@@ -371,6 +385,18 @@ class ActivityCommandParserTest {
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
 
         CommandResult result = parser.parseFind(manager, "c/ACADEMIC topic/CG3207").execute();
+
+        assertTrue(result.getFeedback().contains("CG3207 lecture"));
+    }
+
+    @Test
+    public void parseFind_topicFilterAloneWithNoExplicitCategory_doesNotThrow() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
+
+        CommandResult result = parser.parseFind(manager, "topic/CG3207").execute();
 
         assertTrue(result.getFeedback().contains("CG3207 lecture"));
     }
@@ -484,6 +510,24 @@ class ActivityCommandParserTest {
         assertEquals(60, ((FlexibleActivity) updated).getDurationMinutes());
         assertEquals("Finish assignment 1", updated.getDescription());
         assertEquals("CG3207", updated.getTopic());
+    }
+
+    @Test
+    public void parseEdit_topicOnlyWithNoExplicitCategory_doesNotMistakeTopicForCategory() throws Exception {
+        // Regression test: "topic/" ends in the substring "c/", so editing topic/ alone (with no
+        // c/ field at all) previously caused extractPresentFields to falsely detect a "c/" field
+        // embedded inside "topic/"'s own marker text, and reject the edit with "category must be
+        // one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS."
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        parser.parseEdit(manager, "1 topic/CS2113").execute();
+
+        Activity updated = manager.getById(1);
+        assertEquals("CS2113", updated.getTopic());
+        assertEquals(ActivityCategory.ACADEMIC, updated.getCategory());
     }
 
     @Test

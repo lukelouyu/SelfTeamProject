@@ -38,7 +38,7 @@ public class TopicCommandParser {
      * @throws InvalidActivityException if the category is invalid
      */
     public TopicListCommand parseList(TopicManager topicManager, String args) throws InvalidActivityException {
-        if (!args.contains("c/")) {
+        if (FieldParser.indexOfMarker(args, "c/", 0) == -1) {
             return new TopicListCommand(topicManager, null);
         }
         return new TopicListCommand(topicManager, parseCategory(FieldParser.extractField(args, "c/", null)));

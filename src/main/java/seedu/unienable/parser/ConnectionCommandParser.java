@@ -103,11 +103,11 @@ public class ConnectionCommandParser {
     private Map<String, String> extractPresentFields(String text, String... markers) {
         List<String> present = new ArrayList<>();
         for (String marker : markers) {
-            if (text.contains(marker)) {
+            if (FieldParser.indexOfMarker(text, marker, 0) != -1) {
                 present.add(marker);
             }
         }
-        present.sort(Comparator.comparingInt(text::indexOf));
+        present.sort(Comparator.comparingInt(marker -> FieldParser.indexOfMarker(text, marker, 0)));
 
         Map<String, String> result = new LinkedHashMap<>();
         for (int i = 0; i < present.size(); i++) {

@@ -49,13 +49,14 @@ public class FacilityCommandParser {
      */
     public FacilityFindCommand parseFind(FacilityManager facilityManager, String args)
             throws MissingInputException, InvalidCommandException {
-        String typeEndMarker = args.contains("status/") ? "status/" : null;
+        boolean hasStatus = FieldParser.indexOfMarker(args, "status/", 0) != -1;
+        String typeEndMarker = hasStatus ? "status/" : null;
         String typeText = FieldParser.extractField(args, "type/", typeEndMarker);
         if (typeText == null || typeText.isEmpty()) {
             throw new MissingInputException("type/ is required.");
         }
         FacilityFeature.Type type = parseType(typeText);
-        AccessibilityStatus status = args.contains("status/")
+        AccessibilityStatus status = hasStatus
                 ? parseStatus(FieldParser.extractField(args, "status/", null))
                 : AccessibilityStatus.YES;
         return new FacilityFindCommand(facilityManager, type, status);

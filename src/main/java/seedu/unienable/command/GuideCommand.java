@@ -76,8 +76,9 @@ public class GuideCommand extends Command {
                 + "Review the plan before choosing whether to adopt it."
                 + COMING_SOON_NOTE);
         topics.put("facility", "Accessible facilities\n"
-                + "Use facility list, facility view, or facility find.\n"
-                + "The local data is read-only and is not a real-time guarantee.");
+                + "Use facility list, facility view, or facility find (and connection list/view/find\n"
+                + "for the route graph between facilities). This data is read-only.\n"
+                + AccessibilityDisclaimer.TEXT);
         topics.put("route", "Accessible routes\n"
                 + "Format: route from/START_FACILITY to/DESTINATION_FACILITY\n"
                 + "The planner returns one best confirmed route from local data."

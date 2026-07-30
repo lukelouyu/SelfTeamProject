@@ -27,7 +27,7 @@ class FacilityViewCommandTest {
                 + "LIFT | YES | Near lobby\n"
                 + "RAMP | NO\n"
                 + "\n"
-                + "Note: This is local reference data, not a real-time guarantee.", result.getFeedback());
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
@@ -47,7 +47,7 @@ class FacilityViewCommandTest {
                 + expectedLiftLine + "\n"
                 + expectedWashroomLine + "\n"
                 + "\n"
-                + "Note: This is local reference data, not a real-time guarantee.", result.getFeedback());
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
@@ -59,7 +59,7 @@ class FacilityViewCommandTest {
 
         assertEquals("Facility: COM3 [F05]\n"
                 + "\n"
-                + "Note: This is local reference data, not a real-time guarantee.", result.getFeedback());
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test

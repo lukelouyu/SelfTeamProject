@@ -59,13 +59,14 @@ public class ConnectionFindCommand extends Command {
 
     private String formatResult(List<Connection> connections) {
         if (connections.isEmpty()) {
-            return "No connections found.";
+            return "No connections found.\n\n" + AccessibilityDisclaimer.TEXT;
         }
         StringBuilder result = new StringBuilder("Found ").append(connections.size())
                 .append(connections.size() == 1 ? " connection:" : " connections:");
         for (Connection connection : connections) {
             result.append('\n').append(formatConnectionLines(connection));
         }
+        result.append("\n\n").append(AccessibilityDisclaimer.TEXT);
         return result.toString();
     }
 

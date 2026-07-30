@@ -26,7 +26,9 @@ class FacilityFindCommandTest {
         String com3Line = "[F05] COM3" + " ".repeat(7) + " | Near the level 1 lobby";
         assertEquals("Facilities where LIFT is YES:\n"
                 + "[F02] CLB LEVEL 3 | Near the entrance\n"
-                + com3Line, result.getFeedback());
+                + com3Line + "\n"
+                + "\n"
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
@@ -38,11 +40,12 @@ class FacilityFindCommandTest {
         CommandResult result = new FacilityFindCommand(facilityManager, FacilityFeature.Type.REST_POINT,
                 AccessibilityStatus.NO).execute();
 
-        assertEquals("Facilities where REST_POINT is NO:\n[F04] COM1", result.getFeedback());
+        assertEquals("Facilities where REST_POINT is NO:\n[F04] COM1\n\n" + AccessibilityDisclaimer.TEXT,
+                result.getFeedback());
     }
 
     @Test
-    public void execute_unknownStatus_appendsExplanatoryFooter() {
+    public void execute_unknownStatus_appendsExplanatoryFooterAndDisclaimer() {
         Facility facility = new Facility("F01", "AS6", null,
                 List.of(new FacilityFeature(FacilityFeature.Type.REST_POINT, AccessibilityStatus.UNKNOWN, null)));
         FacilityManager facilityManager = new FacilityManager(List.of(facility));
@@ -53,16 +56,18 @@ class FacilityFindCommandTest {
         assertEquals("Facilities where REST_POINT is UNKNOWN:\n"
                 + "[F01] AS6\n"
                 + "\n"
-                + "UNKNOWN means the local dataset does not confirm the feature.", result.getFeedback());
+                + "UNKNOWN means the local dataset does not confirm the feature.\n"
+                + "\n"
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
-    public void execute_noMatches_showsHeaderOnly() {
+    public void execute_noMatches_showsHeaderAndDisclaimerOnly() {
         FacilityManager facilityManager = new FacilityManager(List.of());
 
         CommandResult result = new FacilityFindCommand(facilityManager, FacilityFeature.Type.LIFT,
                 AccessibilityStatus.YES).execute();
 
-        assertEquals("Facilities where LIFT is YES:", result.getFeedback());
+        assertEquals("Facilities where LIFT is YES:\n\n" + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 }

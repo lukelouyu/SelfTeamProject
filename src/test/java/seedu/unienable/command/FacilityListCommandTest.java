@@ -11,7 +11,7 @@ import seedu.unienable.logic.FacilityManager;
 
 class FacilityListCommandTest {
     @Test
-    public void execute_matchesUserGuideExample() {
+    public void execute_multipleFacilities_listsEachIdAndNameWithDisclaimer() {
         FacilityManager facilityManager = new FacilityManager(List.of(
                 new Facility("F01", "AS6", null, List.of()),
                 new Facility("F02", "CLB LEVEL 3", null, List.of()),
@@ -30,7 +30,7 @@ class FacilityListCommandTest {
                 + "[F05] COM3\n"
                 + "[F06] E4\n"
                 + "\n"
-                + "This is local reference data, not a real-time guarantee.", result.getFeedback());
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
@@ -41,6 +41,6 @@ class FacilityListCommandTest {
 
         assertEquals("Known facilities in the local reference:\n"
                 + "\n"
-                + "This is local reference data, not a real-time guarantee.", result.getFeedback());
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 }

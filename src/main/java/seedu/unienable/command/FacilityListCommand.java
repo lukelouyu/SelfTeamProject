@@ -20,7 +20,7 @@ public class FacilityListCommand extends Command {
         for (Facility facility : facilities) {
             result.append("\n[").append(facility.getId()).append("] ").append(facility.getName());
         }
-        result.append("\n\nThis is local reference data, not a real-time guarantee.");
+        result.append("\n\n").append(AccessibilityDisclaimer.TEXT);
         return new CommandResult(result.toString());
     }
 }

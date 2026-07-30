@@ -27,15 +27,17 @@ class ConnectionListCommandTest {
                 + "[12] COM3 <-> COM1 | 80 m | ACCESSIBLE YES | SHELTERED_RAMP\n"
                 + "    Shelter: YES\n"
                 + "[15] CLB LEVEL 3 <-> CLB LEVEL 6 | 40 m | ACCESSIBLE YES | LIFT\n"
-                + "    Shelter: YES", result.getFeedback());
+                + "    Shelter: YES\n"
+                + "\n"
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
-    public void execute_noConnections_showsHeaderOnly() {
+    public void execute_noConnections_showsHeaderAndDisclaimerOnly() {
         ConnectionManager connectionManager = new ConnectionManager(List.of());
 
         CommandResult result = new ConnectionListCommand(connectionManager).execute();
 
-        assertEquals("Known two-way connections:", result.getFeedback());
+        assertEquals("Known two-way connections:\n\n" + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 }

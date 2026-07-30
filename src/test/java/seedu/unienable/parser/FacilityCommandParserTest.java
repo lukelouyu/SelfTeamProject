@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import seedu.unienable.accessibility.classes.Facility;
+import seedu.unienable.command.AccessibilityDisclaimer;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;
@@ -48,7 +49,7 @@ class FacilityCommandParserTest {
 
         CommandResult result = parser.parseFind(manager, "type/LIFT").execute();
 
-        assertEquals("Facilities where LIFT is YES:", result.getFeedback());
+        assertEquals("Facilities where LIFT is YES:\n\n" + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
@@ -58,7 +59,8 @@ class FacilityCommandParserTest {
         CommandResult result = parser.parseFind(manager, "type/REST_POINT status/UNKNOWN").execute();
 
         assertEquals("Facilities where REST_POINT is UNKNOWN:\n\n"
-                + "UNKNOWN means the local dataset does not confirm the feature.", result.getFeedback());
+                + "UNKNOWN means the local dataset does not confirm the feature.\n\n"
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test

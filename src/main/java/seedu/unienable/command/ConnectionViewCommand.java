@@ -31,6 +31,7 @@ public class ConnectionViewCommand extends Command {
         appendField(result, "Shelter", connection.getShelter());
         appendField(result, "Known barrier", orNoneRecorded(connection.getKnownBarrier()));
         result.append(labelPrefix("Notes")).append(orNoneRecorded(connection.getNotes()));
+        result.append("\n\n").append(AccessibilityDisclaimer.TEXT);
         return result.toString();
     }
 

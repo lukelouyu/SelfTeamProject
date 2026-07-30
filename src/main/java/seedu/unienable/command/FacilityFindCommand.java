@@ -35,6 +35,7 @@ public class FacilityFindCommand extends Command {
         if (status == AccessibilityStatus.UNKNOWN) {
             result.append("\n\nUNKNOWN means the local dataset does not confirm the feature.");
         }
+        result.append("\n\n").append(AccessibilityDisclaimer.TEXT);
         return result.toString();
     }
 

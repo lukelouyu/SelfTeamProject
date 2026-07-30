@@ -32,7 +32,7 @@ public class FacilityViewCommand extends Command {
         for (FacilityFeature feature : features) {
             result.append('\n').append(formatFeatureLine(feature, typeWidth, statusWidth));
         }
-        result.append("\n\nNote: This is local reference data, not a real-time guarantee.");
+        result.append("\n\n").append(AccessibilityDisclaimer.TEXT);
         return result.toString();
     }
 

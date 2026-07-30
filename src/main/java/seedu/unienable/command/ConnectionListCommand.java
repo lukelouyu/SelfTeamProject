@@ -20,6 +20,7 @@ public class ConnectionListCommand extends Command {
         for (Connection connection : connections) {
             result.append('\n').append(formatConnectionLines(connection));
         }
+        result.append("\n\n").append(AccessibilityDisclaimer.TEXT);
         return new CommandResult(result.toString());
     }
 

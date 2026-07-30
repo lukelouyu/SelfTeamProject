@@ -34,17 +34,19 @@ class ConnectionFindCommandTest {
                 + "[1] AS1 <-> AS4 | 60 m | ACCESSIBLE YES | PATH\n"
                 + "    Shelter: YES\n"
                 + "[2] AS4 <-> AS7 | 50 m | ACCESSIBLE YES | PATH\n"
-                + "    Shelter: YES", result.getFeedback());
+                + "    Shelter: YES\n"
+                + "\n"
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
-    public void execute_noMatches_showsNoConnectionsFoundMessage() {
+    public void execute_noMatches_showsNoConnectionsFoundMessageWithDisclaimer() {
         ConnectionManager manager = sampleManager();
 
         CommandResult result = new ConnectionFindCommand(manager, null, null, TraversalType.LIFT, null, null)
                 .execute();
 
-        assertEquals("No connections found.", result.getFeedback());
+        assertEquals("No connections found.\n\n" + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
@@ -57,7 +59,9 @@ class ConnectionFindCommandTest {
                 + "[1] AS1 <-> AS4 | 60 m | ACCESSIBLE YES | PATH\n"
                 + "    Shelter: YES\n"
                 + "[3] AS1 <-> AS2 | 130 m | ACCESSIBLE YES | RAMP\n"
-                + "    Shelter: NO", result.getFeedback());
+                + "    Shelter: NO\n"
+                + "\n"
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test
@@ -66,6 +70,6 @@ class ConnectionFindCommandTest {
 
         CommandResult result = new ConnectionFindCommand(manager, "AS99", null, null, null, null).execute();
 
-        assertEquals("No connections found.", result.getFeedback());
+        assertEquals("No connections found.\n\n" + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 }

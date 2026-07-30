@@ -17,7 +17,7 @@ import seedu.unienable.logic.ConnectionManager;
 
 class ConnectionViewCommandTest {
     @Test
-    public void execute_matchesUserGuideExample() throws Exception {
+    public void execute_matchesGuideFieldLayoutWithDisclaimer() throws Exception {
         Connection connection = new Connection(12, "COM3", "COM1", 80, AccessibilityStatus.YES,
                 TraversalType.SHELTERED_RAMP, ShelterStatus.YES, null,
                 "Gentle slope beside the main entrance");
@@ -33,7 +33,9 @@ class ConnectionViewCommandTest {
                 + "Type          : SHELTERED_RAMP\n"
                 + "Shelter       : YES\n"
                 + "Known barrier : None recorded\n"
-                + "Notes         : Gentle slope beside the main entrance", result.getFeedback());
+                + "Notes         : Gentle slope beside the main entrance\n"
+                + "\n"
+                + AccessibilityDisclaimer.TEXT, result.getFeedback());
     }
 
     @Test

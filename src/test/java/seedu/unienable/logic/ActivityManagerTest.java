@@ -1,7 +1,9 @@
 package seedu.unienable.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
+import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
@@ -162,5 +165,45 @@ class ActivityManagerTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(InvalidIndexException.class, () -> manager.delete(999));
+    }
+
+    @Test
+    public void mark_existingId_marksActivityComplete() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId()));
+
+        Activity marked = manager.mark(1);
+
+        assertTrue(marked.isComplete());
+        assertTrue(manager.getById(1).isComplete());
+    }
+
+    @Test
+    public void mark_alreadyComplete_isAllowed() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId()));
+        manager.mark(1);
+
+        manager.mark(1);
+
+        assertTrue(manager.getById(1).isComplete());
+    }
+
+    @Test
+    public void unmark_afterMark_marksActivityIncomplete() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId()));
+        manager.mark(1);
+
+        Activity unmarked = manager.unmark(1);
+
+        assertFalse(unmarked.isComplete());
+    }
+
+    @Test
+    public void mark_unknownId_throwsInvalidIndexException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidIndexException.class, () -> manager.mark(999));
     }
 }

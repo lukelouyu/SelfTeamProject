@@ -117,6 +117,34 @@ public class ActivityManager {
         activities.remove(getById(id));
     }
 
+    /**
+     * Marks the activity with the given stable ID as complete. Marking an already-complete
+     * activity is allowed.
+     *
+     * @param id the stable activity ID
+     * @return the marked activity
+     * @throws InvalidIndexException if no activity has that ID
+     */
+    public Activity mark(int id) throws InvalidIndexException {
+        Activity activity = getById(id);
+        activity.mark();
+        return activity;
+    }
+
+    /**
+     * Marks the activity with the given stable ID as incomplete. Unmarking an already-incomplete
+     * activity is allowed.
+     *
+     * @param id the stable activity ID
+     * @return the unmarked activity
+     * @throws InvalidIndexException if no activity has that ID
+     */
+    public Activity unmark(int id) throws InvalidIndexException {
+        Activity activity = getById(id);
+        activity.unmark();
+        return activity;
+    }
+
     /** Returns an unmodifiable view of every stored activity, in input order. */
     public List<Activity> getAll() {
         return Collections.unmodifiableList(activities);

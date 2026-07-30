@@ -1,0 +1,7 @@
+add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3
+list
+view 1
+view 999
+delete 1
+y
+bye

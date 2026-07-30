@@ -12,6 +12,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import seedu.unienable.command.AddCommand;
+import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -237,6 +238,25 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(MissingInputException.class, () -> parser.parseUnmark(manager, ""));
+    }
+
+    @Test
+    public void parseView_validId_returnsWorkingViewCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Briefing", ActivityCategory.WORK_INTERNSHIP,
+                LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null));
+
+        CommandResult result = parser.parseView(manager, "1").execute();
+
+        assertTrue(result.getFeedback().contains("Activity [1]"));
+    }
+
+    @Test
+    public void parseView_missingId_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseView(manager, ""));
     }
 
     @Test

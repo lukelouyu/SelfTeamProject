@@ -13,6 +13,7 @@ import seedu.unienable.command.DeleteCommand;
 import seedu.unienable.command.EditCommand;
 import seedu.unienable.command.MarkCommand;
 import seedu.unienable.command.UnmarkCommand;
+import seedu.unienable.command.ViewCommand;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -146,6 +147,20 @@ public class ActivityCommandParser {
     public UnmarkCommand parseUnmark(ActivityManager activityManager, String args)
             throws MissingInputException, InvalidCommandException {
         return new UnmarkCommand(activityManager, parseId(args));
+    }
+
+    /**
+     * Parses a view command's argument text into a ViewCommand.
+     *
+     * @param activityManager the manager the resulting command will read from
+     * @param args the text after the "view" command word
+     * @return the parsed ViewCommand
+     * @throws MissingInputException if no ID is supplied
+     * @throws InvalidCommandException if the supplied ID is not a whole number
+     */
+    public ViewCommand parseView(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidCommandException {
+        return new ViewCommand(activityManager, parseId(args));
     }
 
     private int parseId(String args) throws MissingInputException, InvalidCommandException {

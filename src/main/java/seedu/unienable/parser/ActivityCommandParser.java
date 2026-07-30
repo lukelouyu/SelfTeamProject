@@ -11,6 +11,7 @@ import java.util.Map;
 import seedu.unienable.command.AddCommand;
 import seedu.unienable.command.DeleteCommand;
 import seedu.unienable.command.EditCommand;
+import seedu.unienable.command.ListCommand;
 import seedu.unienable.command.MarkCommand;
 import seedu.unienable.command.UnmarkCommand;
 import seedu.unienable.command.ViewCommand;
@@ -19,6 +20,7 @@ import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
+import seedu.unienable.logic.ActivityFilter;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.EnergyRating;
@@ -26,6 +28,8 @@ import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ActivityOrder;
+import seedu.unienable.model.enums.CompletionStatus;
 import seedu.unienable.model.enums.ScheduleType;
 
 /** Parses activity-related commands (add, list, find, edit, delete, mark, unmark, next) into Command objects. */
@@ -34,6 +38,7 @@ public class ActivityCommandParser {
         "n/", "c/", "date/", "type/", "from/", "to/", "earliest/", "latest/", "dur/",
         "energy/", "sensory/", "topic/", "note/"
     };
+    private static final String[] LIST_MARKERS = { "view/", "status/", "c/", "topic/", "date/", "order/" };
 
     /**
      * Parses an add command's argument text into an AddCommand. Fields must appear in the order
@@ -161,6 +166,52 @@ public class ActivityCommandParser {
     public ViewCommand parseView(ActivityManager activityManager, String args)
             throws MissingInputException, InvalidCommandException {
         return new ViewCommand(activityManager, parseId(args));
+    }
+
+    /**
+     * Parses a list command's argument text into a ListCommand. Every field is optional and may
+     * appear in any order.
+     *
+     * @param activityManager the manager the resulting command will read from
+     * @param args the text after the "list" command word
+     * @return the parsed ListCommand
+     * @throws InvalidActivityException if the category is invalid
+     * @throws InvalidCommandException if status or order is invalid
+     * @throws InvalidDateTimeException if the date is invalid
+     */
+    public ListCommand parseList(ActivityManager activityManager, String args)
+            throws InvalidActivityException, InvalidCommandException, InvalidDateTimeException {
+        Map<String, String> fields = extractPresentFields(args, LIST_MARKERS);
+
+        boolean detail = "detail".equalsIgnoreCase(fields.get("view/"));
+        CompletionStatus status = parseStatus(fields.get("status/"));
+        ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
+        String topic = fields.get("topic/");
+        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
+        ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
+
+        return new ListCommand(activityManager, new ActivityFilter(status, category, topic, date), order, detail);
+    }
+
+    private CompletionStatus parseStatus(String text) throws InvalidCommandException {
+        if (text == null || "all".equalsIgnoreCase(text)) {
+            return null;
+        }
+        if ("completed".equalsIgnoreCase(text)) {
+            return CompletionStatus.COMPLETE;
+        }
+        if ("incomplete".equalsIgnoreCase(text)) {
+            return CompletionStatus.INCOMPLETE;
+        }
+        throw new InvalidCommandException("status must be all, completed, or incomplete.");
+    }
+
+    private ActivityOrder parseActivityOrder(String text) throws InvalidCommandException {
+        try {
+            return ActivityOrder.valueOf(text.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidCommandException("order must be input, time, or chronological.");
+        }
     }
 
     private int parseId(String args) throws MissingInputException, InvalidCommandException {

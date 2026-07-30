@@ -260,6 +260,79 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseList_noFields_listsEverythingInDefaultOrder() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseList(manager, "").execute();
+
+        assertTrue(result.getFeedback().contains("Lecture"));
+    }
+
+    @Test
+    public void parseList_statusIncompleteFilter_excludesCompletedActivities() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Done task", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.mark(1);
+        manager.add(new FixedActivity(manager.getNextId(), "Pending task", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseList(manager, "status/incomplete").execute();
+
+        String feedback = result.getFeedback();
+        assertTrue(feedback.contains("Pending task"));
+        assertTrue(!feedback.contains("Done task"));
+    }
+
+    @Test
+    public void parseList_viewDetail_usesDetailFormat() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseList(manager, "view/detail").execute();
+
+        assertTrue(result.getFeedback().contains("Status: Incomplete | Type: FIXED"));
+    }
+
+    @Test
+    public void parseList_categoryAndTopicFilter_combineWithAnd() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
+        manager.add(new FixedActivity(manager.getNextId(), "CS2113 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CS2113", null));
+
+        CommandResult result = parser.parseList(manager, "c/ACADEMIC topic/CG3207").execute();
+
+        String feedback = result.getFeedback();
+        assertTrue(feedback.contains("CG3207 lecture"));
+        assertTrue(!feedback.contains("CS2113 lecture"));
+    }
+
+    @Test
+    public void parseList_invalidStatus_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "status/bogus"));
+    }
+
+    @Test
+    public void parseList_invalidOrder_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "order/bogus"));
+    }
+
+    @Test
     public void extractPresentFields_singleField_returnsItsValue() {
         Map<String, String> fields = parser.extractPresentFields("dur/60", "n/", "dur/", "energy/");
 

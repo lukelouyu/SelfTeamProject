@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.classes.Facility;
@@ -48,6 +50,10 @@ public class UniEnable {
      * @param input the source of command-line input, e.g. System.in
      */
     public static void run(Path dataDirectory, InputStream input) {
+        // Activity/Topic mutations log at INFO for internal diagnostics; suppress the JVM's
+        // default console handler so those records don't interleave with the framed CLI output.
+        Logger.getLogger("").setLevel(Level.WARNING);
+
         Ui ui = new Ui();
         ui.showWelcome();
 

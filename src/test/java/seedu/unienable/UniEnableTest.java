@@ -37,6 +37,22 @@ class UniEnableTest {
         return capturedOutput.toString();
     }
 
+    private String runWithInputCapturingStderr(String input) {
+        ByteArrayOutputStream capturedError = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        PrintStream originalErr = System.err;
+        System.setOut(new PrintStream(new ByteArrayOutputStream()));
+        System.setErr(new PrintStream(capturedError));
+
+        try {
+            UniEnable.run(tempDir, new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+        } finally {
+            System.setOut(originalOut);
+            System.setErr(originalErr);
+        }
+        return capturedError.toString();
+    }
+
     @Test
     public void run_addListViewDeleteWithConfirmation_worksEndToEndAndPersistsToDisk() throws Exception {
         String output = runWithInput(
@@ -152,5 +168,24 @@ class UniEnableTest {
         assertTrue(output.contains("After : topic = CS3207"));
         assertTrue(output.contains("Save changes? (y/n)"));
         assertTrue(output.contains("Topic renamed from CS2113 to CS3207."));
+    }
+
+    @Test
+    public void run_topicRenameAndActivityEdits_produceNoStrayLoggingOnStderr() {
+        // Regression test: Topic.setName()/Activity.setTopic() etc. log at INFO for internal
+        // diagnostics; the JVM's default console handler used to print those records straight to
+        // stderr, interleaving a timestamped "INFO: Renaming topic..." line into the middle of
+        // the framed CLI output during real interactive use.
+        String stderr = runWithInputCapturingStderr(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "topic add c/ACADEMIC n/CS2113\n"
+                        + "edit 1 topic/CS2113\n"
+                        + "y\n"
+                        + "topic rename c/ACADEMIC old/CS2113 new/CS3207\n"
+                        + "y\n"
+                        + "bye\n");
+
+        assertTrue(stderr.isEmpty());
     }
 }

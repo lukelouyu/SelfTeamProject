@@ -9,7 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import seedu.unienable.accessibility.classes.Facility;
-import seedu.unienable.command.AccessibilityDisclaimer;
+import seedu.unienable.command.accessibility.AccessibilityDisclaimer;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;

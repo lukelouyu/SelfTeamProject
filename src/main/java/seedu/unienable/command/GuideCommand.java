@@ -3,6 +3,8 @@ package seedu.unienable.command;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import seedu.unienable.command.accessibility.AccessibilityDisclaimer;
+
 /** Displays the built-in application guide: either the main numbered menu or one topic's text. */
 public class GuideCommand extends Command {
     private static final String COMING_SOON_NOTE = "\n(Coming soon in a future release.)";

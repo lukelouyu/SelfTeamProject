@@ -1,4 +1,7 @@
-package seedu.unienable.command;
+package seedu.unienable.command.topic;
+
+import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandResult;
 
 import java.util.List;
 

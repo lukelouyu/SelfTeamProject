@@ -1,9 +1,9 @@
 package seedu.unienable.parser;
 
-import seedu.unienable.command.TopicAddCommand;
-import seedu.unienable.command.TopicDeleteCommand;
-import seedu.unienable.command.TopicListCommand;
-import seedu.unienable.command.TopicRenameCommand;
+import seedu.unienable.command.topic.TopicAddCommand;
+import seedu.unienable.command.topic.TopicDeleteCommand;
+import seedu.unienable.command.topic.TopicListCommand;
+import seedu.unienable.command.topic.TopicRenameCommand;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.TopicManager;

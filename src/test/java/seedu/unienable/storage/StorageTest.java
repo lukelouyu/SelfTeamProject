@@ -1,6 +1,8 @@
 package seedu.unienable.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -83,5 +85,29 @@ class StorageTest {
         assertEquals(AccessibilityStatus.YES, connection.getAccessibility());
         assertEquals(TraversalType.SHELTERED_RAMP, connection.getType());
         assertEquals(ShelterStatus.YES, connection.getShelter());
+    }
+
+    @Test
+    public void copyDefaultAccessibilityDataIfMissing_createsBothFilesFromBundledDefaults() throws Exception {
+        Storage storage = new Storage(tempDir);
+
+        storage.copyDefaultAccessibilityDataIfMissing();
+
+        assertTrue(Files.exists(tempDir.resolve("facilities.txt")));
+        assertTrue(Files.exists(tempDir.resolve("connections.txt")));
+        assertFalse(storage.loadFacilities().getRecords().isEmpty());
+        assertFalse(storage.loadConnections().getRecords().isEmpty());
+    }
+
+    @Test
+    public void copyDefaultAccessibilityDataIfMissing_existingFacilitiesFile_isNotOverwritten() throws Exception {
+        write("facilities.txt", "FACILITY|F99|CUSTOM|A manually edited facility");
+        Storage storage = new Storage(tempDir);
+
+        storage.copyDefaultAccessibilityDataIfMissing();
+
+        LoadResult<Facility> result = storage.loadFacilities();
+        assertEquals(1, result.getRecords().size());
+        assertEquals("CUSTOM", result.getRecords().get(0).getName());
     }
 }

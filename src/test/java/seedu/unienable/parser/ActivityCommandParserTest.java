@@ -3,9 +3,11 @@ package seedu.unienable.parser;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -234,5 +236,35 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(MissingInputException.class, () -> parser.parseUnmark(manager, ""));
+    }
+
+    @Test
+    public void extractPresentFields_singleField_returnsItsValue() {
+        Map<String, String> fields = parser.extractPresentFields("dur/60", "n/", "dur/", "energy/");
+
+        assertEquals(Map.of("dur/", "60"), fields);
+    }
+
+    @Test
+    public void extractPresentFields_multipleFieldsAnyOrder_boundsEachByNextPresentMarker() {
+        Map<String, String> fields = parser.extractPresentFields(
+                "energy/4 n/New activity name sensory/2", "n/", "energy/", "sensory/");
+
+        assertEquals("4", fields.get("energy/"));
+        assertEquals("New activity name", fields.get("n/"));
+        assertEquals("2", fields.get("sensory/"));
+    }
+
+    @Test
+    public void extractPresentFields_absentMarkers_areOmittedFromResult() {
+        Map<String, String> fields = parser.extractPresentFields("note/Bring headphones", "n/", "note/", "topic/");
+
+        assertEquals(1, fields.size());
+        assertEquals("Bring headphones", fields.get("note/"));
+    }
+
+    @Test
+    public void extractPresentFields_noMarkersPresent_returnsEmptyMap() {
+        assertTrue(parser.extractPresentFields("nothing relevant here", "n/", "c/").isEmpty());
     }
 }

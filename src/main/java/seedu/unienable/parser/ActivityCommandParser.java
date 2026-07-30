@@ -2,6 +2,11 @@ package seedu.unienable.parser;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import seedu.unienable.command.AddCommand;
 import seedu.unienable.command.DeleteCommand;
@@ -195,6 +200,35 @@ public class ActivityCommandParser {
             }
         }
         return best;
+    }
+
+    /**
+     * Extracts every marker (from the given candidates) that is actually present in the text,
+     * into a map of marker to its value, using each field's neighbouring present marker (by
+     * position) as its end boundary. Unlike add's fixed field order, this supports an arbitrary
+     * subset of markers in any order, as edit's format requires.
+     *
+     * @param text the text to extract fields from
+     * @param markers every marker that could appear, e.g. "n/", "c/", "date/"
+     * @return a map from each present marker to its trimmed value, in the order the markers
+     *     appear in the text
+     */
+    Map<String, String> extractPresentFields(String text, String... markers) {
+        List<String> present = new ArrayList<>();
+        for (String marker : markers) {
+            if (text.contains(marker)) {
+                present.add(marker);
+            }
+        }
+        present.sort(Comparator.comparingInt(text::indexOf));
+
+        Map<String, String> result = new LinkedHashMap<>();
+        for (int i = 0; i < present.size(); i++) {
+            String marker = present.get(i);
+            String endMarker = i + 1 < present.size() ? present.get(i + 1) : null;
+            result.put(marker, FieldParser.extractField(text, marker, endMarker));
+        }
+        return result;
     }
 
     private static final class CommonTail {

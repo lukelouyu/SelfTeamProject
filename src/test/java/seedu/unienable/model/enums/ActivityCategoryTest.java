@@ -1,4 +1,4 @@
-package seedu.unienable.model;
+package seedu.unienable.model.enums;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 

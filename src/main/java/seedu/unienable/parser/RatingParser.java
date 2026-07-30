@@ -1,8 +1,8 @@
 package seedu.unienable.parser;
 
 import seedu.unienable.exception.InvalidActivityException;
-import seedu.unienable.model.EnergyRating;
-import seedu.unienable.model.SensoryRating;
+import seedu.unienable.model.classes.EnergyRating;
+import seedu.unienable.model.classes.SensoryRating;
 
 /** Parses raw text into validated energy/sensory ratings. */
 public class RatingParser {

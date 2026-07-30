@@ -1,4 +1,4 @@
-package seedu.unienable.model;
+package seedu.unienable.model.classes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -8,6 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
+
+import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.CompletionStatus;
+import seedu.unienable.model.enums.ScheduleType;
 
 class ActivityTest {
     private static final class StubActivity extends Activity {

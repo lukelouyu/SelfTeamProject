@@ -1,15 +1,12 @@
-package seedu.unienable.model.activities;
+package seedu.unienable.model.classes;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import seedu.unienable.model.Activity;
-import seedu.unienable.model.ActivityCategory;
-import seedu.unienable.model.EnergyRating;
-import seedu.unienable.model.ScheduleType;
-import seedu.unienable.model.SensoryRating;
+import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ScheduleType;
 
 /** An activity with a confirmed start and end time. */
 public class FixedActivity extends Activity {

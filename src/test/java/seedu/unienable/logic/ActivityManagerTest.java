@@ -476,4 +476,51 @@ class ActivityManagerTest {
 
         assertEquals(1, manager.countOverdueIncomplete(now));
     }
+
+    @Test
+    public void replace_validReplacement_swapsInPlaceKeepingSameId() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Old description",
+                LocalTime.of(9, 0), LocalTime.of(10, 0)));
+
+        FixedActivity replacement = newFixedActivity(1, "New description", LocalTime.of(9, 0), LocalTime.of(10, 0));
+        manager.replace(1, replacement);
+
+        assertEquals("New description", manager.getById(1).getDescription());
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void replace_ownUnchangedTiming_isNotRejectedAsSelfOverlap() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Original",
+                LocalTime.of(9, 0), LocalTime.of(10, 0)));
+
+        FixedActivity replacement = newFixedActivity(1, "Renamed", LocalTime.of(9, 0), LocalTime.of(10, 0));
+        manager.replace(1, replacement);
+
+        assertEquals("Renamed", manager.getById(1).getDescription());
+    }
+
+    @Test
+    public void replace_overlapsAnotherActivity_throwsDuplicateActivityException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "First",
+                LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Second",
+                LocalTime.of(14, 0), LocalTime.of(15, 0)));
+
+        FixedActivity replacement = newFixedActivity(2, "Second", LocalTime.of(9, 30), LocalTime.of(10, 30));
+
+        assertThrows(DuplicateActivityException.class, () -> manager.replace(2, replacement));
+        assertEquals(LocalTime.of(14, 0), ((FixedActivity) manager.getById(2)).getStartTime());
+    }
+
+    @Test
+    public void replace_unknownId_throwsInvalidIndexException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        FixedActivity replacement = newFixedActivity(999, "Ghost", LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+        assertThrows(InvalidIndexException.class, () -> manager.replace(999, replacement));
+    }
 }

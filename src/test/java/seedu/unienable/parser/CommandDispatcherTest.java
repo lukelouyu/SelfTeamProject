@@ -1,0 +1,213 @@
+package seedu.unienable.parser;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import seedu.unienable.command.AddCommand;
+import seedu.unienable.command.Command;
+import seedu.unienable.command.ConnectionFindCommand;
+import seedu.unienable.command.ConnectionListCommand;
+import seedu.unienable.command.ConnectionViewCommand;
+import seedu.unienable.command.DeleteCommand;
+import seedu.unienable.command.EditCommand;
+import seedu.unienable.command.ExitCommand;
+import seedu.unienable.command.FacilityFindCommand;
+import seedu.unienable.command.FacilityListCommand;
+import seedu.unienable.command.FacilityViewCommand;
+import seedu.unienable.command.FindCommand;
+import seedu.unienable.command.GuideCommand;
+import seedu.unienable.command.ListCommand;
+import seedu.unienable.command.MarkCommand;
+import seedu.unienable.command.NextCommand;
+import seedu.unienable.command.OrderSetCommand;
+import seedu.unienable.command.OrderViewCommand;
+import seedu.unienable.command.TopicAddCommand;
+import seedu.unienable.command.TopicDeleteCommand;
+import seedu.unienable.command.TopicListCommand;
+import seedu.unienable.command.TopicRenameCommand;
+import seedu.unienable.command.UnmarkCommand;
+import seedu.unienable.command.ViewCommand;
+import seedu.unienable.exception.InvalidCommandException;
+import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.ConnectionManager;
+import seedu.unienable.logic.FacilityManager;
+import seedu.unienable.logic.TopicManager;
+import seedu.unienable.model.classes.EnergyRating;
+import seedu.unienable.model.classes.FixedActivity;
+import seedu.unienable.model.classes.SensoryRating;
+import seedu.unienable.model.enums.ActivityCategory;
+
+class CommandDispatcherTest {
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 15, 10, 0);
+
+    private final ActivityManager activityManager = new ActivityManager();
+    private final TopicManager topicManager = new TopicManager(activityManager);
+    private final FacilityManager facilityManager = new FacilityManager(List.of());
+    private final ConnectionManager connectionManager = new ConnectionManager(List.of());
+    private final CommandDispatcher dispatcher = new CommandDispatcher(activityManager, topicManager,
+            facilityManager, connectionManager);
+
+    @Test
+    public void dispatch_add_returnsAddCommand() throws Exception {
+        Command command = dispatcher.dispatch("add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED "
+                + "from/09:00 to/11:00 energy/4 sensory/3", NOW);
+
+        assertTrue(command instanceof AddCommand);
+    }
+
+    @Test
+    public void dispatch_list_returnsListCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("list", NOW) instanceof ListCommand);
+    }
+
+    @Test
+    public void dispatch_view_returnsViewCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("view 1", NOW) instanceof ViewCommand);
+    }
+
+    @Test
+    public void dispatch_find_returnsFindCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("find k/lecture", NOW) instanceof FindCommand);
+    }
+
+    @Test
+    public void dispatch_edit_returnsEditCommand() throws Exception {
+        activityManager.add(new FixedActivity(activityManager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertTrue(dispatcher.dispatch("edit 1 note/Bring laptop", NOW) instanceof EditCommand);
+    }
+
+    @Test
+    public void dispatch_delete_returnsDeleteCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("delete 1", NOW) instanceof DeleteCommand);
+    }
+
+    @Test
+    public void dispatch_mark_returnsMarkCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("mark 1", NOW) instanceof MarkCommand);
+    }
+
+    @Test
+    public void dispatch_unmark_returnsUnmarkCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("unmark 1", NOW) instanceof UnmarkCommand);
+    }
+
+    @Test
+    public void dispatch_next_returnsNextCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("next", NOW) instanceof NextCommand);
+    }
+
+    @Test
+    public void dispatch_orderView_returnsOrderViewCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("order view", NOW) instanceof OrderViewCommand);
+    }
+
+    @Test
+    public void dispatch_orderSet_returnsOrderSetCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("order set time", NOW) instanceof OrderSetCommand);
+    }
+
+    @Test
+    public void dispatch_topicAdd_returnsTopicAddCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("topic add c/ACADEMIC n/CG3207", NOW) instanceof TopicAddCommand);
+    }
+
+    @Test
+    public void dispatch_topicList_returnsTopicListCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("topic list", NOW) instanceof TopicListCommand);
+    }
+
+    @Test
+    public void dispatch_topicRename_returnsTopicRenameCommand() throws Exception {
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        assertTrue(dispatcher.dispatch("topic rename c/ACADEMIC old/CG3207 new/CS3207", NOW)
+                instanceof TopicRenameCommand);
+    }
+
+    @Test
+    public void dispatch_topicDelete_returnsTopicDeleteCommand() throws Exception {
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        assertTrue(dispatcher.dispatch("topic delete c/ACADEMIC n/CG3207", NOW) instanceof TopicDeleteCommand);
+    }
+
+    @Test
+    public void dispatch_facilityList_returnsFacilityListCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("facility list", NOW) instanceof FacilityListCommand);
+    }
+
+    @Test
+    public void dispatch_facilityView_returnsFacilityViewCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("facility view COM3", NOW) instanceof FacilityViewCommand);
+    }
+
+    @Test
+    public void dispatch_facilityFind_returnsFacilityFindCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("facility find type/LIFT", NOW) instanceof FacilityFindCommand);
+    }
+
+    @Test
+    public void dispatch_connectionList_returnsConnectionListCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("connection list", NOW) instanceof ConnectionListCommand);
+    }
+
+    @Test
+    public void dispatch_connectionView_returnsConnectionViewCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("connection view 1", NOW) instanceof ConnectionViewCommand);
+    }
+
+    @Test
+    public void dispatch_connectionFind_returnsConnectionFindCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("connection find from/COM3", NOW) instanceof ConnectionFindCommand);
+    }
+
+    @Test
+    public void dispatch_guide_returnsGuideCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("guide", NOW) instanceof GuideCommand);
+    }
+
+    @Test
+    public void dispatch_guideWithTopic_returnsGuideCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("guide add", NOW) instanceof GuideCommand);
+    }
+
+    @Test
+    public void dispatch_bye_returnsExitCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("bye", NOW) instanceof ExitCommand);
+    }
+
+    @Test
+    public void dispatch_commandWordIsCaseInsensitive() throws Exception {
+        assertTrue(dispatcher.dispatch("BYE", NOW) instanceof ExitCommand);
+    }
+
+    @Test
+    public void dispatch_unknownCommand_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("banana", NOW));
+    }
+
+    @Test
+    public void dispatch_unknownTopicSubCommand_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("topic bogus", NOW));
+    }
+
+    @Test
+    public void dispatch_unknownFacilitySubCommand_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("facility bogus", NOW));
+    }
+
+    @Test
+    public void dispatch_unknownConnectionSubCommand_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("connection bogus", NOW));
+    }
+}

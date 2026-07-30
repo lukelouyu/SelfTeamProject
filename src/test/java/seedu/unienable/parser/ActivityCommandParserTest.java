@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Map;
 
@@ -25,6 +26,7 @@ import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.model.enums.ScheduleType;
 
 class ActivityCommandParserTest {
@@ -378,6 +380,65 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(MissingInputException.class, () -> parser.parseFind(manager, ""));
+    }
+
+    @Test
+    public void parseNext_buildsWorkingNextCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 10, 0);
+
+        CommandResult result = parser.parseNext(manager, now).execute();
+
+        assertTrue(result.getFeedback().contains("CG3207 lecture"));
+    }
+
+    @Test
+    public void parseOrder_view_returnsWorkingOrderViewCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+
+        CommandResult result = parser.parseOrder(manager, "view").execute();
+
+        assertTrue(result.getFeedback().contains("Saved default activity order:"));
+    }
+
+    @Test
+    public void parseOrder_setInput_updatesManagerDefaultOrder() throws Exception {
+        ActivityManager manager = new ActivityManager();
+
+        parser.parseOrder(manager, "set input").execute();
+
+        assertEquals(ActivityOrder.INPUT, manager.getDefaultOrder());
+    }
+
+    @Test
+    public void parseOrder_missingSubCommand_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseOrder(manager, ""));
+    }
+
+    @Test
+    public void parseOrder_setMissingOrderValue_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseOrder(manager, "set"));
+    }
+
+    @Test
+    public void parseOrder_unknownSubCommand_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseOrder(manager, "bogus"));
+    }
+
+    @Test
+    public void parseOrder_setInvalidOrderValue_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseOrder(manager, "set bogus"));
     }
 
     @Test

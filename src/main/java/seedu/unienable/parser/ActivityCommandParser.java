@@ -1,6 +1,7 @@
 package seedu.unienable.parser;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,11 +11,15 @@ import java.util.List;
 import java.util.Map;
 
 import seedu.unienable.command.AddCommand;
+import seedu.unienable.command.Command;
 import seedu.unienable.command.DeleteCommand;
 import seedu.unienable.command.EditCommand;
 import seedu.unienable.command.FindCommand;
 import seedu.unienable.command.ListCommand;
 import seedu.unienable.command.MarkCommand;
+import seedu.unienable.command.NextCommand;
+import seedu.unienable.command.OrderSetCommand;
+import seedu.unienable.command.OrderViewCommand;
 import seedu.unienable.command.UnmarkCommand;
 import seedu.unienable.command.ViewCommand;
 import seedu.unienable.exception.InvalidActivityException;
@@ -247,6 +252,47 @@ public class ActivityCommandParser {
 
         return new FindCommand(activityManager, keywords, new ActivityFilter(null, category, topic, date),
                 order, false);
+    }
+
+    /**
+     * Builds a NextCommand. "next" takes no arguments.
+     *
+     * @param activityManager the manager the resulting command will read from
+     * @param now the current date and time
+     * @return the parsed NextCommand
+     */
+    public NextCommand parseNext(ActivityManager activityManager, LocalDateTime now) {
+        return new NextCommand(activityManager, now);
+    }
+
+    /**
+     * Parses an order command's argument text into an OrderViewCommand or OrderSetCommand.
+     *
+     * @param activityManager the manager the resulting command will read from or update
+     * @param args the text after the "order" command word: "view" or "set ORDER"
+     * @return the parsed command
+     * @throws MissingInputException if no sub-command, or no order value after "set", is supplied
+     * @throws InvalidCommandException if the sub-command isn't "view"/"set", or the order value
+     *     isn't one of input/time/chronological
+     */
+    public Command parseOrder(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidCommandException {
+        String trimmed = args.trim();
+        if (trimmed.isEmpty()) {
+            throw new MissingInputException("order requires \"view\" or \"set ORDER\".");
+        }
+        String[] parts = trimmed.split("\\s+", 2);
+        String subCommand = parts[0];
+        if ("view".equalsIgnoreCase(subCommand)) {
+            return new OrderViewCommand(activityManager);
+        }
+        if ("set".equalsIgnoreCase(subCommand)) {
+            if (parts.length < 2 || parts[1].isBlank()) {
+                throw new MissingInputException("order set requires input, time, or chronological.");
+            }
+            return new OrderSetCommand(activityManager, parseActivityOrder(parts[1].trim()));
+        }
+        throw new InvalidCommandException("order requires \"view\" or \"set ORDER\".");
     }
 
     private int parseId(String args) throws MissingInputException, InvalidCommandException {

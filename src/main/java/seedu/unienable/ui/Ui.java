@@ -7,11 +7,20 @@ public class Ui {
 
     /** Displays UniEnable's welcome message. */
     public void showWelcome() {
+        showFramed("Hello! Welcome to UniEnable.\n"
+                + "Your Uni Friend for planning accessible university routines.\n\n"
+                + "Enter \"guide\" if you are unsure what to do next.");
+    }
+
+    /**
+     * Displays the given text framed by horizontal lines, matching every representative output
+     * block in the User Guide. Used for command feedback, errors, and confirmation prompts alike.
+     *
+     * @param text the text to display
+     */
+    public void showFramed(String text) {
         System.out.println(HORIZONTAL_LINE);
-        System.out.println("Hello! Welcome to UniEnable.");
-        System.out.println("Your Uni Friend for planning accessible university routines.");
-        System.out.println();
-        System.out.println("Enter \"guide\" if you are unsure what to do next.");
+        System.out.println(text);
         System.out.println(HORIZONTAL_LINE);
     }
 

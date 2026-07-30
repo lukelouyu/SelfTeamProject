@@ -114,6 +114,31 @@ public class Storage {
         copyResourceIfMissing("connections.txt", connectionsFile);
     }
 
+    /**
+     * Ensures every data file exists before the first load: creates empty activities.txt and
+     * topics.txt if missing (there is no bundled default user data), and copies the bundled
+     * default facilities.txt/connections.txt if missing. Existing files are always left untouched.
+     *
+     * @throws StorageException if the data directory or a file cannot be created
+     */
+    public void prepareDataFiles() throws StorageException {
+        createEmptyFileIfMissing(activitiesFile);
+        createEmptyFileIfMissing(topicsFile);
+        copyDefaultAccessibilityDataIfMissing();
+    }
+
+    private void createEmptyFileIfMissing(Path file) throws StorageException {
+        if (Files.exists(file)) {
+            return;
+        }
+        try {
+            Files.createDirectories(file.getParent());
+            Files.createFile(file);
+        } catch (IOException e) {
+            throw new StorageException("could not create " + file, e);
+        }
+    }
+
     private void copyResourceIfMissing(String resourceName, Path destination) throws StorageException {
         if (Files.exists(destination)) {
             return;

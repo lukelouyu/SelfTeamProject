@@ -110,4 +110,31 @@ class StorageTest {
         assertEquals(1, result.getRecords().size());
         assertEquals("CUSTOM", result.getRecords().get(0).getName());
     }
+
+    @Test
+    public void prepareDataFiles_freshDataDirectory_createsAllFourFilesAndAllLoadSuccessfully() throws Exception {
+        Storage storage = new Storage(tempDir);
+
+        storage.prepareDataFiles();
+
+        assertTrue(Files.exists(tempDir.resolve("activities.txt")));
+        assertTrue(Files.exists(tempDir.resolve("topics.txt")));
+        assertTrue(storage.loadActivities().getRecords().isEmpty());
+        assertTrue(storage.loadTopics().getRecords().isEmpty());
+        assertFalse(storage.loadFacilities().getRecords().isEmpty());
+        assertFalse(storage.loadConnections().getRecords().isEmpty());
+    }
+
+    @Test
+    public void prepareDataFiles_existingActivitiesFile_isNotOverwritten() throws Exception {
+        Storage storage = new Storage(tempDir);
+        FixedActivity fixed = new FixedActivity(12, "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null);
+        storage.saveActivities(List.of(fixed));
+
+        storage.prepareDataFiles();
+
+        assertEquals(1, storage.loadActivities().getRecords().size());
+    }
 }

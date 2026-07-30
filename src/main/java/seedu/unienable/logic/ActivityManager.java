@@ -37,22 +37,60 @@ public class ActivityManager {
      *     FixedActivity) overlaps another fixed activity on the same date
      */
     public void add(Activity activity) throws DuplicateActivityException {
-        if (isDuplicate(activity)) {
+        validateNoDuplicateOrOverlap(activity, -1);
+        activities.add(activity);
+        nextId++;
+    }
+
+    /**
+     * Replaces the activity with the given stable ID with a new activity carrying the same ID.
+     * Used when editing changes an activity's scheduling type, since a stored object's runtime
+     * class cannot change in place. Duplicate/overlap validation excludes the activity being
+     * replaced, so re-submitting its own (possibly partly changed) timing is not rejected as a
+     * conflict with itself.
+     *
+     * @param id the stable ID of the activity being replaced
+     * @param newActivity the replacement activity, constructed with the same ID
+     * @throws InvalidIndexException if no activity has that ID
+     * @throws DuplicateActivityException if the replacement exactly duplicates another activity,
+     *     or (for a FixedActivity) overlaps another fixed activity on the same date
+     */
+    public void replace(int id, Activity newActivity) throws InvalidIndexException, DuplicateActivityException {
+        int index = indexOfId(id);
+        if (index == -1) {
+            throw new InvalidIndexException("Activity [" + id + "] does not exist.");
+        }
+        validateNoDuplicateOrOverlap(newActivity, id);
+        activities.set(index, newActivity);
+    }
+
+    private void validateNoDuplicateOrOverlap(Activity candidate, int excludeId) throws DuplicateActivityException {
+        if (isDuplicate(candidate, excludeId)) {
             throw new DuplicateActivityException(DUPLICATE_MESSAGE);
         }
-        if (activity instanceof FixedActivity) {
-            FixedActivity overlapping = findOverlap((FixedActivity) activity);
+        if (candidate instanceof FixedActivity) {
+            FixedActivity overlapping = findOverlap((FixedActivity) candidate, excludeId);
             if (overlapping != null) {
                 throw new DuplicateActivityException(String.format(OVERLAP_MESSAGE, overlapping.getId(),
                         overlapping.getDescription(), overlapping.getStartTime(), overlapping.getEndTime()));
             }
         }
-        activities.add(activity);
-        nextId++;
     }
 
-    private boolean isDuplicate(Activity candidate) {
+    private int indexOfId(int id) {
+        for (int i = 0; i < activities.size(); i++) {
+            if (activities.get(i).getId() == id) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isDuplicate(Activity candidate, int excludeId) {
         for (Activity existing : activities) {
+            if (existing.getId() == excludeId) {
+                continue;
+            }
             if (hasSameSchedulingDetails(existing, candidate)) {
                 return true;
             }
@@ -79,9 +117,9 @@ public class ActivityManager {
         return false;
     }
 
-    private FixedActivity findOverlap(FixedActivity candidate) {
+    private FixedActivity findOverlap(FixedActivity candidate, int excludeId) {
         for (Activity existing : activities) {
-            if (!(existing instanceof FixedActivity)) {
+            if (existing.getId() == excludeId || !(existing instanceof FixedActivity)) {
                 continue;
             }
             FixedActivity fixedExisting = (FixedActivity) existing;

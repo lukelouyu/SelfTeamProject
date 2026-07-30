@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 import seedu.unienable.command.AddCommand;
+import seedu.unienable.command.DeleteCommand;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -87,6 +88,32 @@ public class ActivityCommandParser {
         }
         String note = FieldParser.extractField(args, "note/", null);
         return new CommonTail(energy, sensory, topic, note);
+    }
+
+    /**
+     * Parses a delete command's argument text into a DeleteCommand.
+     *
+     * @param activityManager the manager the resulting command will delete from
+     * @param args the text after the "delete" command word
+     * @return the parsed DeleteCommand
+     * @throws MissingInputException if no ID is supplied
+     * @throws InvalidCommandException if the supplied ID is not a whole number
+     */
+    public DeleteCommand parseDelete(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidCommandException {
+        return new DeleteCommand(activityManager, parseId(args));
+    }
+
+    private int parseId(String args) throws MissingInputException, InvalidCommandException {
+        String trimmed = args.trim();
+        if (trimmed.isEmpty()) {
+            throw new MissingInputException("an activity ID is required.");
+        }
+        try {
+            return Integer.parseInt(trimmed);
+        } catch (NumberFormatException e) {
+            throw new InvalidCommandException("activity ID must be a whole number.");
+        }
     }
 
     private String requireField(String args, String startMarker, String endMarker, String fieldName)

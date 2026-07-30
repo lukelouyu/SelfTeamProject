@@ -16,8 +16,10 @@ import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
+import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ScheduleType;
 
@@ -167,5 +169,31 @@ class ActivityCommandParserTest {
         assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "energy/5 sensory/2"));
+    }
+
+    @Test
+    public void parseDelete_validId_returnsWorkingDeleteCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Briefing",
+                ActivityCategory.WORK_INTERNSHIP, LocalDate.of(2026, 8, 16), LocalTime.of(10, 0),
+                LocalTime.of(11, 0), EnergyRating.of(3), SensoryRating.of(2), null, null));
+
+        parser.parseDelete(manager, "1").execute();
+
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseDelete_missingId_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseDelete(manager, "  "));
+    }
+
+    @Test
+    public void parseDelete_nonNumericId_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseDelete(manager, "abc"));
     }
 }

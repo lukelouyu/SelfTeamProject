@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.common;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

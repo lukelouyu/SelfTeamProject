@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.common;
 
 /** Utility methods for extracting field values between known markers in a command's argument text. */
 public class FieldParser {

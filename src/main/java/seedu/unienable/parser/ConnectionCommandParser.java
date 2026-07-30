@@ -15,6 +15,7 @@ import seedu.unienable.command.ConnectionViewCommand;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ConnectionManager;
+import seedu.unienable.parser.common.FieldParser;
 
 /** Parses connection-related commands (connection list, connection view, connection find) into Command objects. */
 public class ConnectionCommandParser {

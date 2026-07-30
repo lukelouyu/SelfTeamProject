@@ -8,6 +8,7 @@ import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.parser.common.FieldParser;
 
 /** Parses topic-related commands (topic add, topic list, topic rename, topic delete) into Command objects. */
 public class TopicCommandParser {

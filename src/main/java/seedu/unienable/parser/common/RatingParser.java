@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.common;
 
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.model.classes.EnergyRating;

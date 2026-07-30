@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.common;
 
 /** Identifies the command word and remaining argument text from raw user input. */
 public class Parser {

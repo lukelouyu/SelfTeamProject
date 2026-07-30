@@ -8,6 +8,7 @@ import seedu.unienable.command.FacilityViewCommand;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.FacilityManager;
+import seedu.unienable.parser.common.FieldParser;
 
 /** Parses facility-related commands (facility list, facility view, facility find) into Command objects. */
 public class FacilityCommandParser {

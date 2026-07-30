@@ -38,6 +38,9 @@ import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.model.enums.CompletionStatus;
 import seedu.unienable.model.enums.ScheduleType;
+import seedu.unienable.parser.common.DateTimeParser;
+import seedu.unienable.parser.common.FieldParser;
+import seedu.unienable.parser.common.RatingParser;
 
 /** Parses activity-related commands (add, list, find, edit, delete, mark, unmark, next) into Command objects. */
 public class ActivityCommandParser {

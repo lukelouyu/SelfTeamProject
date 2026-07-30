@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.accessibility;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;

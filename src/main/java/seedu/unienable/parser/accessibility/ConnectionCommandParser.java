@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.accessibility;
 
 import java.util.ArrayList;
 import java.util.Comparator;

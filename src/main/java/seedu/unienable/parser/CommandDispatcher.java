@@ -15,6 +15,8 @@ import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.parser.activity.ActivityCommandParser;
+import seedu.unienable.parser.accessibility.ConnectionCommandParser;
+import seedu.unienable.parser.accessibility.FacilityCommandParser;
 import seedu.unienable.parser.common.Parser;
 import seedu.unienable.parser.topic.TopicCommandParser;
 

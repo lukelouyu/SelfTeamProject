@@ -1,4 +1,4 @@
-package seedu.unienable.parser;
+package seedu.unienable.parser.accessibility;
 
 import seedu.unienable.accessibility.classes.FacilityFeature;
 import seedu.unienable.accessibility.enums.AccessibilityStatus;

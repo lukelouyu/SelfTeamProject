@@ -12,7 +12,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import seedu.unienable.command.AddCommand;
+import seedu.unienable.command.activity.AddCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;

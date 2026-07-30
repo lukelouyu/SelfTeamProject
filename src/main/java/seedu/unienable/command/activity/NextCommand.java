@@ -1,4 +1,7 @@
-package seedu.unienable.command;
+package seedu.unienable.command.activity;
+
+import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandResult;
 
 import java.time.LocalDateTime;
 import java.util.Optional;

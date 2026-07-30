@@ -1,4 +1,6 @@
-package seedu.unienable.command;
+package seedu.unienable.command.activity;
+
+import seedu.unienable.command.CommandResult;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;

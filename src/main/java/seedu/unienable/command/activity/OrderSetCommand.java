@@ -1,4 +1,7 @@
-package seedu.unienable.command;
+package seedu.unienable.command.activity;
+
+import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandResult;
 
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.model.enums.ActivityOrder;

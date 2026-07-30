@@ -1,10 +1,10 @@
-package seedu.duke;
+package seedu.unienable;
 
 import java.util.Scanner;
 
-public class Duke {
+public class UniEnable {
     /**
-     * Main entry-point for the java.duke.Duke application.
+     * Main entry-point for the seedu.unienable.UniEnable application.
      */
     public static void main(String[] args) {
         String logo = " ____        _        \n"

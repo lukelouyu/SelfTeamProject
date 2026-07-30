@@ -1,23 +1,33 @@
 package seedu.unienable.parser;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import seedu.unienable.command.AddCommand;
+import seedu.unienable.command.Command;
 import seedu.unienable.command.DeleteCommand;
 import seedu.unienable.command.EditCommand;
+import seedu.unienable.command.FindCommand;
+import seedu.unienable.command.ListCommand;
 import seedu.unienable.command.MarkCommand;
+import seedu.unienable.command.NextCommand;
+import seedu.unienable.command.OrderSetCommand;
+import seedu.unienable.command.OrderViewCommand;
 import seedu.unienable.command.UnmarkCommand;
+import seedu.unienable.command.ViewCommand;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
+import seedu.unienable.logic.ActivityFilter;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.EnergyRating;
@@ -25,6 +35,8 @@ import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ActivityOrder;
+import seedu.unienable.model.enums.CompletionStatus;
 import seedu.unienable.model.enums.ScheduleType;
 
 /** Parses activity-related commands (add, list, find, edit, delete, mark, unmark, next) into Command objects. */
@@ -33,6 +45,8 @@ public class ActivityCommandParser {
         "n/", "c/", "date/", "type/", "from/", "to/", "earliest/", "latest/", "dur/",
         "energy/", "sensory/", "topic/", "note/"
     };
+    private static final String[] LIST_MARKERS = { "view/", "status/", "c/", "topic/", "date/", "order/" };
+    private static final String[] FIND_MARKERS = { "k/", "c/", "topic/", "date/", "order/" };
 
     /**
      * Parses an add command's argument text into an AddCommand. Fields must appear in the order
@@ -146,6 +160,139 @@ public class ActivityCommandParser {
     public UnmarkCommand parseUnmark(ActivityManager activityManager, String args)
             throws MissingInputException, InvalidCommandException {
         return new UnmarkCommand(activityManager, parseId(args));
+    }
+
+    /**
+     * Parses a view command's argument text into a ViewCommand.
+     *
+     * @param activityManager the manager the resulting command will read from
+     * @param args the text after the "view" command word
+     * @return the parsed ViewCommand
+     * @throws MissingInputException if no ID is supplied
+     * @throws InvalidCommandException if the supplied ID is not a whole number
+     */
+    public ViewCommand parseView(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidCommandException {
+        return new ViewCommand(activityManager, parseId(args));
+    }
+
+    /**
+     * Parses a list command's argument text into a ListCommand. Every field is optional and may
+     * appear in any order.
+     *
+     * @param activityManager the manager the resulting command will read from
+     * @param args the text after the "list" command word
+     * @return the parsed ListCommand
+     * @throws InvalidActivityException if the category is invalid
+     * @throws InvalidCommandException if status or order is invalid
+     * @throws InvalidDateTimeException if the date is invalid
+     */
+    public ListCommand parseList(ActivityManager activityManager, String args)
+            throws InvalidActivityException, InvalidCommandException, InvalidDateTimeException {
+        Map<String, String> fields = extractPresentFields(args, LIST_MARKERS);
+
+        boolean detail = "detail".equalsIgnoreCase(fields.get("view/"));
+        CompletionStatus status = parseStatus(fields.get("status/"));
+        ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
+        String topic = fields.get("topic/");
+        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
+        ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
+
+        return new ListCommand(activityManager, new ActivityFilter(status, category, topic, date), order, detail);
+    }
+
+    private CompletionStatus parseStatus(String text) throws InvalidCommandException {
+        if (text == null || "all".equalsIgnoreCase(text)) {
+            return null;
+        }
+        if ("completed".equalsIgnoreCase(text)) {
+            return CompletionStatus.COMPLETE;
+        }
+        if ("incomplete".equalsIgnoreCase(text)) {
+            return CompletionStatus.INCOMPLETE;
+        }
+        throw new InvalidCommandException("status must be all, completed, or incomplete.");
+    }
+
+    private ActivityOrder parseActivityOrder(String text) throws InvalidCommandException {
+        try {
+            return ActivityOrder.valueOf(text.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidCommandException("order must be input, time, or chronological.");
+        }
+    }
+
+    /**
+     * Parses a find command's argument text into a FindCommand. At least one keyword or filter is
+     * required; find has no view/ option and always uses concise formatting.
+     *
+     * @param activityManager the manager the resulting command will read from
+     * @param args the text after the "find" command word
+     * @return the parsed FindCommand
+     * @throws MissingInputException if neither a keyword nor a filter is supplied
+     * @throws InvalidActivityException if the category is invalid
+     * @throws InvalidCommandException if order is invalid
+     * @throws InvalidDateTimeException if the date is invalid
+     */
+    public FindCommand parseFind(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidActivityException, InvalidCommandException,
+            InvalidDateTimeException {
+        Map<String, String> fields = extractPresentFields(args, FIND_MARKERS);
+        if (fields.isEmpty()) {
+            throw new MissingInputException("at least one keyword or filter is required.");
+        }
+
+        List<String> keywords = fields.containsKey("k/")
+                ? Arrays.asList(fields.get("k/").trim().split("\\s+"))
+                : List.of();
+        ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
+        String topic = fields.get("topic/");
+        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
+        ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
+
+        return new FindCommand(activityManager, keywords, new ActivityFilter(null, category, topic, date),
+                order, false);
+    }
+
+    /**
+     * Builds a NextCommand. "next" takes no arguments.
+     *
+     * @param activityManager the manager the resulting command will read from
+     * @param now the current date and time
+     * @return the parsed NextCommand
+     */
+    public NextCommand parseNext(ActivityManager activityManager, LocalDateTime now) {
+        return new NextCommand(activityManager, now);
+    }
+
+    /**
+     * Parses an order command's argument text into an OrderViewCommand or OrderSetCommand.
+     *
+     * @param activityManager the manager the resulting command will read from or update
+     * @param args the text after the "order" command word: "view" or "set ORDER"
+     * @return the parsed command
+     * @throws MissingInputException if no sub-command, or no order value after "set", is supplied
+     * @throws InvalidCommandException if the sub-command isn't "view"/"set", or the order value
+     *     isn't one of input/time/chronological
+     */
+    public Command parseOrder(ActivityManager activityManager, String args)
+            throws MissingInputException, InvalidCommandException {
+        String trimmed = args.trim();
+        if (trimmed.isEmpty()) {
+            throw new MissingInputException("order requires \"view\" or \"set ORDER\".");
+        }
+        String[] parts = trimmed.split("\\s+", 2);
+        String subCommand = parts[0];
+        if ("view".equalsIgnoreCase(subCommand)) {
+            return new OrderViewCommand(activityManager);
+        }
+        if ("set".equalsIgnoreCase(subCommand)) {
+            if (parts.length < 2 || parts[1].isBlank()) {
+                throw new MissingInputException("order set requires input, time, or chronological.");
+            }
+            return new OrderSetCommand(activityManager, parseActivityOrder(parts[1].trim()));
+        }
+        throw new InvalidCommandException("order requires \"view\" or \"set ORDER\".");
     }
 
     private int parseId(String args) throws MissingInputException, InvalidCommandException {

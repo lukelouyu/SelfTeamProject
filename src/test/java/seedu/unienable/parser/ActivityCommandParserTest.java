@@ -6,12 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import seedu.unienable.command.AddCommand;
+import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -24,6 +26,7 @@ import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.model.enums.ScheduleType;
 
 class ActivityCommandParserTest {
@@ -237,6 +240,205 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(MissingInputException.class, () -> parser.parseUnmark(manager, ""));
+    }
+
+    @Test
+    public void parseView_validId_returnsWorkingViewCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Briefing", ActivityCategory.WORK_INTERNSHIP,
+                LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null));
+
+        CommandResult result = parser.parseView(manager, "1").execute();
+
+        assertTrue(result.getFeedback().contains("Activity [1]"));
+    }
+
+    @Test
+    public void parseView_missingId_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseView(manager, ""));
+    }
+
+    @Test
+    public void parseList_noFields_listsEverythingInDefaultOrder() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseList(manager, "").execute();
+
+        assertTrue(result.getFeedback().contains("Lecture"));
+    }
+
+    @Test
+    public void parseList_statusIncompleteFilter_excludesCompletedActivities() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Done task", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.mark(1);
+        manager.add(new FixedActivity(manager.getNextId(), "Pending task", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseList(manager, "status/incomplete").execute();
+
+        String feedback = result.getFeedback();
+        assertTrue(feedback.contains("Pending task"));
+        assertTrue(!feedback.contains("Done task"));
+    }
+
+    @Test
+    public void parseList_viewDetail_usesDetailFormat() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseList(manager, "view/detail").execute();
+
+        assertTrue(result.getFeedback().contains("Status: Incomplete | Type: FIXED"));
+    }
+
+    @Test
+    public void parseList_categoryAndTopicFilter_combineWithAnd() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
+        manager.add(new FixedActivity(manager.getNextId(), "CS2113 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CS2113", null));
+
+        CommandResult result = parser.parseList(manager, "c/ACADEMIC topic/CG3207").execute();
+
+        String feedback = result.getFeedback();
+        assertTrue(feedback.contains("CG3207 lecture"));
+        assertTrue(!feedback.contains("CS2113 lecture"));
+    }
+
+    @Test
+    public void parseList_invalidStatus_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "status/bogus"));
+    }
+
+    @Test
+    public void parseList_invalidOrder_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "order/bogus"));
+    }
+
+    @Test
+    public void parseFind_singleKeyword_findsMatchingActivity() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "k/assignment").execute();
+
+        assertTrue(result.getFeedback().contains("Finish assignment 1"));
+    }
+
+    @Test
+    public void parseFind_multiWordKeyword_splitsIntoAndedKeywords() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Finish reading", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "k/finish assignment").execute();
+
+        String feedback = result.getFeedback();
+        assertTrue(feedback.contains("Finish assignment 1"));
+        assertTrue(!feedback.contains("Finish reading"));
+    }
+
+    @Test
+    public void parseFind_filterOnlyNoKeyword_isAllowed() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
+
+        CommandResult result = parser.parseFind(manager, "c/ACADEMIC topic/CG3207").execute();
+
+        assertTrue(result.getFeedback().contains("CG3207 lecture"));
+    }
+
+    @Test
+    public void parseFind_neitherKeywordNorFilter_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseFind(manager, ""));
+    }
+
+    @Test
+    public void parseNext_buildsWorkingNextCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 10, 0);
+
+        CommandResult result = parser.parseNext(manager, now).execute();
+
+        assertTrue(result.getFeedback().contains("CG3207 lecture"));
+    }
+
+    @Test
+    public void parseOrder_view_returnsWorkingOrderViewCommand() throws Exception {
+        ActivityManager manager = new ActivityManager();
+
+        CommandResult result = parser.parseOrder(manager, "view").execute();
+
+        assertTrue(result.getFeedback().contains("Saved default activity order:"));
+    }
+
+    @Test
+    public void parseOrder_setInput_updatesManagerDefaultOrder() throws Exception {
+        ActivityManager manager = new ActivityManager();
+
+        parser.parseOrder(manager, "set input").execute();
+
+        assertEquals(ActivityOrder.INPUT, manager.getDefaultOrder());
+    }
+
+    @Test
+    public void parseOrder_missingSubCommand_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseOrder(manager, ""));
+    }
+
+    @Test
+    public void parseOrder_setMissingOrderValue_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseOrder(manager, "set"));
+    }
+
+    @Test
+    public void parseOrder_unknownSubCommand_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseOrder(manager, "bogus"));
+    }
+
+    @Test
+    public void parseOrder_setInvalidOrderValue_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseOrder(manager, "set bogus"));
     }
 
     @Test

@@ -9,11 +9,12 @@ import java.util.Map;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
 
 /** Manages the in-memory registry of topics, scoped per category. A topic name is unique within its category. */
 public class TopicManager {
-    private final Map<ActivityCategory, List<String>> topicsByCategory = new LinkedHashMap<>();
+    private final Map<ActivityCategory, List<Topic>> topicsByCategory = new LinkedHashMap<>();
     private final ActivityManager activityManager;
 
     public TopicManager(ActivityManager activityManager) {
@@ -35,7 +36,7 @@ public class TopicManager {
         if (exists(category, name)) {
             throw new DuplicateActivityException("Topic \"" + name + "\" already exists under " + category + ".");
         }
-        topicsByCategory.get(category).add(name);
+        topicsByCategory.get(category).add(new Topic(category, name));
     }
 
     /**
@@ -46,12 +47,7 @@ public class TopicManager {
      * @return true if the topic exists under that category
      */
     public boolean exists(ActivityCategory category, String name) {
-        for (String existing : topicsByCategory.get(category)) {
-            if (existing.equalsIgnoreCase(name)) {
-                return true;
-            }
-        }
-        return false;
+        return findTopic(category, name) != null;
     }
 
     /**
@@ -60,7 +56,7 @@ public class TopicManager {
      * @param category the category to list
      * @return an unmodifiable view of that category's topics
      */
-    public List<String> list(ActivityCategory category) {
+    public List<Topic> list(ActivityCategory category) {
         return Collections.unmodifiableList(topicsByCategory.get(category));
     }
 
@@ -78,15 +74,15 @@ public class TopicManager {
      */
     public int rename(ActivityCategory category, String oldName, String newName)
             throws InvalidIndexException, DuplicateActivityException {
-        int index = indexOf(category, oldName);
-        if (index == -1) {
+        Topic topic = findTopic(category, oldName);
+        if (topic == null) {
             throw new InvalidIndexException("Topic \"" + oldName + "\" does not exist under " + category + ".");
         }
         if (!oldName.equalsIgnoreCase(newName) && exists(category, newName)) {
             throw new DuplicateActivityException(
                     "Topic \"" + newName + "\" already exists under " + category + ".");
         }
-        topicsByCategory.get(category).set(index, newName);
+        topic.setName(newName);
 
         int updated = 0;
         for (Activity activity : activityManager.getAll()) {
@@ -110,15 +106,15 @@ public class TopicManager {
      */
     public void delete(ActivityCategory category, String name)
             throws InvalidIndexException, DuplicateActivityException {
-        int index = indexOf(category, name);
-        if (index == -1) {
+        Topic topic = findTopic(category, name);
+        if (topic == null) {
             throw new InvalidIndexException("Topic \"" + name + "\" does not exist under " + category + ".");
         }
         int usageCount = countActivitiesUsing(category, name);
         if (usageCount > 0) {
             throw new DuplicateActivityException("Topic " + name + " is used by " + usageCount + " activities.");
         }
-        topicsByCategory.get(category).remove(index);
+        topicsByCategory.get(category).remove(topic);
     }
 
     private int countActivitiesUsing(ActivityCategory category, String name) {
@@ -131,13 +127,12 @@ public class TopicManager {
         return count;
     }
 
-    private int indexOf(ActivityCategory category, String name) {
-        List<String> topics = topicsByCategory.get(category);
-        for (int i = 0; i < topics.size(); i++) {
-            if (topics.get(i).equalsIgnoreCase(name)) {
-                return i;
+    private Topic findTopic(ActivityCategory category, String name) {
+        for (Topic topic : topicsByCategory.get(category)) {
+            if (topic.getName().equalsIgnoreCase(name)) {
+                return topic;
             }
         }
-        return -1;
+        return null;
     }
 }

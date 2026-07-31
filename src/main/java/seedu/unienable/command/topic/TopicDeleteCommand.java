@@ -18,6 +18,13 @@ public class TopicDeleteCommand extends Command {
     private final ActivityCategory category;
     private final String name;
 
+    /**
+     * Creates a TopicDeleteCommand.
+     *
+     * @param topicManager the manager holding the topic to delete
+     * @param category the fixed category the topic belongs to
+     * @param name the name of the topic to delete
+     */
     public TopicDeleteCommand(TopicManager topicManager, ActivityCategory category, String name) {
         this.topicManager = topicManager;
         this.category = category;

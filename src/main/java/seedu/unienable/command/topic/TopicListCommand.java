@@ -19,6 +19,12 @@ public class TopicListCommand extends Command {
     private final TopicManager topicManager;
     private final ActivityCategory category;
 
+    /**
+     * Creates a TopicListCommand.
+     *
+     * @param topicManager the manager to list topics from
+     * @param category the single category to list, or null to list every category
+     */
     public TopicListCommand(TopicManager topicManager, ActivityCategory category) {
         this.topicManager = topicManager;
         this.category = category;

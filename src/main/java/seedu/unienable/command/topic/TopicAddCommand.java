@@ -13,6 +13,13 @@ public class TopicAddCommand extends Command {
     private final ActivityCategory category;
     private final String name;
 
+    /**
+     * Creates a TopicAddCommand.
+     *
+     * @param topicManager the manager to add the topic to
+     * @param category the fixed category the topic will belong to
+     * @param name the new topic's name, unique within its category
+     */
     public TopicAddCommand(TopicManager topicManager, ActivityCategory category, String name) {
         this.topicManager = topicManager;
         this.category = category;

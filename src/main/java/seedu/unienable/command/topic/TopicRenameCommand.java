@@ -19,6 +19,14 @@ public class TopicRenameCommand extends Command {
     private final String oldName;
     private final String newName;
 
+    /**
+     * Creates a TopicRenameCommand.
+     *
+     * @param topicManager the manager holding the topic to rename
+     * @param category the fixed category the topic belongs to
+     * @param oldName the topic's current name
+     * @param newName the topic's proposed new name, unique within its category
+     */
     public TopicRenameCommand(TopicManager topicManager, ActivityCategory category, String oldName, String newName) {
         this.topicManager = topicManager;
         this.category = category;

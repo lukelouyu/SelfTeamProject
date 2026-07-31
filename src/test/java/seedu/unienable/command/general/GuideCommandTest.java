@@ -168,6 +168,33 @@ class GuideCommandTest {
     }
 
     @Test
+    public void execute_facilityTopic_showsExactGuideTextWithExamples() {
+        CommandResult result = new GuideCommand("facility").execute();
+
+        assertEquals("Accessible facilities\n"
+                + "Use facility list, facility view, or facility find (and connection list/view/find\n"
+                + "for the route graph between facilities). This data is read-only.\n"
+                + "\n"
+                + "Example - list and view a facility:\n"
+                + "  facility list\n"
+                + "  facility view AS1\n"
+                + "\n"
+                + "Example - find facilities with a feature:\n"
+                + "  facility find type/LIFT\n"
+                + "  facility find type/LIFT status/NO\n"
+                + "\n"
+                + "Example - list and view a connection:\n"
+                + "  connection list\n"
+                + "  connection view 1\n"
+                + "\n"
+                + "Example - find connections from a facility:\n"
+                + "  connection find from/AS6\n"
+                + "\n"
+                + "Sample local accessibility reference data. Distances are estimates and may be "
+                + "incomplete. Please verify with current campus information when needed.", result.getFeedback());
+    }
+
+    @Test
     public void execute_unknownTopic_showsFallbackMessage() {
         CommandResult result = new GuideCommand("bogus").execute();
 

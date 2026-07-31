@@ -106,6 +106,22 @@ ____________________________________________________________
 Accessible facilities
 Use facility list, facility view, or facility find (and connection list/view/find
 for the route graph between facilities). This data is read-only.
+
+Example - list and view a facility:
+  facility list
+  facility view AS1
+
+Example - find facilities with a feature:
+  facility find type/LIFT
+  facility find type/LIFT status/NO
+
+Example - list and view a connection:
+  connection list
+  connection view 1
+
+Example - find connections from a facility:
+  connection find from/AS6
+
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
@@ -263,6 +279,28 @@ Example - delete an unused topic:
 A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
+Accessible facilities
+Use facility list, facility view, or facility find (and connection list/view/find
+for the route graph between facilities). This data is read-only.
+
+Example - list and view a facility:
+  facility list
+  facility view AS1
+
+Example - find facilities with a feature:
+  facility find type/LIFT
+  facility find type/LIFT status/NO
+
+Example - list and view a connection:
+  connection list
+  connection view 1
+
+Example - find connections from a facility:
+  connection find from/AS6
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
 Returning to the command prompt.
 ____________________________________________________________
 ____________________________________________________________
@@ -380,6 +418,22 @@ ____________________________________________________________
 Accessible facilities
 Use facility list, facility view, or facility find (and connection list/view/find
 for the route graph between facilities). This data is read-only.
+
+Example - list and view a facility:
+  facility list
+  facility view AS1
+
+Example - find facilities with a feature:
+  facility find type/LIFT
+  facility find type/LIFT status/NO
+
+Example - list and view a connection:
+  connection list
+  connection view 1
+
+Example - find connections from a facility:
+  connection find from/AS6
+
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________

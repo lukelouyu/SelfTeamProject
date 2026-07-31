@@ -10,6 +10,11 @@ import seedu.unienable.model.enums.ActivityOrder;
 public class OrderViewCommand extends Command {
     private final ActivityManager activityManager;
 
+    /**
+     * Creates an OrderViewCommand.
+     *
+     * @param activityManager the manager whose default order will be displayed
+     */
     public OrderViewCommand(ActivityManager activityManager) {
         this.activityManager = activityManager;
     }

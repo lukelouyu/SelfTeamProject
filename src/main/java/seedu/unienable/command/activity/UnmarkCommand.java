@@ -13,6 +13,12 @@ public class UnmarkCommand extends Command {
     private final ActivityManager activityManager;
     private final int id;
 
+    /**
+     * Creates an UnmarkCommand.
+     *
+     * @param activityManager the manager holding the activity to unmark
+     * @param id the stable ID of the activity to mark incomplete
+     */
     public UnmarkCommand(ActivityManager activityManager, int id) {
         this.activityManager = activityManager;
         this.id = id;

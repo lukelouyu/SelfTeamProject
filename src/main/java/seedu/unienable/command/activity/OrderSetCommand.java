@@ -11,6 +11,12 @@ public class OrderSetCommand extends Command {
     private final ActivityManager activityManager;
     private final ActivityOrder order;
 
+    /**
+     * Creates an OrderSetCommand.
+     *
+     * @param activityManager the manager whose default order will be updated
+     * @param order the new default order
+     */
     public OrderSetCommand(ActivityManager activityManager, ActivityOrder order) {
         this.activityManager = activityManager;
         this.order = order;

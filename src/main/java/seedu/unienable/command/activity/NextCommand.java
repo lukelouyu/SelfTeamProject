@@ -19,6 +19,12 @@ public class NextCommand extends Command {
     private final ActivityManager activityManager;
     private final LocalDateTime now;
 
+    /**
+     * Creates a NextCommand.
+     *
+     * @param activityManager the manager to select the next activity from
+     * @param now the current date and time, supplied explicitly for deterministic testing
+     */
     public NextCommand(ActivityManager activityManager, LocalDateTime now) {
         this.activityManager = activityManager;
         this.now = now;

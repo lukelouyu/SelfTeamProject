@@ -18,6 +18,14 @@ public class ListCommand extends Command {
     private final ActivityOrder order;
     private final boolean detail;
 
+    /**
+     * Creates a ListCommand.
+     *
+     * @param activityManager the manager to list activities from
+     * @param filter optional structured filter (status/category/topic/date), or null
+     * @param order the ordering to apply to the results, or null to use the saved default
+     * @param detail whether to render each result in detail view instead of concise view
+     */
     public ListCommand(ActivityManager activityManager, ActivityFilter filter, ActivityOrder order,
             boolean detail) {
         this.activityManager = activityManager;

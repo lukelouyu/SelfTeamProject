@@ -14,6 +14,12 @@ public class AddCommand extends Command {
     private final ActivityManager activityManager;
     private final Activity activity;
 
+    /**
+     * Creates an AddCommand.
+     *
+     * @param activityManager the manager to add the activity to
+     * @param activity the fully-constructed, already-validated activity to add
+     */
     public AddCommand(ActivityManager activityManager, Activity activity) {
         this.activityManager = activityManager;
         this.activity = activity;

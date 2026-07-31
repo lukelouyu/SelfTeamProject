@@ -13,6 +13,12 @@ public class MarkCommand extends Command {
     private final ActivityManager activityManager;
     private final int id;
 
+    /**
+     * Creates a MarkCommand.
+     *
+     * @param activityManager the manager holding the activity to mark
+     * @param id the stable ID of the activity to mark complete
+     */
     public MarkCommand(ActivityManager activityManager, int id) {
         this.activityManager = activityManager;
         this.id = id;

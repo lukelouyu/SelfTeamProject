@@ -18,6 +18,13 @@ public class EditCommand extends Command {
     private final int id;
     private final Activity newActivity;
 
+    /**
+     * Creates an EditCommand.
+     *
+     * @param activityManager the manager holding the activity to replace
+     * @param id the stable ID of the activity to replace
+     * @param newActivity the fully-rebuilt replacement, carrying the same ID and completion status
+     */
     public EditCommand(ActivityManager activityManager, int id, Activity newActivity) {
         this.activityManager = activityManager;
         this.id = id;

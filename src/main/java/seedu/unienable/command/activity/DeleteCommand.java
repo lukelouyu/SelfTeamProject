@@ -14,6 +14,12 @@ public class DeleteCommand extends Command {
     private final ActivityManager activityManager;
     private final int id;
 
+    /**
+     * Creates a DeleteCommand.
+     *
+     * @param activityManager the manager holding the activity to delete
+     * @param id the stable ID of the activity to delete
+     */
     public DeleteCommand(ActivityManager activityManager, int id) {
         this.activityManager = activityManager;
         this.id = id;

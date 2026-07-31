@@ -141,13 +141,17 @@ atomic: a rejected request always leaves prior state completely unchanged.
   is simple and readable at four branches, but is flagged here as a design decision to revisit
   (e.g. a small `Confirmable` interface) if v2.0's `recommend` "adopt this recommendation?" step
   makes the chain much longer.
-- **Confirmation-prompt sequencing differs between activity and topic commands.** `delete`/`edit`
-  validate that the target activity exists *before* showing the y/n prompt, so an invalid ID never
-  shows a misleading confirmation. `topic rename`/`topic delete` show the prompt first and only
-  validate existence when the command executes after a "y" answer. This is a known, pinned
-  inconsistency (regression-tested, not accidental) rather than a bug still to fix; any new
-  confirmation flow should decide its own ordering deliberately rather than copying one pattern by
-  default.
+- **Every confirmation-requiring command validates before prompting, via a side-effect-free
+  preflight check.** `delete`/`edit` validate that the target activity exists before showing the
+  y/n prompt (`ActivityManager.getById()`, called from the parser); `edit` additionally preflights
+  duplicate/overlap conflicts via `ActivityManager.checkNoConflicts()`; `topic rename`/`topic
+  delete` preflight existence, duplicate-name, and still-in-use conditions via
+  `TopicManager.checkCanRename()`/`checkCanDelete()`. Each preflight check is a thin wrapper that
+  the corresponding mutating method (`replace()`, `rename()`, `delete()`) also calls internally,
+  so the same validation runs again at execution time as defensive protection against state
+  changes between the two calls. Any new confirmation flow should follow this pattern: validate
+  everything that would cause a rejection in the parser layer, before a `Command` is ever returned
+  for `confirmIfNeeded()` to act on.
 - **Three-state accessibility values.** `AccessibilityStatus`/`ShelterStatus` are `YES`/`NO`/
   `UNKNOWN`, not a boolean, so that "no information recorded" is never conflated with "confirmed
   not accessible" — a direct requirement from the project's accessibility principles.

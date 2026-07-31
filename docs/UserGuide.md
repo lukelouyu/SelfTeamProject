@@ -269,8 +269,9 @@ Activity [1] has been updated.
 ____________________________________________________________
 ```
 
-The update is atomic: if any supplied value is invalid, the entire edit is rejected before any
-confirmation is shown.
+The update is atomic: if any supplied value is invalid, or the resulting activity would exactly
+duplicate or (for a fixed activity) overlap another activity, the entire edit is rejected before
+any confirmation is shown.
 
 ### 6.8 Delete an Activity: `delete`
 
@@ -393,6 +394,10 @@ ____________________________________________________________
 topic rename c/CATEGORY old/OLD_TOPIC new/NEW_TOPIC
 ```
 
+The old topic name must already exist under the category, and the new name must not already be
+used by a different topic in that category — both are checked before any confirmation is shown,
+so a rejected rename never asks "Save changes?".
+
 Renaming shows a before/after confirmation, same style as edit:
 
 ```text
@@ -435,7 +440,8 @@ Topic CG3207 has been deleted.
 ____________________________________________________________
 ```
 
-If the topic is still assigned to any activity, deletion is rejected instead:
+If the topic does not exist under the category, or is still assigned to any activity, deletion is
+rejected before any confirmation is shown, rather than asking "Delete topic ...?" first:
 
 ```text
 ____________________________________________________________

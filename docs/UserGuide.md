@@ -548,14 +548,17 @@ data/
 ├── activities.txt
 ├── topics.txt
 ├── facilities.txt
-└── connections.txt
+├── connections.txt
+└── settings.txt
 ```
 
 `activities.txt` and `topics.txt` are your saved planning data, created empty on first run.
 `facilities.txt` and `connections.txt` are copied from the bundled sample dataset on first run if
 they don't already exist — an existing file (including one you've edited manually) is never
-overwritten. The application saves activities and topics after every successfully executed
-command.
+overwritten. `settings.txt` stores your saved default activity order (see `order set` in Section
+6); it is created automatically the first time you change the order, and a missing or malformed
+file safely falls back to the documented `chronological` default. The application saves
+activities, topics, and settings after every successfully executed command.
 
 ## 12. Error Handling
 

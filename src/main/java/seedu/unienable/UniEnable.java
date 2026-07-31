@@ -26,6 +26,7 @@ import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.parser.CommandDispatcher;
 import seedu.unienable.storage.LoadResult;
 import seedu.unienable.storage.Storage;
@@ -74,16 +75,19 @@ public class UniEnable {
             LoadResult<TopicStorage.TopicRecord> topicLoad = storage.loadTopics();
             LoadResult<Facility> facilityLoad = storage.loadFacilities();
             LoadResult<Connection> connectionLoad = storage.loadConnections();
+            LoadResult<ActivityOrder> settingsLoad = storage.loadSettings();
 
             activityManager.loadAll(activityLoad.getRecords());
             topicManager.loadAll(toTopics(topicLoad.getRecords()));
             facilityManager = new FacilityManager(facilityLoad.getRecords());
             connectionManager = new ConnectionManager(connectionLoad.getRecords());
+            activityManager.setDefaultOrder(settingsLoad.getRecords().get(0));
 
             showLoadWarnings(ui, "activities.txt", activityLoad);
             showLoadWarnings(ui, "topics.txt", topicLoad);
             showLoadWarnings(ui, "facilities.txt", facilityLoad);
             showLoadWarnings(ui, "connections.txt", connectionLoad);
+            showLoadWarnings(ui, "settings.txt", settingsLoad);
         } catch (UniEnableException e) {
             ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());
             return;
@@ -118,6 +122,7 @@ public class UniEnable {
             ui.showFramed(result.getFeedback());
             storage.saveActivities(activityManager.getAll());
             storage.saveTopics(toRecords(topicManager));
+            storage.saveSettings(activityManager.getDefaultOrder());
             return !result.isShouldExit();
         } catch (UniEnableException e) {
             ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());

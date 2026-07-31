@@ -182,6 +182,60 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_orderSetPersistsAcrossRestart() {
+        // Regression test: ActivityManager.defaultOrder was memory-only and always reset to
+        // CHRONOLOGICAL on restart, even though OrderSetCommand's feedback and the User Guide
+        // both call it the "saved default". Two separate UniEnable.run() calls against the same
+        // tempDir simulate a restart.
+        runWithInput(
+                "add n/LaterDateActivity c/ACADEMIC date/2026-08-20 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2\n"
+                        + "add n/EarlierDateActivity c/ACADEMIC date/2026-08-19 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2\n"
+                        + "order set input\n"
+                        + "bye\n");
+
+        String secondRunOutput = runWithInput("order view\nlist\nbye\n");
+
+        assertTrue(secondRunOutput.contains("Saved default activity order: input"));
+        int indexOfLater = secondRunOutput.indexOf("LaterDateActivity");
+        int indexOfEarlier = secondRunOutput.indexOf("EarlierDateActivity");
+        assertTrue(indexOfLater >= 0 && indexOfEarlier >= 0 && indexOfLater < indexOfEarlier);
+    }
+
+    @Test
+    public void run_noSettingsFile_defaultsToChronologicalOrder() {
+        String output = runWithInput("order view\nbye\n");
+
+        assertTrue(output.contains("Saved default activity order: chronological"));
+    }
+
+    @Test
+    public void run_malformedSettingsFile_surfacesWarningAndFallsBackToDefault() throws Exception {
+        Files.writeString(tempDir.resolve("settings.txt"), "ORDER|BOGUS\n");
+
+        String output = runWithInput("order view\nbye\n");
+
+        assertTrue(output.contains("[Warning] Partial data loaded: settings.txt"));
+        assertTrue(output.contains("Line 1 was skipped"));
+        assertTrue(output.contains("Saved default activity order: chronological"));
+    }
+
+    @Test
+    public void run_orderOverride_doesNotChangePersistedDefault() {
+        // A one-shot "order/" override on list/find must not change the saved default.
+        runWithInput(
+                "add n/LaterDateActivity c/ACADEMIC date/2026-08-20 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2\n"
+                        + "list order/input\n"
+                        + "bye\n");
+
+        String secondRunOutput = runWithInput("order view\nbye\n");
+
+        assertTrue(secondRunOutput.contains("Saved default activity order: chronological"));
+    }
+
+    @Test
     public void run_unknownCommand_showsErrorAndKeepsProcessingSubsequentCommands() {
         String output = runWithInput("banana\nbye\n");
 

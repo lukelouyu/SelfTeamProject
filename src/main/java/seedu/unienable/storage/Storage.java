@@ -10,6 +10,7 @@ import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.enums.ActivityOrder;
 
 /**
  * Coordinates the individual *Storage classes against a shared data directory, so callers can load
@@ -20,23 +21,26 @@ public class Storage {
     private final Path topicsFile;
     private final Path facilitiesFile;
     private final Path connectionsFile;
+    private final Path settingsFile;
 
     private final ActivityStorage activityStorage = new ActivityStorage();
     private final TopicStorage topicStorage = new TopicStorage();
     private final FacilityStorage facilityStorage = new FacilityStorage();
     private final ConnectionStorage connectionStorage = new ConnectionStorage();
+    private final SettingsStorage settingsStorage = new SettingsStorage();
 
     /**
      * Creates a Storage coordinator rooted at the given data directory.
      *
-     * @param dataDirectory directory containing activities.txt, topics.txt, facilities.txt, and
-     *     connections.txt
+     * @param dataDirectory directory containing activities.txt, topics.txt, facilities.txt,
+     *     connections.txt, and settings.txt
      */
     public Storage(Path dataDirectory) {
         this.activitiesFile = dataDirectory.resolve("activities.txt");
         this.topicsFile = dataDirectory.resolve("topics.txt");
         this.facilitiesFile = dataDirectory.resolve("facilities.txt");
         this.connectionsFile = dataDirectory.resolve("connections.txt");
+        this.settingsFile = dataDirectory.resolve("settings.txt");
     }
 
     /**
@@ -99,6 +103,27 @@ public class Storage {
      */
     public LoadResult<Connection> loadConnections() throws StorageException {
         return connectionStorage.load(connectionsFile);
+    }
+
+    /**
+     * Loads the saved default activity order from settings.txt.
+     *
+     * @return a LoadResult whose single record is the saved order (or the documented default,
+     *     with a warning, if the file/line is missing or malformed)
+     * @throws StorageException if the file exists but cannot be read
+     */
+    public LoadResult<ActivityOrder> loadSettings() throws StorageException {
+        return settingsStorage.loadDefaultOrder(settingsFile);
+    }
+
+    /**
+     * Saves the given default activity order to settings.txt.
+     *
+     * @param order the order to save
+     * @throws StorageException if the file cannot be written
+     */
+    public void saveSettings(ActivityOrder order) throws StorageException {
+        settingsStorage.saveDefaultOrder(settingsFile, order);
     }
 
     /**

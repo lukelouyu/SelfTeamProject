@@ -244,9 +244,7 @@ public class ApplicationRunner {
      */
     private boolean trySave() {
         try {
-            storage.saveActivities(activityManager.getAll());
-            storage.saveTopics(topicManager.getAll());
-            storage.saveSettings(activityManager.getDefaultOrder());
+            storage.saveAll(activityManager.getAll(), topicManager.getAll(), activityManager.getDefaultOrder());
             hasUnsavedChanges = false;
             return true;
         } catch (StorageException e) {

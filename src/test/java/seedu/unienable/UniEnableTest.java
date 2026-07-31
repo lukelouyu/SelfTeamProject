@@ -207,6 +207,36 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_multiFileSaveFailure_leavesEveryFileUntouchedNotJustTheFailingOne() throws Exception {
+        // Regression test for the "multi-file rollback" requirement: if only one of
+        // activities.txt/topics.txt/settings.txt cannot be written, none of the three should be
+        // updated on disk, even though the others would have saved fine on their own. Here
+        // topics.txt is made read-only, but the mutating command is an activity add, which
+        // would otherwise happily overwrite activities.txt (and create settings.txt) while
+        // leaving topics.txt behind.
+        Path topicsFile = tempDir.resolve("topics.txt");
+        Files.writeString(topicsFile, "");
+        assertTrue(topicsFile.toFile().setWritable(false), "test setup: could not make file read-only");
+
+        try {
+            String output = runWithInput(
+                    "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                            + "energy/4 sensory/3\n"
+                            + "bye\n");
+
+            assertTrue(!output.contains("Got it. Activity"));
+            assertTrue(output.contains("[Error] Storage error"));
+            assertTrue(output.contains("Your latest changes could not be saved."));
+
+            Storage storage = new Storage(tempDir);
+            assertTrue(storage.loadActivities().getRecords().isEmpty());
+            assertTrue(!Files.exists(tempDir.resolve("settings.txt")));
+        } finally {
+            topicsFile.toFile().setWritable(true);
+        }
+    }
+
+    @Test
     public void run_addListViewDeleteWithConfirmation_worksEndToEndAndPersistsToDisk() throws Exception {
         String output = runWithInput(
                 "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "

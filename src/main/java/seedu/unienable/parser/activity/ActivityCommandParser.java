@@ -1,5 +1,6 @@
 package seedu.unienable.parser.activity;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -101,6 +102,7 @@ public class ActivityCommandParser {
             throw new InvalidActivityException("latest end time must be after earliest start time.");
         }
         int durationMinutes = parsePositiveInt(requireField(args, "dur/", "energy/", "dur"), "dur");
+        validateDurationFitsWindow(earliestStart, latestEnd, durationMinutes);
         CommonTail tail = parseCommonTail(args, "energy/");
         return new FlexibleActivity(id, description, category, date, earliestStart, latestEnd, durationMinutes,
                 tail.energy, tail.sensory, tail.topic, tail.note);
@@ -339,6 +341,25 @@ public class ActivityCommandParser {
         }
     }
 
+    /**
+     * Checks that a flexible activity's duration fits inside its allowed window, per the User
+     * Guide's documented rule ("the duration must fit inside the allowed window").
+     *
+     * @param earliestStart the earliest allowed start time
+     * @param latestEnd the latest allowed end time
+     * @param durationMinutes the required duration in minutes
+     * @throws InvalidActivityException if durationMinutes exceeds the window from
+     *     earliestStart to latestEnd
+     */
+    private void validateDurationFitsWindow(LocalTime earliestStart, LocalTime latestEnd, int durationMinutes)
+            throws InvalidActivityException {
+        long windowMinutes = Duration.between(earliestStart, latestEnd).toMinutes();
+        if (durationMinutes > windowMinutes) {
+            throw new InvalidActivityException("dur must fit inside the earliest/latest window ("
+                    + windowMinutes + " min available).");
+        }
+    }
+
     private String firstToken(String text) {
         return text.trim().split("\\s+", 2)[0];
     }
@@ -478,6 +499,7 @@ public class ActivityCommandParser {
         } else {
             durationMinutes = ((FlexibleActivity) old).getDurationMinutes();
         }
+        validateDurationFitsWindow(earliestStart, latestEnd, durationMinutes);
         return new FlexibleActivity(id, description, category, date, earliestStart, latestEnd, durationMinutes,
                 energy, sensory, topic, note);
     }

@@ -166,6 +166,41 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_flexibleNegativeDuration_throwsInvalidActivityException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+                "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
+                        + "dur/-30 energy/5 sensory/2"));
+    }
+
+    @Test
+    public void parseAdd_flexibleDurationExceedsWindow_throwsInvalidActivityException() throws Exception {
+        // Regression test: earliest/10:00 latest/11:00 is a 60-minute window, but dur/500 was
+        // previously accepted with no validation at all against the window size.
+        ActivityManager manager = new ActivityManager();
+
+        InvalidActivityException exception = assertThrows(InvalidActivityException.class, () -> parser.parseAdd(
+                manager, "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 "
+                        + "dur/500 energy/5 sensory/2"));
+        assertTrue(exception.getMessage().contains("60 min available"));
+    }
+
+    @Test
+    public void parseAdd_flexibleDurationExactlyFillsWindow_succeeds() throws Exception {
+        // Boundary: duration equal to the window size is the edge of "must fit inside the
+        // window" and should be accepted, not rejected.
+        ActivityManager manager = new ActivityManager();
+        AddCommand command = parser.parseAdd(manager,
+                "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 "
+                        + "dur/60 energy/5 sensory/2");
+
+        command.execute();
+
+        assertEquals(60, ((FlexibleActivity) manager.getById(1)).getDurationMinutes());
+    }
+
+    @Test
     public void parseAdd_flexibleMissingDurationEntirely_throwsInvalidDateTimeException() {
         // dur/ is dropped entirely, so latest/'s end marker ("dur/") is never found and its
         // extraction greedily captures the trailing "energy/5 sensory/2" text, which then fails
@@ -585,6 +620,30 @@ class ActivityCommandParserTest {
         Activity updated = manager.getById(1);
         assertEquals(ScheduleType.FLEXIBLE, updated.getScheduleType());
         assertEquals(90, ((FlexibleActivity) updated).getDurationMinutes());
+    }
+
+    @Test
+    public void parseEdit_durationExceedsExistingWindow_throwsInvalidActivityException() throws Exception {
+        // Regression test: editing only dur/ must still validate against the activity's existing
+        // (unchanged) earliest/latest window, not just when the window is also being edited.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FlexibleActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0), 60,
+                EnergyRating.of(5), SensoryRating.of(2), null, null));
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 dur/500"));
+    }
+
+    @Test
+    public void parseEdit_changingTypeWithDurationExceedingNewWindow_throwsInvalidActivityException()
+            throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager,
+                "1 type/FLEXIBLE earliest/10:00 latest/11:00 dur/500"));
     }
 
     @Test

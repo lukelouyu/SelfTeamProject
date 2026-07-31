@@ -444,6 +444,34 @@ class ActivityManagerTest {
     }
 
     @Test
+    public void next_nowExactlyAtFixedStartTime_isInProgress() throws Exception {
+        // Boundary: the in-progress window is start-inclusive, so "now" landing exactly on the
+        // start time must already count as in progress.
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Starting now",
+                LocalTime.of(9, 0), LocalTime.of(11, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        Optional<Activity> result = manager.next(now);
+
+        assertTrue(result.isPresent());
+        assertEquals(1, result.get().getId());
+    }
+
+    @Test
+    public void next_nowExactlyAtFixedEndTime_isNeitherInProgressNorUpcoming() throws Exception {
+        // Boundary: the in-progress window is end-exclusive, so "now" landing exactly on the end
+        // time is the single instant where the activity is no longer in progress but is not yet
+        // overdue either (see countOverdueIncomplete_nowExactlyAtEndTime_isNotYetOverdue).
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Just ending",
+                LocalTime.of(9, 0), LocalTime.of(11, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 11, 0);
+
+        assertFalse(manager.next(now).isPresent());
+    }
+
+    @Test
     public void next_overdueActivityIsExcluded() throws Exception {
         ActivityManager manager = new ActivityManager();
         manager.add(newFixedActivity(manager.getNextId(), "Already passed",
@@ -475,6 +503,19 @@ class ActivityManagerTest {
         LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
 
         assertEquals(1, manager.countOverdueIncomplete(now));
+    }
+
+    @Test
+    public void countOverdueIncomplete_nowExactlyAtEndTime_isNotYetOverdue() throws Exception {
+        // Boundary: overdue is end-exclusive ("end.isBefore(now)"), so "now" landing exactly on
+        // the end time must not yet count as overdue; one minute later, it must.
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Just ending",
+                LocalTime.of(9, 0), LocalTime.of(11, 0)));
+        LocalDateTime exactlyAtEnd = LocalDateTime.of(2026, 8, 15, 11, 0);
+
+        assertEquals(0, manager.countOverdueIncomplete(exactlyAtEnd));
+        assertEquals(1, manager.countOverdueIncomplete(exactlyAtEnd.plusMinutes(1)));
     }
 
     @Test

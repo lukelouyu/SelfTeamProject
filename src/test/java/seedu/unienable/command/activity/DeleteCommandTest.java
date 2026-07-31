@@ -35,6 +35,22 @@ class DeleteCommandTest {
     }
 
     @Test
+    public void execute_oneActivityRemaining_usesSingularGrammar() throws Exception {
+        // Regression test: the count suffix previously said "1 activities" unconditionally.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Keep", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 16), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Remove", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        CommandResult result = new DeleteCommand(manager, 2).execute();
+
+        assertTrue(result.getFeedback().contains("You now have 1 activity."));
+    }
+
+    @Test
     public void execute_unknownId_throwsInvalidIndexException() {
         ActivityManager manager = new ActivityManager();
 

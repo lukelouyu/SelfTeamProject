@@ -1,6 +1,5 @@
 package seedu.unienable.accessibility.classes;
 
-import java.util.Collections;
 import java.util.List;
 
 /** A known facility and its recorded accessibility features. Read-only reference data. */
@@ -16,13 +15,14 @@ public class Facility {
      * @param id stable facility ID, e.g. "F01"
      * @param name facility name, e.g. "COM3"
      * @param description optional facility description, or null if none
-     * @param features the facility's recorded accessibility features
+     * @param features the facility's recorded accessibility features, defensively copied so a
+     *     caller mutating its own list afterward cannot change this facility's features
      */
     public Facility(String id, String name, String description, List<FacilityFeature> features) {
         this.id = id;
         this.name = name;
         this.description = description;
-        this.features = Collections.unmodifiableList(features);
+        this.features = List.copyOf(features);
     }
 
     /** Returns the stable facility ID, e.g. "F01". */

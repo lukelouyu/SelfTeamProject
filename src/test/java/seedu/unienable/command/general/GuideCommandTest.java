@@ -195,6 +195,54 @@ class GuideCommandTest {
     }
 
     @Test
+    public void execute_storageTopic_doesNotClaimCsvHistoryExists() {
+        // Regression test: the "storage" topic previously said "CSV history is under exports/"
+        // as present fact, even though CSV export is v2.0 scope with no working command yet -
+        // directly contradicted by the "export" topic's own "(Coming soon...)" note.
+        CommandResult result = new GuideCommand("storage").execute();
+
+        assertTrue(!result.getFeedback().contains("exports/"));
+        assertTrue(!result.getFeedback().contains("CSV"));
+    }
+
+    @Test
+    public void execute_deleteTopic_showsGuideText() {
+        CommandResult result = new GuideCommand("delete").execute();
+
+        assertTrue(result.getFeedback().startsWith("Delete an activity"));
+        assertTrue(result.getFeedback().contains("delete ID"));
+    }
+
+    @Test
+    public void execute_markTopic_showsGuideText() {
+        CommandResult result = new GuideCommand("mark").execute();
+
+        assertTrue(result.getFeedback().startsWith("Mark an activity as completed"));
+    }
+
+    @Test
+    public void execute_unmarkTopic_showsGuideText() {
+        CommandResult result = new GuideCommand("unmark").execute();
+
+        assertTrue(result.getFeedback().startsWith("Change an activity back to incomplete"));
+    }
+
+    @Test
+    public void execute_nextTopic_showsGuideText() {
+        CommandResult result = new GuideCommand("next").execute();
+
+        assertTrue(result.getFeedback().startsWith("Find your next relevant activity"));
+    }
+
+    @Test
+    public void execute_orderTopic_showsGuideText() {
+        CommandResult result = new GuideCommand("order").execute();
+
+        assertTrue(result.getFeedback().startsWith("Choose your default activity order"));
+        assertTrue(result.getFeedback().contains("order set input|time|chronological"));
+    }
+
+    @Test
     public void execute_unknownTopic_showsFallbackMessage() {
         CommandResult result = new GuideCommand("bogus").execute();
 

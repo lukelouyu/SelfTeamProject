@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -38,5 +39,21 @@ class FacilityTest {
         assertThrows(UnsupportedOperationException.class, () ->
                 facility.getFeatures().add(
                         new FacilityFeature(FacilityFeature.Type.OTHER, AccessibilityStatus.UNKNOWN, null)));
+    }
+
+    @Test
+    public void constructor_mutatingCallersListAfterward_doesNotAffectFacility() {
+        // Regression test: the constructor previously wrapped the caller's list directly via
+        // Collections.unmodifiableList(), which is a live view rather than a copy - mutating the
+        // caller's own list afterward would have silently changed this "immutable" facility's
+        // features too.
+        FacilityFeature lift = new FacilityFeature(FacilityFeature.Type.LIFT, AccessibilityStatus.YES, null);
+        List<FacilityFeature> callerList = new ArrayList<>();
+        callerList.add(lift);
+        Facility facility = new Facility("F05", "COM3", null, callerList);
+
+        callerList.add(new FacilityFeature(FacilityFeature.Type.RAMP, AccessibilityStatus.YES, null));
+
+        assertEquals(1, facility.getFeatures().size());
     }
 }

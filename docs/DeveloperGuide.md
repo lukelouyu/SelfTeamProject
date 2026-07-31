@@ -197,8 +197,9 @@ route reference information, entirely offline in a fast CLI.
 
 ## User Stories
 
-Priorities: `***` must have, `**` should have, `*` nice to have. Selected v1.0 stories (see the
-project's prioritised user-story backlog for the complete v1.0/v2.0 list):
+Priorities: `***` must have, `**` should have, `*` nice to have. Selected v1.0 stories (the
+complete v1.0/v2.0 list lives in the team's prioritised user-story backlog, maintained outside
+this repository):
 
 | Priority | As a ... | I want to ... | So that I can ... |
 |---|---|---|---|
@@ -256,11 +257,14 @@ bash text-ui-test/runtest.sh
 ./gradlew shadowJar
 ```
 
-- `./gradlew test` runs the full JUnit suite.
-- `text-ui-test/runtest.sh` (or `.bat` on Windows) rebuilds the JAR, feeds it the 319-line scripted
+- `./gradlew test` runs the full JUnit suite (see the test report for the current pass count;
+  avoid quoting a specific number here, since it will drift as tests are added).
+- `text-ui-test/runtest.sh` (or `.bat` on Windows) rebuilds the JAR, feeds it the scripted
   `text-ui-test/input.txt`, and diffs the output against `text-ui-test/EXPECTED.TXT`; it exercises
-  every v1.0 command, boundary case, and error path end-to-end. It clears `text-ui-test/data/`
-  before each run for a deterministic starting state.
+  the v1.0 command surface end-to-end, including many boundary cases and error paths (see the
+  script itself for exactly what it covers — it grows as new scenarios are added, so treat any
+  specific line count here as a snapshot, not a guarantee). It clears `text-ui-test/data/` before
+  each run for a deterministic starting state.
 
 ### Manual exploratory testing
 

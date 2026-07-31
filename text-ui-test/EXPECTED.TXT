@@ -126,8 +126,8 @@ Sample local accessibility reference data. Distances are estimates and may be in
 ____________________________________________________________
 ____________________________________________________________
 Data files and storage
-Application data is stored under data/. CSV history is under
-exports/. Do not edit data files while the application runs.
+Application data (activities, topics, and your saved default order)
+is stored under data/. Do not edit data files while the application runs.
 ____________________________________________________________
 ____________________________________________________________
 Completion and daily load
@@ -444,8 +444,8 @@ Each export creates a timestamped historical record.
 ____________________________________________________________
 ____________________________________________________________
 Data files and storage
-Application data is stored under data/. CSV history is under
-exports/. Do not edit data files while the application runs.
+Application data (activities, topics, and your saved default order)
+is stored under data/. Do not edit data files while the application runs.
 ____________________________________________________________
 ____________________________________________________________
 Returning to the command prompt.
@@ -625,7 +625,7 @@ Got it. Activity [1] has been added:
 [ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
        ACADEMIC / CG3207 | Energy 1/5 | Sensory 1/5
 
-You now have 1 activities.
+You now have 1 activity.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [2] has been added:

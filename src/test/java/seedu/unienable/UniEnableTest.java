@@ -147,6 +147,66 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_readOnlyCommands_neverCreateSettingsFile() {
+        // Regression test: saveApplicationState() previously ran after every successfully
+        // executed command, including read-only ones, so settings.txt was created the first
+        // time the user ran *any* command rather than only when mutating state.
+        runWithInput("list\nnext\nfacility list\nbye\n");
+
+        assertTrue(!Files.exists(tempDir.resolve("settings.txt")));
+    }
+
+    @Test
+    public void run_addSaveFailure_showsStorageErrorInsteadOfFalseSuccess() throws Exception {
+        // Regression test: the success feedback ("Got it. Activity [n] has been added:...")
+        // was previously shown before the save was attempted, so a save failure left a false
+        // success message on screen with nothing actually persisted.
+        Path activitiesFile = tempDir.resolve("activities.txt");
+        Files.writeString(activitiesFile, "");
+        assertTrue(activitiesFile.toFile().setWritable(false), "test setup: could not make file read-only");
+
+        try {
+            String output = runWithInput(
+                    "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                            + "energy/4 sensory/3\n"
+                            + "bye\n");
+
+            assertTrue(!output.contains("Got it. Activity"));
+            assertTrue(output.contains("[Error] Storage error"));
+            assertTrue(!output.contains("Your data has been saved."));
+            assertTrue(output.contains("Your latest changes could not be saved."));
+            assertTrue(output.contains("Bye! Take care and see you again."));
+        } finally {
+            activitiesFile.toFile().setWritable(true);
+        }
+    }
+
+    @Test
+    public void run_byeStillTerminatesLoop_evenWhenFinalSaveFails() throws Exception {
+        // Regression test: when the exit command's own save attempt failed, the exception
+        // previously propagated out of the try block before "return !result.isShouldExit()"
+        // was reached, so processCommand() fell into the catch clause and returned true
+        // (keep looping) instead of ending the session - "list" below used to still execute
+        // after "bye".
+        Path activitiesFile = tempDir.resolve("activities.txt");
+        Files.writeString(activitiesFile, "");
+        assertTrue(activitiesFile.toFile().setWritable(false), "test setup: could not make file read-only");
+
+        try {
+            String output = runWithInput(
+                    "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                            + "energy/4 sensory/3\n"
+                            + "bye\n"
+                            + "list\n");
+
+            assertTrue(!output.contains("matching activit"));
+            assertTrue(!output.contains("No activities found."));
+        } finally {
+            activitiesFile.toFile().setWritable(true);
+        }
+    }
+
+    @Test
     public void run_addListViewDeleteWithConfirmation_worksEndToEndAndPersistsToDisk() throws Exception {
         String output = runWithInput(
                 "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "

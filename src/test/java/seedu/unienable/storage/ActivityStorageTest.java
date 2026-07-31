@@ -129,4 +129,147 @@ class ActivityStorageTest {
 
         assertThrows(StorageException.class, () -> new ActivityStorage().load(missing));
     }
+
+    @Test
+    public void load_zeroId_recordsWarning() throws Exception {
+        Path file = writeFile("FIXED|0|desc|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE|CG3207|note");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("positive"));
+    }
+
+    @Test
+    public void load_negativeId_recordsWarning() throws Exception {
+        Path file = writeFile("FIXED|-1|desc|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE|CG3207|note");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(1, result.getWarnings().size());
+    }
+
+    @Test
+    public void load_duplicateId_secondLineIsSkippedWithWarning() throws Exception {
+        Path file = writeFile(
+                "FIXED|12|First|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||",
+                "FIXED|12|Second|ACADEMIC|2026-08-16|09:00|11:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals("First", result.getRecords().get(0).getDescription());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("duplicate activity id"));
+    }
+
+    @Test
+    public void load_blankDescription_recordsWarning() throws Exception {
+        Path file = writeFile("FIXED|12||ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("description"));
+    }
+
+    @Test
+    public void load_fixedEndNotAfterStart_recordsWarning() throws Exception {
+        Path file = writeFile("FIXED|12|desc|ACADEMIC|2026-08-15|11:00|09:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("end time must be later than start time"));
+    }
+
+    @Test
+    public void load_flexibleLatestNotAfterEarliest_recordsWarning() throws Exception {
+        Path file = writeFile("FLEXIBLE|12|desc|ACADEMIC|2026-08-15|18:00|10:00|60|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("latest end time must be after earliest start time"));
+    }
+
+    @Test
+    public void load_flexibleDurationExceedsWindow_recordsWarning() throws Exception {
+        Path file = writeFile("FLEXIBLE|12|desc|ACADEMIC|2026-08-15|10:00|11:00|500|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("60 min available"));
+    }
+
+    @Test
+    public void load_flexibleNonPositiveDuration_recordsWarning() throws Exception {
+        Path file = writeFile("FLEXIBLE|12|desc|ACADEMIC|2026-08-15|10:00|18:00|0|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("positive"));
+    }
+
+    @Test
+    public void load_exactDuplicateActivity_secondLineIsSkippedWithWarning() throws Exception {
+        Path file = writeFile(
+                "FIXED|12|Same activity|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||",
+                "FIXED|13|Same activity|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals(12, result.getRecords().get(0).getId());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("duplicates activity [12]"));
+    }
+
+    @Test
+    public void load_overlappingFixedActivities_secondLineIsSkippedWithWarning() throws Exception {
+        Path file = writeFile(
+                "FIXED|12|Base|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||",
+                "FIXED|13|Overlapping|ACADEMIC|2026-08-15|10:00|12:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals(12, result.getRecords().get(0).getId());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("overlaps activity [12]"));
+    }
+
+    @Test
+    public void load_nonOverlappingFixedActivitiesOnSameDate_bothLoad() throws Exception {
+        Path file = writeFile(
+                "FIXED|12|Base|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||",
+                "FIXED|13|Later|ACADEMIC|2026-08-15|11:00|12:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getWarnings().size());
+        assertEquals(2, result.getRecords().size());
+    }
+
+    @Test
+    public void load_fixedAndFlexibleWithSameTimingDoNotCountAsOverlap() throws Exception {
+        // Overlap detection only applies between two FixedActivity records - a FlexibleActivity
+        // has no confirmed placement yet, so it cannot conflict with a fixed activity's slot.
+        Path file = writeFile(
+                "FIXED|12|Base|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||",
+                "FLEXIBLE|13|Flex|ACADEMIC|2026-08-15|09:00|11:00|60|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getWarnings().size());
+        assertEquals(2, result.getRecords().size());
+    }
 }

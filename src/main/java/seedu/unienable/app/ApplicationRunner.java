@@ -11,6 +11,15 @@ import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.activity.AddCommand;
+import seedu.unienable.command.activity.DeleteCommand;
+import seedu.unienable.command.activity.EditCommand;
+import seedu.unienable.command.activity.MarkCommand;
+import seedu.unienable.command.activity.OrderSetCommand;
+import seedu.unienable.command.activity.UnmarkCommand;
+import seedu.unienable.command.topic.TopicAddCommand;
+import seedu.unienable.command.topic.TopicDeleteCommand;
+import seedu.unienable.command.topic.TopicRenameCommand;
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.exception.UniEnableException;
 import seedu.unienable.logic.ActivityManager;
@@ -33,6 +42,9 @@ import seedu.unienable.ui.Ui;
  * threading dependencies through long parameter lists.
  */
 public class ApplicationRunner {
+    private static final String EXIT_WITHOUT_SAVE_MESSAGE =
+            "Your latest changes could not be saved.\nBye! Take care and see you again.";
+
     private final Path dataDirectory;
     private final InputStream input;
 
@@ -45,6 +57,7 @@ public class ApplicationRunner {
     private ConnectionManager connectionManager;
     private CommandDispatcher dispatcher;
     private CommandConfirmationHandler confirmationHandler;
+    private boolean hasUnsavedChanges;
 
     /**
      * Creates an ApplicationRunner for one run of the application.
@@ -148,8 +161,11 @@ public class ApplicationRunner {
     }
 
     /**
-     * Dispatches, confirms if needed, and executes one line of input, then persists application
-     * state if it mutated anything.
+     * Dispatches, confirms if needed, and executes one line of input. A command that mutates
+     * application state is persisted before its success feedback is shown, so a save failure is
+     * reported instead of a false success message; a command that only reads state is never
+     * saved. "bye" always ends the loop, attempting one final save first only if an earlier save
+     * this session failed.
      *
      * @param line one full line of raw user input
      * @return true if the command loop should keep reading input; false if this command should
@@ -162,9 +178,17 @@ public class ApplicationRunner {
                 return true;
             }
             CommandResult result = command.execute();
+            if (result.isShouldExit()) {
+                return handleExit(result);
+            }
+            if (mutatesState(command)) {
+                hasUnsavedChanges = true;
+                if (!trySave()) {
+                    return true;
+                }
+            }
             ui.showFramed(result.getFeedback());
-            saveApplicationState();
-            return !result.isShouldExit();
+            return true;
         } catch (UniEnableException e) {
             ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());
             return true;
@@ -172,14 +196,63 @@ public class ApplicationRunner {
     }
 
     /**
-     * Persists every piece of mutable application state: activities, topics, and the saved
-     * default activity order.
+     * Handles an exit command ("bye"): always ends the command loop, but first attempts a final
+     * save if an earlier command's save this session failed, so a session that hit a storage
+     * error still gets one more chance to persist before exiting. Shows the normal goodbye
+     * message only if nothing is left unsaved; otherwise shows the storage error and a farewell
+     * that does not claim data was saved.
      *
-     * @throws StorageException if any file cannot be written
+     * @param result the exit command's own result, carrying the normal goodbye feedback
+     * @return always false, so the command loop stops
      */
-    private void saveApplicationState() throws StorageException {
-        storage.saveActivities(activityManager.getAll());
-        storage.saveTopics(topicManager.getAll());
-        storage.saveSettings(activityManager.getDefaultOrder());
+    private boolean handleExit(CommandResult result) {
+        if (hasUnsavedChanges && !trySave()) {
+            ui.showFramed(EXIT_WITHOUT_SAVE_MESSAGE);
+        } else {
+            ui.showFramed(result.getFeedback());
+        }
+        return false;
+    }
+
+    /**
+     * Returns whether executing the given command may have changed activity, topic, or
+     * settings state that needs persisting. Read-only commands (list, find, view, next, guide,
+     * facility/connection lookups, order view, bye) are deliberately excluded so they never
+     * trigger a save.
+     *
+     * @param command the already-executed command
+     * @return true if command is one of the mutating command types
+     */
+    private boolean mutatesState(Command command) {
+        return command instanceof AddCommand
+                || command instanceof DeleteCommand
+                || command instanceof EditCommand
+                || command instanceof MarkCommand
+                || command instanceof UnmarkCommand
+                || command instanceof OrderSetCommand
+                || command instanceof TopicAddCommand
+                || command instanceof TopicRenameCommand
+                || command instanceof TopicDeleteCommand;
+    }
+
+    /**
+     * Attempts to persist activities, topics, and the saved default activity order, updating the
+     * unsaved-changes flag to match the outcome. On failure, shows the storage error itself so
+     * callers only need to react to whether the save succeeded.
+     *
+     * @return true if the save succeeded; false if it failed (the error has already been shown)
+     */
+    private boolean trySave() {
+        try {
+            storage.saveActivities(activityManager.getAll());
+            storage.saveTopics(topicManager.getAll());
+            storage.saveSettings(activityManager.getDefaultOrder());
+            hasUnsavedChanges = false;
+            return true;
+        } catch (StorageException e) {
+            hasUnsavedChanges = true;
+            ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());
+            return false;
+        }
     }
 }

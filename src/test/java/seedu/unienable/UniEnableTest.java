@@ -57,6 +57,96 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_dataDirectoryCannotBeCreated_showsStartupErrorAndNeverStartsCommandLoop() throws Exception {
+        // Characterization test: a fatal storage failure during startup (here, the data
+        // directory path is blocked by a regular file) must show a framed error and return
+        // before the command loop starts at all - "bye" in the input must never be reached.
+        Path blockingFile = tempDir.resolve("blocking-file");
+        Files.writeString(blockingFile, "not a directory");
+        Path invalidDataDirectory = blockingFile.resolve("data");
+
+        ByteArrayOutputStream capturedOutput = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        System.setOut(new PrintStream(capturedOutput));
+        try {
+            UniEnable.run(invalidDataDirectory,
+                    new ByteArrayInputStream("list\nbye\n".getBytes(StandardCharsets.UTF_8)));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        String output = capturedOutput.toString();
+        assertTrue(output.contains("[Error]"));
+        assertTrue(!output.contains("No activities found."));
+        assertTrue(!output.contains("Bye! Take care and see you again."));
+    }
+
+    @Test
+    public void run_blankLineIsIgnored_doesNotErrorAndContinuesProcessing() {
+        String output = runWithInput("\n   \nlist\nbye\n");
+
+        assertTrue(!output.contains("[Error]"));
+        assertTrue(output.contains("No activities found."));
+        assertTrue(output.contains("Bye! Take care and see you again."));
+    }
+
+    @Test
+    public void run_streamEndsWithoutBye_stopsCleanlyWithNoFarewellOrError() {
+        String output = runWithInput("list\n");
+
+        assertTrue(!output.contains("[Error]"));
+        assertTrue(!output.contains("Bye! Take care and see you again."));
+    }
+
+    @Test
+    public void run_deleteConfirmationInvalidAnswer_treatedAsCancel() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "delete 1\n"
+                        + "maybe\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Cancelled. No changes were made."));
+
+        Storage storage = new Storage(tempDir);
+        assertEquals(1, storage.loadActivities().getRecords().size());
+    }
+
+    @Test
+    public void run_topicDeleteWithConfirmation_deletesOnY() {
+        String output = runWithInput(
+                "topic add c/ACADEMIC n/CS2113\n"
+                        + "topic delete c/ACADEMIC n/CS2113\n"
+                        + "y\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Delete topic \"CS2113\" under ACADEMIC? (y/n)"));
+        assertTrue(output.contains("Topic CS2113 has been deleted."));
+    }
+
+    @Test
+    public void run_activitiesPersistAcrossRestart() {
+        runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "bye\n");
+
+        String secondRunOutput = runWithInput("list\nbye\n");
+
+        assertTrue(secondRunOutput.contains("CG3207 lecture"));
+    }
+
+    @Test
+    public void run_topicsPersistAcrossRestart() {
+        runWithInput("topic add c/ACADEMIC n/CS2113\nbye\n");
+
+        String secondRunOutput = runWithInput("topic list c/ACADEMIC\nbye\n");
+
+        assertTrue(secondRunOutput.contains("CS2113"));
+    }
+
+    @Test
     public void run_addListViewDeleteWithConfirmation_worksEndToEndAndPersistsToDisk() throws Exception {
         String output = runWithInput(
                 "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "

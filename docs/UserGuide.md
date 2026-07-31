@@ -69,7 +69,8 @@ accessibility information, or medical advice.
 - Multiple search keywords use AND: every keyword must match.
 - Binary confirmation prompts accept only `y` or `n` (uppercase `Y`/`N` also accepted); anything
   else is treated as `n` (cancel).
-- Stable activity IDs never change when another activity is deleted.
+- Activity IDs are permanent. After deletion, remaining IDs do not change. Use `reset all` to
+  restart from ID `[1]`.
 - Commands documented as taking no arguments (`next`, `bye`, `order view`, `facility list`,
   `connection list`) reject any trailing text rather than silently ignoring it.
 
@@ -300,6 +301,10 @@ Activity [8] has been deleted.
 You now have 7 activities.
 ____________________________________________________________
 ```
+
+Activity IDs are permanent: deleting activity `[8]` does not renumber any other activity, and a
+future `add` never reuses `[8]`. The only way to restart ID assignment from `[1]` is `reset all`
+(section 6.13), which clears every activity and topic.
 
 ### 6.9 Mark/Unmark Completion: `mark` / `unmark`
 

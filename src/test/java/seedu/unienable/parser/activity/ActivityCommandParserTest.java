@@ -137,6 +137,21 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_markerSuppliedTwice_firstOccurrenceValueAbsorbsTheSecond() throws Exception {
+        // Pinning test, not a bug fix: add's fields must appear in the documented order, so
+        // "n/A n/B c/..." is already outside the documented grammar. Because extraction is purely
+        // boundary-based (first "n/" to the next distinct marker), the value is "A n/B" -- the
+        // second "n/" is absorbed as literal text rather than starting a new field or erroring.
+        ActivityManager manager = new ActivityManager();
+        AddCommand command = parser.parseAdd(manager,
+                "n/A n/B c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3");
+
+        command.execute();
+
+        assertEquals("A n/B", manager.getById(1).getDescription());
+    }
+
+    @Test
     public void parseAdd_missingDescription_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
 
@@ -608,6 +623,20 @@ class ActivityCommandParserTest {
         parser.parseEdit(manager, "1 note/   ").execute();
 
         assertNull(manager.getById(1).getNote());
+    }
+
+    @Test
+    public void parseEdit_markerSuppliedTwice_firstOccurrenceValueAbsorbsTheSecond() throws Exception {
+        // Pinning test, not a bug fix: same boundary-based extraction behaviour as add's
+        // equivalent test, exercised through edit's any-order field map instead.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        parser.parseEdit(manager, "1 n/X n/Y").execute();
+
+        assertEquals("X n/Y", manager.getById(1).getDescription());
     }
 
     @Test

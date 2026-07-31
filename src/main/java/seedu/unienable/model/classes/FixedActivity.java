@@ -37,20 +37,24 @@ public class FixedActivity extends Activity {
         this.endTime = endTime;
     }
 
+    /** Returns the confirmed start time. */
     public LocalTime getStartTime() {
         return startTime;
     }
 
+    /** Sets the confirmed start time. */
     public void setStartTime(LocalTime startTime) {
         logger.log(Level.INFO, "Updating start time for activity [" + getId() + "] from '"
                 + this.startTime + "' to '" + startTime + "'.");
         this.startTime = startTime;
     }
 
+    /** Returns the confirmed end time. */
     public LocalTime getEndTime() {
         return endTime;
     }
 
+    /** Sets the confirmed end time. */
     public void setEndTime(LocalTime endTime) {
         logger.log(Level.INFO, "Updating end time for activity [" + getId() + "] from '"
                 + this.endTime + "' to '" + endTime + "'.");

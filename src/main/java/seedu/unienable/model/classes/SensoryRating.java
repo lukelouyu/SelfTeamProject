@@ -27,6 +27,7 @@ public class SensoryRating {
         return new SensoryRating(value);
     }
 
+    /** Returns the validated rating, from 1 to 5. */
     public int getValue() {
         return value;
     }

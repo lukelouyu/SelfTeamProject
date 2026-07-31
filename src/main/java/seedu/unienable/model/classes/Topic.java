@@ -23,10 +23,12 @@ public class Topic {
         this.name = name;
     }
 
+    /** Returns the fixed category this topic belongs to. */
     public ActivityCategory getCategory() {
         return category;
     }
 
+    /** Returns the topic name. */
     public String getName() {
         return name;
     }

@@ -50,84 +50,101 @@ public abstract class Activity {
     /** Returns whether this activity has a confirmed time or a flexible window. */
     public abstract ScheduleType getScheduleType();
 
+    /** Returns the stable activity ID. */
     public int getId() {
         return id;
     }
 
+    /** Returns the activity description. */
     public String getDescription() {
         return description;
     }
 
+    /** Sets the activity description. */
     public void setDescription(String description) {
         logger.log(Level.INFO, "Updating description for activity [" + id + "] from '"
                 + this.description + "' to '" + description + "'.");
         this.description = description;
     }
 
+    /** Returns the fixed top-level category. */
     public ActivityCategory getCategory() {
         return category;
     }
 
+    /** Sets the fixed top-level category. */
     public void setCategory(ActivityCategory category) {
         logger.log(Level.INFO, "Updating category for activity [" + id + "] from '"
                 + this.category + "' to '" + category + "'.");
         this.category = category;
     }
 
+    /** Returns the activity date. */
     public LocalDate getDate() {
         return date;
     }
 
+    /** Sets the activity date. */
     public void setDate(LocalDate date) {
         logger.log(Level.INFO, "Updating date for activity [" + id + "] from '"
                 + this.date + "' to '" + date + "'.");
         this.date = date;
     }
 
+    /** Returns the energy-demand rating. */
     public EnergyRating getEnergyRating() {
         return energyRating;
     }
 
+    /** Sets the energy-demand rating. */
     public void setEnergyRating(EnergyRating energyRating) {
         logger.log(Level.INFO, "Updating energy rating for activity [" + id + "] from '"
                 + this.energyRating + "' to '" + energyRating + "'.");
         this.energyRating = energyRating;
     }
 
+    /** Returns the sensory-load rating. */
     public SensoryRating getSensoryRating() {
         return sensoryRating;
     }
 
+    /** Sets the sensory-load rating. */
     public void setSensoryRating(SensoryRating sensoryRating) {
         logger.log(Level.INFO, "Updating sensory rating for activity [" + id + "] from '"
                 + this.sensoryRating + "' to '" + sensoryRating + "'.");
         this.sensoryRating = sensoryRating;
     }
 
+    /** Returns the optional topic name, or null if none. */
     public String getTopic() {
         return topic;
     }
 
+    /** Sets the optional topic name, or null to clear it. */
     public void setTopic(String topic) {
         logger.log(Level.INFO, "Updating topic for activity [" + id + "] from '"
                 + this.topic + "' to '" + topic + "'.");
         this.topic = topic;
     }
 
+    /** Returns the optional preparation note, or null if none. */
     public String getNote() {
         return note;
     }
 
+    /** Sets the optional preparation note, or null to clear it. */
     public void setNote(String note) {
         logger.log(Level.INFO, "Updating note for activity [" + id + "] from '"
                 + this.note + "' to '" + note + "'.");
         this.note = note;
     }
 
+    /** Returns the completion status. */
     public CompletionStatus getStatus() {
         return status;
     }
 
+    /** Returns whether this activity is marked complete. */
     public boolean isComplete() {
         return status == CompletionStatus.COMPLETE;
     }

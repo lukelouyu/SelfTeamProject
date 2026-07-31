@@ -13,6 +13,14 @@ public class ActivityFilter {
     private final String topic;
     private final LocalDate date;
 
+    /**
+     * Creates an ActivityFilter. Any parameter left null means "no filter" for that field.
+     *
+     * @param status required completion status, or null
+     * @param category required category, or null
+     * @param topic required topic name (matched case-insensitively), or null
+     * @param date required date, or null
+     */
     public ActivityFilter(CompletionStatus status, ActivityCategory category, String topic, LocalDate date) {
         this.status = status;
         this.category = category;

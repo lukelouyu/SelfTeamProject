@@ -15,6 +15,11 @@ import seedu.unienable.exception.InvalidIndexException;
 public class FacilityManager {
     private final List<Facility> facilities;
 
+    /**
+     * Creates a FacilityManager over an immutable copy of the given facilities.
+     *
+     * @param facilities the loaded facility records, in load order
+     */
     public FacilityManager(List<Facility> facilities) {
         this.facilities = List.copyOf(facilities);
     }

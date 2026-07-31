@@ -17,6 +17,12 @@ public class TopicManager {
     private final Map<ActivityCategory, List<Topic>> topicsByCategory = new LinkedHashMap<>();
     private final ActivityManager activityManager;
 
+    /**
+     * Creates a TopicManager with an empty topic list for every fixed category.
+     *
+     * @param activityManager the manager whose activities are consulted and updated when topics
+     *     are renamed or deleted
+     */
     public TopicManager(ActivityManager activityManager) {
         this.activityManager = activityManager;
         for (ActivityCategory category : ActivityCategory.values()) {

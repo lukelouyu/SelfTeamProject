@@ -12,6 +12,11 @@ import seedu.unienable.exception.InvalidIndexException;
 public class ConnectionManager {
     private final List<Connection> connections;
 
+    /**
+     * Creates a ConnectionManager over an immutable copy of the given connections.
+     *
+     * @param connections the loaded connection records, in load order
+     */
     public ConnectionManager(List<Connection> connections) {
         this.connections = List.copyOf(connections);
     }

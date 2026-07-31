@@ -32,7 +32,7 @@ class AddCommandTest {
         assertEquals(1, manager.size());
         String feedback = result.getFeedback();
         assertTrue(feedback.contains("Got it. Activity [1] has been added:"));
-        assertTrue(feedback.contains("[ ][F] 2026-08-15 09:00–11:00 | CG3207 lecture"));
+        assertTrue(feedback.contains("[ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 lecture"));
         assertTrue(feedback.contains("ACADEMIC / CG3207 | Energy 4/5 | Sensory 3/5"));
         assertTrue(feedback.contains("You now have 1 activities."));
     }
@@ -47,7 +47,7 @@ class AddCommandTest {
         CommandResult result = new AddCommand(manager, activity).execute();
 
         String feedback = result.getFeedback();
-        assertTrue(feedback.contains("[ ][L] 2026-08-15 10:00–18:00 | Finish assignment 1"));
+        assertTrue(feedback.contains("[ ][L] 2026-08-15 10:00 -> 18:00 | Finish assignment 1"));
         assertTrue(feedback.contains("Duration 90 min | ACADEMIC / CG3207"));
         assertTrue(feedback.contains("Energy 5/5 | Sensory 2/5"));
     }

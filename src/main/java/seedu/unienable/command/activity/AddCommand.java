@@ -41,12 +41,12 @@ public class AddCommand extends Command {
         String topicSuffix = activity.getTopic() == null ? "" : " / " + activity.getTopic();
         if (activity instanceof FixedActivity) {
             FixedActivity fixed = (FixedActivity) activity;
-            return "[" + statusSymbol + "][F] " + fixed.getDate() + " " + fixed.getStartTime() + "–"
+            return "[" + statusSymbol + "][F] " + fixed.getDate() + " " + fixed.getStartTime() + " -> "
                     + fixed.getEndTime() + " | " + fixed.getDescription() + "\n       " + fixed.getCategory()
                     + topicSuffix + " | Energy " + fixed.getEnergyRating() + " | Sensory " + fixed.getSensoryRating();
         }
         FlexibleActivity flexible = (FlexibleActivity) activity;
-        return "[" + statusSymbol + "][L] " + flexible.getDate() + " " + flexible.getEarliestStart() + "–"
+        return "[" + statusSymbol + "][L] " + flexible.getDate() + " " + flexible.getEarliestStart() + " -> "
                 + flexible.getLatestEnd() + " | " + flexible.getDescription() + "\n       Duration "
                 + flexible.getDurationMinutes() + " min | " + flexible.getCategory() + topicSuffix
                 + "\n       Energy " + flexible.getEnergyRating() + " | Sensory " + flexible.getSensoryRating();

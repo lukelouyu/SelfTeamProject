@@ -364,14 +364,14 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [1] has been added:
-[ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
        ACADEMIC / CG3207 | Energy 1/5 | Sensory 1/5
 
 You now have 1 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [2] has been added:
-[ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
        Duration 90 min | ACADEMIC / CS2113
        Energy 5/5 | Sensory 5/5
 
@@ -379,14 +379,14 @@ You now have 2 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [3] has been added:
-[ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
        CCA / Basketball Club | Energy 3/5 | Sensory 2/5
 
 You now have 3 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [4] has been added:
-[ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
        Duration 120 min | WORK_INTERNSHIP / Internship
        Energy 2/5 | Sensory 1/5
 
@@ -394,21 +394,21 @@ You now have 4 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [5] has been added:
-[ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
        OTHERS | Energy 4/5 | Sensory 4/5
 
 You now have 5 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [6] has been added:
-[ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
        ACADEMIC | Energy 1/5 | Sensory 5/5
 
 You now have 6 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [7] has been added:
-[ ][L] 2026-08-17 07:00–09:00 | Gym session
+[ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
        Duration 60 min | CCA
        Energy 5/5 | Sensory 1/5
 
@@ -416,14 +416,14 @@ You now have 7 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [8] has been added:
-[ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
        OTHERS | Energy 3/5 | Sensory 3/5
 
 You now have 8 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [9] has been added:
-[ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
        ACADEMIC | Energy 2/5 | Sensory 2/5
 
 You now have 9 activities.
@@ -487,28 +487,28 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 Here are 9 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [10] has been added:
-[ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
        Duration 60 min | ACADEMIC
        Energy 2/5 | Sensory 2/5
 
@@ -519,7 +519,7 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [11] has been added:
-[ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
        Duration 45 min | ACADEMIC
        Energy 2/5 | Sensory 2/5
 
@@ -527,50 +527,50 @@ You now have 11 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [12] has been added:
-[ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
        ACADEMIC | Energy 2/5 | Sensory 2/5
 
 You now have 12 activities.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00–12:00).
+[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00 -> 12:00).
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00–12:00).
+[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00 -> 12:00).
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00–12:00).
+[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00 -> 12:00).
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00–12:00).
+[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00 -> 12:00).
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00–12:00).
+[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00 -> 12:00).
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [13] has been added:
-[ ][F] 2026-08-20 12:00–13:00 | Touches end
+[ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
        ACADEMIC | Energy 2/5 | Sensory 2/5
 
 You now have 13 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [14] has been added:
-[ ][F] 2026-08-20 08:00–10:00 | Touches start
+[ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
        ACADEMIC | Energy 2/5 | Sensory 2/5
 
 You now have 14 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [15] has been added:
-[ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
        ACADEMIC | Energy 2/5 | Sensory 2/5
 
 You now have 15 activities.
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [16] has been added:
-[ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
        Duration 60 min | ACADEMIC
        Energy 2/5 | Sensory 2/5
 
@@ -578,226 +578,226 @@ You now have 16 activities.
 ____________________________________________________________
 ____________________________________________________________
 Here are 4 matching activities:
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
 [1] CG3207 Lecture
 Status: Incomplete | Type: FIXED | Date: 2026-08-15
-Time: 09:00–11:00 | Category: ACADEMIC | Topic: CG3207
+Time: 09:00 -> 11:00 | Category: ACADEMIC | Topic: CG3207
 Energy: 1/5 | Sensory: 1/5 | Note: Bring laptop and charger
 [2] Finish assignment 1
 Status: Incomplete | Type: FLEXIBLE | Date: 2026-08-15
-Window: 12:00–18:00 | Duration: 90 min
+Window: 12:00 -> 18:00 | Duration: 90 min
 Category: ACADEMIC | Topic: CS2113
 Energy: 5/5 | Sensory: 5/5 | Note: None
 [3] Basketball practice
 Status: Incomplete | Type: FIXED | Date: 2026-08-15
-Time: 18:00–20:00 | Category: CCA | Topic: Basketball Club
+Time: 18:00 -> 20:00 | Category: CCA | Topic: Basketball Club
 Energy: 3/5 | Sensory: 2/5 | Note: Bring water, ID card & $5 for snacks (optional)
 [4] Prepare intern report
 Status: Incomplete | Type: FLEXIBLE | Date: 2026-08-16
-Window: 09:00–17:00 | Duration: 120 min
+Window: 09:00 -> 17:00 | Duration: 120 min
 Category: WORK_INTERNSHIP | Topic: Internship
 Energy: 2/5 | Sensory: 1/5 | Note: None
 [5] Dentist appointment
 Status: Incomplete | Type: FIXED | Date: 2026-08-16
-Time: 14:00–15:00 | Category: OTHERS
+Time: 14:00 -> 15:00 | Category: OTHERS
 Energy: 4/5 | Sensory: 4/5 | Note: None
 [7] Gym session
 Status: Incomplete | Type: FLEXIBLE | Date: 2026-08-17
-Window: 07:00–09:00 | Duration: 60 min
+Window: 07:00 -> 09:00 | Duration: 60 min
 Category: CCA
 Energy: 5/5 | Sensory: 1/5 | Note: None
 [6] CS2113 Tutorial
 Status: Incomplete | Type: FIXED | Date: 2026-08-17
-Time: 10:00–11:00 | Category: ACADEMIC
+Time: 10:00 -> 11:00 | Category: ACADEMIC
 Energy: 1/5 | Sensory: 5/5 | Note: Discuss project milestones
 [8] This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
 Status: Incomplete | Type: FIXED | Date: 2026-08-18
-Time: 08:00–09:00 | Category: OTHERS
+Time: 08:00 -> 09:00 | Category: OTHERS
 Energy: 3/5 | Sensory: 3/5 | Note: None
 [9] Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
 Status: Incomplete | Type: FIXED | Date: 2026-08-18
-Time: 11:00–12:00 | Category: ACADEMIC
+Time: 11:00 -> 12:00 | Category: ACADEMIC
 Energy: 2/5 | Sensory: 2/5 | Note: None
 [10] Exact-fit task
 Status: Incomplete | Type: FLEXIBLE | Date: 2026-08-19
-Window: 10:00–11:00 | Duration: 60 min
+Window: 10:00 -> 11:00 | Duration: 60 min
 Category: ACADEMIC
 Energy: 2/5 | Sensory: 2/5 | Note: None
 [11] Exact-fit task
 Status: Incomplete | Type: FLEXIBLE | Date: 2026-08-19
-Window: 10:00–11:00 | Duration: 45 min
+Window: 10:00 -> 11:00 | Duration: 45 min
 Category: ACADEMIC
 Energy: 2/5 | Sensory: 2/5 | Note: None
 [14] Touches start
 Status: Incomplete | Type: FIXED | Date: 2026-08-20
-Time: 08:00–10:00 | Category: ACADEMIC
+Time: 08:00 -> 10:00 | Category: ACADEMIC
 Energy: 2/5 | Sensory: 2/5 | Note: None
 [12] Overlap base
 Status: Incomplete | Type: FIXED | Date: 2026-08-20
-Time: 10:00–12:00 | Category: ACADEMIC
+Time: 10:00 -> 12:00 | Category: ACADEMIC
 Energy: 2/5 | Sensory: 2/5 | Note: None
 [16] Flexible same window
 Status: Incomplete | Type: FLEXIBLE | Date: 2026-08-20
-Window: 10:00–12:00 | Duration: 60 min
+Window: 10:00 -> 12:00 | Duration: 60 min
 Category: ACADEMIC
 Energy: 2/5 | Sensory: 2/5 | Note: None
 [13] Touches end
 Status: Incomplete | Type: FIXED | Date: 2026-08-20
-Time: 12:00–13:00 | Category: ACADEMIC
+Time: 12:00 -> 13:00 | Category: ACADEMIC
 Energy: 2/5 | Sensory: 2/5 | Note: None
 [15] Different date same time
 Status: Incomplete | Type: FIXED | Date: 2026-08-21
-Time: 10:00–12:00 | Category: ACADEMIC
+Time: 10:00 -> 12:00 | Category: ACADEMIC
 Energy: 2/5 | Sensory: 2/5 | Note: None
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
@@ -805,46 +805,46 @@ No activities found.
 ____________________________________________________________
 ____________________________________________________________
 Here are 11 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
 Here are 2 matching activities:
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
 ____________________________________________________________
 ____________________________________________________________
 Here are 1 matching activity:
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
 ____________________________________________________________
 ____________________________________________________________
 Here are 2 matching activities:
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
 ____________________________________________________________
 ____________________________________________________________
@@ -852,12 +852,12 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 Here are 1 matching activity:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
 ____________________________________________________________
 ____________________________________________________________
 Here are 1 matching activity:
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
 ____________________________________________________________
 ____________________________________________________________
@@ -865,22 +865,22 @@ No activities found.
 ____________________________________________________________
 ____________________________________________________________
 Here are 3 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
 ____________________________________________________________
 ____________________________________________________________
 Here are 4 matching activities:
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
@@ -888,7 +888,7 @@ No activities found.
 ____________________________________________________________
 ____________________________________________________________
 Here are 1 matching activity:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
 ____________________________________________________________
 ____________________________________________________________
@@ -896,107 +896,107 @@ No activities found.
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
@@ -1016,37 +1016,37 @@ Activities are ordered by start time, then ID.
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
 ____________________________________________________________
 ____________________________________________________________
@@ -1059,37 +1059,37 @@ Activities are ordered by input (creation) order.
 ____________________________________________________________
 ____________________________________________________________
 Here are 16 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
@@ -1109,32 +1109,32 @@ Activities are ordered by date, then start time, then ID.
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
 ____________________________________________________________
 ____________________________________________________________
@@ -1142,24 +1142,24 @@ No activities found.
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[1][ ][F] 2026-08-15 09:00–11:00 | CG3207 Lecture
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 Lecture
              ACADEMIC / CG3207 | E1 | S1
 ____________________________________________________________
 ____________________________________________________________
 Found 2 activities:
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
 ____________________________________________________________
 ____________________________________________________________
 Found 1 activity:
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
 ____________________________________________________________
 ____________________________________________________________
@@ -1252,7 +1252,7 @@ After : end = 11:30
 Save changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00–12:00).
+[Error] Conflict: This timing overlaps activity [12], Overlap base (10:00 -> 12:00).
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: sensory must be a whole number from 1 to 5.
@@ -1301,7 +1301,7 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 You selected activity [5]:
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
 
 Delete this activity? (y/n)
@@ -1311,7 +1311,7 @@ Cancelled. No changes were made.
 ____________________________________________________________
 ____________________________________________________________
 You selected activity [5]:
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
 
 Delete this activity? (y/n)
@@ -1321,7 +1321,7 @@ Cancelled. No changes were made.
 ____________________________________________________________
 ____________________________________________________________
 You selected activity [5]:
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
 
 Delete this activity? (y/n)
@@ -1331,7 +1331,7 @@ Cancelled. No changes were made.
 ____________________________________________________________
 ____________________________________________________________
 You selected activity [5]:
-[5][ ][F] 2026-08-16 14:00–15:00 | Dentist appointment
+[5][ ][F] 2026-08-16 14:00 -> 15:00 | Dentist appointment
              OTHERS | E4 | S4
 
 Delete this activity? (y/n)
@@ -1348,35 +1348,35 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 Here are 15 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | New name n/Another name
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | New name n/Another name
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1 REVISED
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1 REVISED
              ACADEMIC / CS2113 | 120 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[6][ ][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][ ][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
@@ -1404,38 +1404,38 @@ Nice! Activity [6] is now complete:
 ____________________________________________________________
 ____________________________________________________________
 Here are 1 matching activity:
-[6][X][F] 2026-08-17 10:00–11:00 | CS2113 Tutorial
+[6][X][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
              ACADEMIC | E1 | S5
 ____________________________________________________________
 ____________________________________________________________
 Here are 14 matching activities:
-[1][ ][F] 2026-08-15 09:00–11:00 | New name n/Another name
+[1][ ][F] 2026-08-15 09:00 -> 11:00 | New name n/Another name
              ACADEMIC / CG3207 | E1 | S1
-[2][ ][L] 2026-08-15 12:00–18:00 | Finish assignment 1 REVISED
+[2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1 REVISED
              ACADEMIC / CS2113 | 120 min | E5 | S5
-[3][ ][F] 2026-08-15 18:00–20:00 | Basketball practice
+[3][ ][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
              CCA / Basketball Club | E3 | S2
-[4][ ][L] 2026-08-16 09:00–17:00 | Prepare intern report
+[4][ ][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
              WORK_INTERNSHIP / Internship | 120 min | E2 | S1
-[7][ ][L] 2026-08-17 07:00–09:00 | Gym session
+[7][ ][L] 2026-08-17 07:00 -> 09:00 | Gym session
              CCA | 60 min | E5 | S1
-[8][ ][F] 2026-08-18 08:00–09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+[8][ ][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
              OTHERS | E3 | S3
-[9][ ][F] 2026-08-18 11:00–12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+[9][ ][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
              ACADEMIC | E2 | S2
-[10][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[10][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 60 min | E2 | S2
-[11][ ][L] 2026-08-19 10:00–11:00 | Exact-fit task
+[11][ ][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
              ACADEMIC | 45 min | E2 | S2
-[14][ ][F] 2026-08-20 08:00–10:00 | Touches start
+[14][ ][F] 2026-08-20 08:00 -> 10:00 | Touches start
              ACADEMIC | E2 | S2
-[12][ ][F] 2026-08-20 10:00–12:00 | Overlap base
+[12][ ][F] 2026-08-20 10:00 -> 12:00 | Overlap base
              ACADEMIC | E2 | S2
-[16][ ][L] 2026-08-20 10:00–12:00 | Flexible same window
+[16][ ][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
              ACADEMIC | 60 min | E2 | S2
-[13][ ][F] 2026-08-20 12:00–13:00 | Touches end
+[13][ ][F] 2026-08-20 12:00 -> 13:00 | Touches end
              ACADEMIC | E2 | S2
-[15][ ][F] 2026-08-21 10:00–12:00 | Different date same time
+[15][ ][F] 2026-08-21 10:00 -> 12:00 | Different date same time
              ACADEMIC | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
@@ -1504,35 +1504,35 @@ Overdue incomplete activities: 0
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [17] has been added:
-[ ][F] 2099-01-01 09:00–10:00 | Far future fixed
+[ ][F] 2099-01-01 09:00 -> 10:00 | Far future fixed
        ACADEMIC | Energy 3/5 | Sensory 3/5
 
 You now have 16 activities.
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
-[17][ ][F] 2099-01-01 09:00–10:00 | Far future fixed
+[17][ ][F] 2099-01-01 09:00 -> 10:00 | Far future fixed
              ACADEMIC | E3 | S3
 
 Overdue incomplete activities: 0
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [18] has been added:
-[ ][F] 2098-06-01 09:00–10:00 | Sooner future fixed
+[ ][F] 2098-06-01 09:00 -> 10:00 | Sooner future fixed
        ACADEMIC | Energy 3/5 | Sensory 3/5
 
 You now have 17 activities.
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
-[18][ ][F] 2098-06-01 09:00–10:00 | Sooner future fixed
+[18][ ][F] 2098-06-01 09:00 -> 10:00 | Sooner future fixed
              ACADEMIC | E3 | S3
 
 Overdue incomplete activities: 0
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [19] has been added:
-[ ][L] 2099-06-01 09:00–17:00 | Far future flexible
+[ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
        Duration 60 min | ACADEMIC
        Energy 2/5 | Sensory 2/5
 
@@ -1540,7 +1540,7 @@ You now have 18 activities.
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
-[18][ ][F] 2098-06-01 09:00–10:00 | Sooner future fixed
+[18][ ][F] 2098-06-01 09:00 -> 10:00 | Sooner future fixed
              ACADEMIC | E3 | S3
 
 Overdue incomplete activities: 0
@@ -1551,7 +1551,7 @@ Nice! Activity [18] is now complete:
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
-[17][ ][F] 2099-01-01 09:00–10:00 | Far future fixed
+[17][ ][F] 2099-01-01 09:00 -> 10:00 | Far future fixed
              ACADEMIC | E3 | S3
 
 Overdue incomplete activities: 0
@@ -1562,28 +1562,28 @@ Nice! Activity [17] is now complete:
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
-[19][ ][L] 2099-06-01 09:00–17:00 | Far future flexible
+[19][ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
              ACADEMIC | 60 min | E2 | S2
 
 Overdue incomplete activities: 0
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [20] has been added:
-[ ][F] 2000-01-01 09:00–10:00 | Far past overdue
+[ ][F] 2000-01-01 09:00 -> 10:00 | Far past overdue
        ACADEMIC | Energy 1/5 | Sensory 1/5
 
 You now have 19 activities.
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
-[19][ ][L] 2099-06-01 09:00–17:00 | Far future flexible
+[19][ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
              ACADEMIC | 60 min | E2 | S2
 
 Overdue incomplete activities: 1
 ____________________________________________________________
 ____________________________________________________________
 Got it. Activity [21] has been added:
-[ ][L] 2000-01-01 09:00–10:00 | Far past overdue flexible
+[ ][L] 2000-01-01 09:00 -> 10:00 | Far past overdue flexible
        Duration 30 min | CCA
        Energy 1/5 | Sensory 1/5
 
@@ -1591,7 +1591,7 @@ You now have 20 activities.
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
-[19][ ][L] 2099-06-01 09:00–17:00 | Far future flexible
+[19][ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
              ACADEMIC | 60 min | E2 | S2
 
 Overdue incomplete activities: 2
@@ -1606,7 +1606,7 @@ Nice! Activity [21] is now complete:
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
-[19][ ][L] 2099-06-01 09:00–17:00 | Far future flexible
+[19][ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
              ACADEMIC | 60 min | E2 | S2
 
 Overdue incomplete activities: 0

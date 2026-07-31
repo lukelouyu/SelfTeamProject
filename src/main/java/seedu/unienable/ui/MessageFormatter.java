@@ -53,10 +53,10 @@ public class MessageFormatter {
                 .append('[').append(typeSymbol).append("] ").append(activity.getDate()).append(' ');
         if (activity instanceof FixedActivity) {
             FixedActivity fixed = (FixedActivity) activity;
-            result.append(fixed.getStartTime()).append("–").append(fixed.getEndTime());
+            result.append(fixed.getStartTime()).append(" -> ").append(fixed.getEndTime());
         } else {
             FlexibleActivity flexible = (FlexibleActivity) activity;
-            result.append(flexible.getEarliestStart()).append("–").append(flexible.getLatestEnd());
+            result.append(flexible.getEarliestStart()).append(" -> ").append(flexible.getLatestEnd());
         }
         result.append(" | ").append(activity.getDescription()).append("\n             ")
                 .append(activity.getCategory()).append(topicSuffix);
@@ -82,13 +82,13 @@ public class MessageFormatter {
                 .append(" | Date: ").append(activity.getDate()).append('\n');
         if (activity instanceof FixedActivity) {
             FixedActivity fixed = (FixedActivity) activity;
-            result.append("Time: ").append(fixed.getStartTime()).append("–").append(fixed.getEndTime())
+            result.append("Time: ").append(fixed.getStartTime()).append(" -> ").append(fixed.getEndTime())
                     .append(" | Category: ").append(fixed.getCategory());
             appendTopicSuffix(result, fixed.getTopic());
             result.append('\n');
         } else {
             FlexibleActivity flexible = (FlexibleActivity) activity;
-            result.append("Window: ").append(flexible.getEarliestStart()).append("–")
+            result.append("Window: ").append(flexible.getEarliestStart()).append(" -> ")
                     .append(flexible.getLatestEnd()).append(" | Duration: ")
                     .append(flexible.getDurationMinutes()).append(" min\n");
             result.append("Category: ").append(flexible.getCategory());

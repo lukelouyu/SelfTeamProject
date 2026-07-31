@@ -109,7 +109,7 @@ class ActivityManagerTest {
         DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
                 () -> manager.add(newFixedActivity(manager.getNextId(), "Consultation",
                         LocalTime.of(10, 30), LocalTime.of(11, 30))));
-        assertEquals("This timing overlaps activity [1], CG3207 lecture (09:00–11:00).", exception.getMessage());
+        assertEquals("This timing overlaps activity [1], CG3207 lecture (09:00 -> 11:00).", exception.getMessage());
     }
 
     @Test

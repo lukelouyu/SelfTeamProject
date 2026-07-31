@@ -18,7 +18,7 @@ import seedu.unienable.model.enums.ActivityOrder;
 /** Manages the in-memory collection of activities: stable ID assignment plus basic CRUD access. */
 public class ActivityManager {
     private static final String DUPLICATE_MESSAGE = "An identical activity already exists.";
-    private static final String OVERLAP_MESSAGE = "This timing overlaps activity [%d], %s (%s–%s).";
+    private static final String OVERLAP_MESSAGE = "This timing overlaps activity [%d], %s (%s -> %s).";
 
     private final List<Activity> activities = new ArrayList<>();
     private int nextId = 1;

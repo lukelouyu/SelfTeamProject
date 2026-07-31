@@ -114,7 +114,7 @@ Output:
 ```text
 ____________________________________________________________
 Got it. Activity [1] has been added:
-[ ][F] 2026-08-15 09:00–11:00 | CG3207 lecture
+[ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 lecture
        ACADEMIC | Energy 4/5 | Sensory 3/5
 
 You now have 1 activities.
@@ -150,7 +150,7 @@ Output:
 ```text
 ____________________________________________________________
 Got it. Activity [2] has been added:
-[ ][L] 2026-08-15 10:00–18:00 | Finish assignment 1
+[ ][L] 2026-08-15 10:00 -> 18:00 | Finish assignment 1
        Duration 90 min | ACADEMIC
        Energy 5/5 | Sensory 2/5
 
@@ -273,7 +273,7 @@ delete ID
 ```text
 ____________________________________________________________
 You selected activity [8]:
-[8][ ][F] 2026-08-16 10:00–11:00 | Internship briefing
+[8][ ][F] 2026-08-16 10:00 -> 11:00 | Internship briefing
              WORK_INTERNSHIP | E3 | S2
 
 Delete this activity? (y/n)
@@ -321,7 +321,7 @@ next
 ```text
 ____________________________________________________________
 Your next relevant activity is:
-[12][ ][F] 2026-08-15 09:00–11:00 | CG3207 lecture
+[12][ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 lecture
              ACADEMIC | E4 | S3
 
 Overdue incomplete activities: 1

@@ -73,6 +73,31 @@ class TopicManagerTest {
     }
 
     @Test
+    public void getAll_returnsEveryTopicInCategoryOrder() throws Exception {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.CCA, "Basketball Club");
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+        manager.add(ActivityCategory.ACADEMIC, "CS2113");
+
+        List<Topic> all = manager.getAll();
+
+        assertEquals(3, all.size());
+        assertEquals(ActivityCategory.ACADEMIC, all.get(0).getCategory());
+        assertEquals("CG3207", all.get(0).getName());
+        assertEquals(ActivityCategory.ACADEMIC, all.get(1).getCategory());
+        assertEquals("CS2113", all.get(1).getName());
+        assertEquals(ActivityCategory.CCA, all.get(2).getCategory());
+        assertEquals("Basketball Club", all.get(2).getName());
+    }
+
+    @Test
+    public void getAll_noTopics_isEmpty() {
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertTrue(manager.getAll().isEmpty());
+    }
+
+    @Test
     public void exists_unknownTopic_returnsFalse() {
         TopicManager manager = new TopicManager(new ActivityManager());
 

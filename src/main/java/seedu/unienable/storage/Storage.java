@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityOrder;
 
 /**
@@ -64,23 +66,34 @@ public class Storage {
     }
 
     /**
-     * Loads topic records from topics.txt.
+     * Loads topics from topics.txt. Converts internally between the file format's
+     * {@link TopicStorage.TopicRecord} pairs and the domain {@link Topic} class, so callers never
+     * need to know about the storage-level record type.
      *
-     * @return the loaded topic records plus warnings for any skipped malformed lines
+     * @return the loaded topics plus warnings for any skipped malformed lines
      * @throws StorageException if the file cannot be read
      */
-    public LoadResult<TopicStorage.TopicRecord> loadTopics() throws StorageException {
-        return topicStorage.load(topicsFile);
+    public LoadResult<Topic> loadTopics() throws StorageException {
+        LoadResult<TopicStorage.TopicRecord> recordResult = topicStorage.load(topicsFile);
+        List<Topic> topics = new ArrayList<>();
+        for (TopicStorage.TopicRecord record : recordResult.getRecords()) {
+            topics.add(new Topic(record.getCategory(), record.getName()));
+        }
+        return new LoadResult<>(topics, recordResult.getWarnings());
     }
 
     /**
-     * Saves the given topic records to topics.txt.
+     * Saves the given topics to topics.txt.
      *
-     * @param topics the topic records to save
+     * @param topics the topics to save
      * @throws StorageException if a field contains the '|' delimiter, or the file cannot be written
      */
-    public void saveTopics(List<TopicStorage.TopicRecord> topics) throws StorageException {
-        topicStorage.save(topicsFile, topics);
+    public void saveTopics(List<Topic> topics) throws StorageException {
+        List<TopicStorage.TopicRecord> records = new ArrayList<>();
+        for (Topic topic : topics) {
+            records.add(new TopicStorage.TopicRecord(topic.getCategory(), topic.getName()));
+        }
+        topicStorage.save(topicsFile, records);
     }
 
     /**

@@ -3,8 +3,6 @@ package seedu.unienable.app;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,12 +19,10 @@ import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.Topic;
-import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.parser.CommandDispatcher;
 import seedu.unienable.storage.LoadResult;
 import seedu.unienable.storage.Storage;
-import seedu.unienable.storage.TopicStorage;
 import seedu.unienable.ui.Ui;
 
 /**
@@ -106,13 +102,13 @@ public class ApplicationRunner {
         try {
             storage.prepareDataFiles();
             LoadResult<Activity> activityLoad = storage.loadActivities();
-            LoadResult<TopicStorage.TopicRecord> topicLoad = storage.loadTopics();
+            LoadResult<Topic> topicLoad = storage.loadTopics();
             LoadResult<Facility> facilityLoad = storage.loadFacilities();
             LoadResult<Connection> connectionLoad = storage.loadConnections();
             LoadResult<ActivityOrder> settingsLoad = storage.loadSettings();
 
             activityManager.loadAll(activityLoad.getRecords());
-            topicManager.loadAll(toTopics(topicLoad.getRecords()));
+            topicManager.loadAll(topicLoad.getRecords());
             facilityManager = new FacilityManager(facilityLoad.getRecords());
             connectionManager = new ConnectionManager(connectionLoad.getRecords());
             activityManager.setDefaultOrder(settingsLoad.getRecords().get(0));
@@ -194,25 +190,7 @@ public class ApplicationRunner {
      */
     private void saveApplicationState() throws StorageException {
         storage.saveActivities(activityManager.getAll());
-        storage.saveTopics(toRecords(topicManager));
+        storage.saveTopics(topicManager.getAll());
         storage.saveSettings(activityManager.getDefaultOrder());
-    }
-
-    private static List<Topic> toTopics(List<TopicStorage.TopicRecord> records) {
-        List<Topic> topics = new ArrayList<>();
-        for (TopicStorage.TopicRecord record : records) {
-            topics.add(new Topic(record.getCategory(), record.getName()));
-        }
-        return topics;
-    }
-
-    private static List<TopicStorage.TopicRecord> toRecords(TopicManager topicManager) {
-        List<TopicStorage.TopicRecord> records = new ArrayList<>();
-        for (ActivityCategory category : ActivityCategory.values()) {
-            for (Topic topic : topicManager.list(category)) {
-                records.add(new TopicStorage.TopicRecord(topic.getCategory(), topic.getName()));
-            }
-        }
-        return records;
     }
 }

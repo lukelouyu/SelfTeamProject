@@ -1,6 +1,7 @@
 package seedu.unienable.command.general;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import seedu.unienable.command.Command;
@@ -64,7 +65,7 @@ public class GuideCommand extends Command {
         if (topic.equals("10")) {
             return new CommandResult(RETURN_MESSAGE);
         }
-        String text = TOPICS.get(resolveMenuNumber(topic).toLowerCase());
+        String text = TOPICS.get(resolveMenuNumber(topic).toLowerCase(Locale.ROOT));
         if (text == null) {
             return new CommandResult("No guide topic named \"" + topic + "\". Enter guide to see the list "
                     + "of topics.");

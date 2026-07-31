@@ -1,6 +1,7 @@
 package seedu.unienable.parser;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.general.ExitCommand;
@@ -161,11 +162,14 @@ public class CommandDispatcher {
     /**
      * Splits "SUBCOMMAND rest of args" into its two parts. Blank input maps to an empty
      * sub-command, so a missing sub-command falls through to each dispatcher's default case
-     * rather than throwing here.
+     * rather than throwing here. The sub-command word is lower-cased (matching the top-level
+     * command word's own case-insensitivity, per {@link Parser#getCommandWord}) so "TOPIC ADD",
+     * "FaCiLiTy FiNd", etc. resolve the same as their lower-case form; the rest of the argument
+     * text is left in its original case since it may contain free text.
      */
     private String[] splitSubCommand(String args) {
         String trimmed = args.trim();
         String[] parts = trimmed.split("\\s+", 2);
-        return new String[] { parts[0], parts.length > 1 ? parts[1] : "" };
+        return new String[] { parts[0].toLowerCase(Locale.ROOT), parts.length > 1 ? parts[1] : "" };
     }
 }

@@ -1,5 +1,7 @@
 package seedu.unienable.parser.topic;
 
+import java.util.Locale;
+
 import seedu.unienable.command.topic.TopicAddCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;
 import seedu.unienable.command.topic.TopicListCommand;
@@ -93,7 +95,7 @@ public class TopicCommandParser {
 
     private ActivityCategory parseCategory(String text) throws InvalidActivityException {
         try {
-            return ActivityCategory.valueOf(text.toUpperCase());
+            return ActivityCategory.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidActivityException("category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.");
         }

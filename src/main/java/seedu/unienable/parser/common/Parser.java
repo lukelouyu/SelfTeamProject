@@ -1,5 +1,7 @@
 package seedu.unienable.parser.common;
 
+import java.util.Locale;
+
 /** Identifies the command word and remaining argument text from raw user input. */
 public class Parser {
     /**
@@ -9,7 +11,7 @@ public class Parser {
      * @return the command word, lower-cased
      */
     public static String getCommandWord(String input) {
-        return input.trim().split("\\s+", 2)[0].toLowerCase();
+        return input.trim().split("\\s+", 2)[0].toLowerCase(Locale.ROOT);
     }
 
     /**

@@ -222,6 +222,43 @@ class CommandDispatcherTest {
     }
 
     @Test
+    public void dispatch_uppercaseTopicSubCommand_returnsTopicAddCommand() throws Exception {
+        // Regression test: the top-level command word was already lower-cased before dispatch,
+        // but the nested sub-command word ("ADD" in "TOPIC ADD") was compared unchanged against
+        // lower-case literals in dispatchTopic()'s switch, so upper/mixed-case nested sub-commands
+        // were rejected as unknown even though the top-level word worked in any case.
+        assertTrue(dispatcher.dispatch("TOPIC ADD c/ACADEMIC n/CG3207", NOW) instanceof TopicAddCommand);
+    }
+
+    @Test
+    public void dispatch_mixedCaseTopicRename_returnsTopicRenameCommand() throws Exception {
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        assertTrue(dispatcher.dispatch("ToPiC ReNaMe c/ACADEMIC old/CG3207 new/CS3207", NOW)
+                instanceof TopicRenameCommand);
+    }
+
+    @Test
+    public void dispatch_uppercaseFacilitySubCommand_returnsFacilityListCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("FACILITY LIST", NOW) instanceof FacilityListCommand);
+    }
+
+    @Test
+    public void dispatch_mixedCaseFacilityFind_returnsFacilityFindCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("FaCiLiTy FiNd type/LIFT", NOW) instanceof FacilityFindCommand);
+    }
+
+    @Test
+    public void dispatch_uppercaseConnectionSubCommand_returnsConnectionListCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("CONNECTION LIST", NOW) instanceof ConnectionListCommand);
+    }
+
+    @Test
+    public void dispatch_mixedCaseConnectionView_returnsConnectionViewCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("CoNnEcTiOn ViEw 1", NOW) instanceof ConnectionViewCommand);
+    }
+
+    @Test
     public void dispatch_unknownCommand_throwsInvalidCommandException() {
         assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("banana", NOW));
     }

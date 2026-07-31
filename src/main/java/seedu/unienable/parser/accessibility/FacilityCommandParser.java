@@ -1,5 +1,7 @@
 package seedu.unienable.parser.accessibility;
 
+import java.util.Locale;
+
 import seedu.unienable.accessibility.classes.FacilityFeature;
 import seedu.unienable.accessibility.enums.AccessibilityStatus;
 import seedu.unienable.command.accessibility.FacilityFindCommand;
@@ -65,7 +67,7 @@ public class FacilityCommandParser {
 
     private FacilityFeature.Type parseType(String text) throws InvalidCommandException {
         try {
-            return FacilityFeature.Type.valueOf(text.toUpperCase());
+            return FacilityFeature.Type.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("type must be one of LIFT, RAMP, SHELTERED_RAMP, "
                     + "ACCESSIBLE_WASHROOM, STEP_FREE_ENTRANCE, REST_POINT, AUTOMATIC_DOOR, OTHER.");
@@ -74,7 +76,7 @@ public class FacilityCommandParser {
 
     private AccessibilityStatus parseStatus(String text) throws InvalidCommandException {
         try {
-            return AccessibilityStatus.valueOf(text.toUpperCase());
+            return AccessibilityStatus.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("status must be YES, NO, or UNKNOWN.");
         }

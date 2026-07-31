@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import seedu.unienable.exception.DuplicateActivityException;
@@ -273,14 +274,14 @@ public class ActivityManager {
     }
 
     private boolean matchesAnyField(Activity activity, String keyword) {
-        String lowerKeyword = keyword.toLowerCase();
+        String lowerKeyword = keyword.toLowerCase(Locale.ROOT);
         return containsIgnoreCase(activity.getDescription(), lowerKeyword)
                 || containsIgnoreCase(activity.getTopic(), lowerKeyword)
                 || containsIgnoreCase(activity.getNote(), lowerKeyword);
     }
 
     private boolean containsIgnoreCase(String field, String lowerKeyword) {
-        return field != null && field.toLowerCase().contains(lowerKeyword);
+        return field != null && field.toLowerCase(Locale.ROOT).contains(lowerKeyword);
     }
 
     private void sort(List<Activity> matched, ActivityOrder order) {

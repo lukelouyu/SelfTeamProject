@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import seedu.unienable.command.activity.AddCommand;
@@ -238,7 +239,7 @@ public class ActivityCommandParser {
 
     private ActivityOrder parseActivityOrder(String text) throws InvalidCommandException {
         try {
-            return ActivityOrder.valueOf(text.toUpperCase());
+            return ActivityOrder.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("order must be input, time, or chronological.");
         }
@@ -360,7 +361,7 @@ public class ActivityCommandParser {
 
     private ActivityCategory parseCategory(String text) throws InvalidActivityException {
         try {
-            return ActivityCategory.valueOf(text.toUpperCase());
+            return ActivityCategory.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidActivityException("category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.");
         }
@@ -624,7 +625,7 @@ public class ActivityCommandParser {
 
     private ScheduleType parseScheduleType(String text) throws InvalidCommandException {
         try {
-            return ScheduleType.valueOf(text.toUpperCase());
+            return ScheduleType.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("type must be FIXED or FLEXIBLE.");
         }

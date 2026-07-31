@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import seedu.unienable.accessibility.enums.AccessibilityStatus;
@@ -83,7 +84,7 @@ public class ConnectionCommandParser {
 
     private TraversalType parseType(String text) throws InvalidCommandException {
         try {
-            return TraversalType.valueOf(text.toUpperCase());
+            return TraversalType.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("type must be one of RAMP, SHELTERED_RAMP, LIFT, PATH, OTHER.");
         }
@@ -91,7 +92,7 @@ public class ConnectionCommandParser {
 
     private AccessibilityStatus parseStatus(String text) throws InvalidCommandException {
         try {
-            return AccessibilityStatus.valueOf(text.toUpperCase());
+            return AccessibilityStatus.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("status must be YES, NO, or UNKNOWN.");
         }
@@ -99,7 +100,7 @@ public class ConnectionCommandParser {
 
     private ShelterStatus parseShelter(String text) throws InvalidCommandException {
         try {
-            return ShelterStatus.valueOf(text.toUpperCase());
+            return ShelterStatus.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("shelter must be YES, NO, or UNKNOWN.");
         }

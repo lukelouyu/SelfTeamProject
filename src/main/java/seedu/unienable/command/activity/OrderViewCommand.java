@@ -1,5 +1,7 @@
 package seedu.unienable.command.activity;
 
+import java.util.Locale;
+
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
 
@@ -22,7 +24,7 @@ public class OrderViewCommand extends Command {
     @Override
     public CommandResult execute() {
         ActivityOrder order = activityManager.getDefaultOrder();
-        return new CommandResult("Saved default activity order: " + order.name().toLowerCase()
+        return new CommandResult("Saved default activity order: " + order.name().toLowerCase(Locale.ROOT)
                 + "\n" + describeOrder(order));
     }
 

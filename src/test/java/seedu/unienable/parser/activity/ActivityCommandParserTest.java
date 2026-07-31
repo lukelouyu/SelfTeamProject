@@ -229,6 +229,29 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_nonExistentCalendarDate_rejectedWithoutConsumingIdOrMutatingManager() {
+        // Regression test: DateTimeParser previously accepted "2026-02-30" (silently normalised
+        // to 2026-02-28), so this add would have succeeded and consumed ID 1. Parsing must fail
+        // before AddCommand is even built, so no activity is added and no ID is consumed.
+        ActivityManager manager = new ActivityManager();
+        int idBefore = manager.getNextId();
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
+                "n/Exam c/ACADEMIC date/2026-02-30 type/FIXED from/09:00 to/10:00 energy/3 sensory/3"));
+
+        assertEquals(idBefore, manager.getNextId());
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseAdd_hourTwentyFour_throwsInvalidDateTimeException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
+                "n/Late c/ACADEMIC date/2026-08-20 type/FIXED from/24:00 to/01:00 energy/3 sensory/3"));
+    }
+
+    @Test
     public void parseAdd_invalidEnergyRating_throwsInvalidActivityException() {
         ActivityManager manager = new ActivityManager();
 

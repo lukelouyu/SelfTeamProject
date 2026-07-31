@@ -4,13 +4,24 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 
 import seedu.unienable.exception.InvalidDateTimeException;
 
-/** Parses date and time text in the formats documented in the User Guide (yyyy-MM-dd, HH:mm). */
+/**
+ * Parses date and time text in the formats documented in the User Guide (yyyy-MM-dd, HH:mm).
+ *
+ * <p>Both formatters use {@link ResolverStyle#STRICT} (the default {@code DateTimeFormatter}
+ * resolver style, SMART, silently normalises out-of-range values instead of rejecting them, e.g.
+ * "2026-02-30" would become 2026-02-28 and "24:00" would become 00:00). The date pattern uses
+ * "uuuu" (proleptic year) rather than "yyyy" (year-of-era), since strict resolving requires a
+ * year field that unambiguously identifies the year without an era.
+ */
 public class DateTimeParser {
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd")
+            .withResolverStyle(ResolverStyle.STRICT);
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
+            .withResolverStyle(ResolverStyle.STRICT);
 
     /**
      * Parses a date string in yyyy-MM-dd format.

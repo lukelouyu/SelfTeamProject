@@ -30,7 +30,7 @@ accessibility information, or medical advice.
 4. Run:
 
    ```text
-   java -jar uniEnable.jar
+   java -jar unienable.jar
    ```
 
    Startup output:
@@ -47,8 +47,6 @@ accessibility information, or medical advice.
 5. Enter `guide` to open the built-in command guide.
 6. Enter a command and press Enter.
 7. Enter `bye` to exit.
-
-The final JAR filename will replace `uniEnable.jar`.
 
 ## 3. Reading Command Formats
 

@@ -12,12 +12,9 @@ import java.util.logging.Logger;
 
 import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.classes.Facility;
+import seedu.unienable.app.CommandConfirmationHandler;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
-import seedu.unienable.command.activity.DeleteCommand;
-import seedu.unienable.command.activity.EditCommand;
-import seedu.unienable.command.topic.TopicDeleteCommand;
-import seedu.unienable.command.topic.TopicRenameCommand;
 import seedu.unienable.exception.UniEnableException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.ConnectionManager;
@@ -31,7 +28,6 @@ import seedu.unienable.parser.CommandDispatcher;
 import seedu.unienable.storage.LoadResult;
 import seedu.unienable.storage.Storage;
 import seedu.unienable.storage.TopicStorage;
-import seedu.unienable.ui.MessageFormatter;
 import seedu.unienable.ui.Ui;
 
 /** Main entry-point for the UniEnable application: loads saved data, then runs the command loop. */
@@ -95,27 +91,31 @@ public class UniEnable {
 
         CommandDispatcher dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager,
                 connectionManager);
-        runLoop(dispatcher, new Scanner(input), ui, storage, activityManager, topicManager);
+        Scanner scanner = new Scanner(input);
+        CommandConfirmationHandler confirmationHandler = new CommandConfirmationHandler(ui, scanner, activityManager);
+        runLoop(dispatcher, scanner, ui, storage, activityManager, topicManager, confirmationHandler);
     }
 
     private static void runLoop(CommandDispatcher dispatcher, Scanner scanner, Ui ui, Storage storage,
-            ActivityManager activityManager, TopicManager topicManager) {
+            ActivityManager activityManager, TopicManager topicManager,
+            CommandConfirmationHandler confirmationHandler) {
         while (scanner.hasNextLine()) {
             String input = scanner.nextLine();
             if (input.isBlank()) {
                 continue;
             }
-            if (!runOneCommand(input, dispatcher, scanner, ui, storage, activityManager, topicManager)) {
+            if (!runOneCommand(input, dispatcher, ui, storage, activityManager, topicManager, confirmationHandler)) {
                 break;
             }
         }
     }
 
-    private static boolean runOneCommand(String input, CommandDispatcher dispatcher, Scanner scanner, Ui ui,
-            Storage storage, ActivityManager activityManager, TopicManager topicManager) {
+    private static boolean runOneCommand(String input, CommandDispatcher dispatcher, Ui ui, Storage storage,
+            ActivityManager activityManager, TopicManager topicManager,
+            CommandConfirmationHandler confirmationHandler) {
         try {
             Command command = dispatcher.dispatch(input, LocalDateTime.now());
-            if (!confirmIfNeeded(command, scanner, ui, activityManager)) {
+            if (!confirmationHandler.confirmIfNeeded(command)) {
                 return true;
             }
             CommandResult result = command.execute();
@@ -128,47 +128,6 @@ public class UniEnable {
             ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());
             return true;
         }
-    }
-
-    private static boolean confirmIfNeeded(Command command, Scanner scanner, Ui ui, ActivityManager activityManager)
-            throws UniEnableException {
-        if (command instanceof DeleteCommand) {
-            DeleteCommand delete = (DeleteCommand) command;
-            Activity activity = activityManager.getById(delete.getId());
-            return confirm(scanner, ui, "You selected activity [" + delete.getId() + "]:\n"
-                    + MessageFormatter.formatConcise(activity) + "\n\nDelete this activity? (y/n)");
-        }
-        if (command instanceof EditCommand) {
-            EditCommand edit = (EditCommand) command;
-            Activity oldActivity = activityManager.getById(edit.getId());
-            String diff = MessageFormatter.formatChanges(oldActivity, edit.getNewActivity());
-            if (diff.isEmpty()) {
-                ui.showFramed("No changes to activity [" + edit.getId() + "].");
-                return false;
-            }
-            return confirm(scanner, ui, diff + "\nSave changes? (y/n)");
-        }
-        if (command instanceof TopicRenameCommand) {
-            TopicRenameCommand rename = (TopicRenameCommand) command;
-            String diff = "Before: topic = " + rename.getOldName() + "\nAfter : topic = " + rename.getNewName();
-            return confirm(scanner, ui, diff + "\nSave changes? (y/n)");
-        }
-        if (command instanceof TopicDeleteCommand) {
-            TopicDeleteCommand delete = (TopicDeleteCommand) command;
-            return confirm(scanner, ui, "Delete topic \"" + delete.getName() + "\" under "
-                    + delete.getCategory() + "? (y/n)");
-        }
-        return true;
-    }
-
-    private static boolean confirm(Scanner scanner, Ui ui, String prompt) {
-        ui.showFramed(prompt);
-        String answer = scanner.hasNextLine() ? scanner.nextLine().trim() : "n";
-        if ("y".equalsIgnoreCase(answer)) {
-            return true;
-        }
-        ui.showFramed("Cancelled. No changes were made.");
-        return false;
     }
 
     private static void showLoadWarnings(Ui ui, String fileName, LoadResult<?> loadResult) {

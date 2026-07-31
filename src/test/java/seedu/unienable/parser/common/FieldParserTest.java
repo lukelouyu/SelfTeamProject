@@ -66,4 +66,32 @@ class FieldParserTest {
     public void indexOfMarker_markerEmbeddedWithNoPrecedingWhitespace_isNotMatched() {
         assertEquals(-1, FieldParser.indexOfMarker("topic/CS2113", "c/", 0));
     }
+
+    @Test
+    public void indexOfMarker_uppercaseMarkerInText_isMatched() {
+        assertEquals(0, FieldParser.indexOfMarker("N/CG3207 lecture", "n/", 0));
+    }
+
+    @Test
+    public void indexOfMarker_mixedCaseMarkerInText_isMatched() {
+        String input = "n/Lecture C/ACADEMIC";
+
+        assertEquals(10, FieldParser.indexOfMarker(input, "c/", 0));
+    }
+
+    @Test
+    public void extractField_uppercaseStartMarker_returnsTrimmedValue() {
+        String input = "N/CG3207 lecture C/ACADEMIC";
+
+        assertEquals("CG3207 lecture", FieldParser.extractField(input, "n/", "c/"));
+    }
+
+    @Test
+    public void extractField_uppercaseMarkerStillRespectsBoundary() {
+        // "TOPIC/" ends in the substring "C/"; the boundary check must still hold when the
+        // marker in the text is uppercase.
+        String input = "TOPIC/CS2113";
+
+        assertNull(FieldParser.extractField(input, "c/", null));
+    }
 }

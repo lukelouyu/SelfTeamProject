@@ -185,7 +185,8 @@ public class TopicManager {
         }
         int usageCount = countActivitiesUsing(category, name);
         if (usageCount > 0) {
-            throw new DuplicateActivityException("Topic " + name + " is used by " + usageCount + " activities.");
+            throw new DuplicateActivityException("Topic " + name + " is used by " + usageCount
+                    + (usageCount == 1 ? " activity." : " activities."));
         }
     }
 

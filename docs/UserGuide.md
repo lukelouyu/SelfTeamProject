@@ -663,6 +663,18 @@ leaves the files disagreeing with each other on disk. If a save ever fails (for 
 read-only or locked file), the application reports the storage error instead of a false success
 message, and `bye` will say so plainly rather than claiming your data was saved.
 
+Every data file is validated line-by-line when the application starts, not just parsed for shape.
+A line that fails validation is skipped with a warning (see `[Warning] Partial data loaded` below)
+instead of silently loading bad data:
+
+- `activities.txt` — positive/unique IDs, non-blank descriptions, end-after-start timing, a
+  flexible window/duration that fits, no exact duplicate, no fixed-activity overlap, and a topic
+  field that matches a topic actually recorded in `topics.txt` under the same category.
+- `connections.txt` — positive/unique IDs, a positive distance, and `from`/`to` endpoints that
+  both match a known facility's name in `facilities.txt`.
+- `facilities.txt` — unique facility IDs and unique facility names (facilities are looked up by
+  name, so a duplicate name would otherwise make that lookup ambiguous).
+
 ## 12. Error Handling
 
 ```text

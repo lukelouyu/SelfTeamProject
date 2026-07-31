@@ -202,6 +202,20 @@ class TopicManagerTest {
     }
 
     @Test
+    public void delete_topicUsedByExactlyOneActivity_usesSingularGrammar() throws Exception {
+        // Regression test: this count previously said "1 activities" unconditionally, unlike
+        // AddCommand/DeleteCommand's already-fixed activity-count grammar.
+        ActivityManager activityManager = new ActivityManager();
+        activityManager.add(newActivity(activityManager.getNextId(), ActivityCategory.ACADEMIC, "CG3207"));
+        TopicManager topicManager = new TopicManager(activityManager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> topicManager.delete(ActivityCategory.ACADEMIC, "CG3207"));
+        assertEquals("Topic CG3207 is used by 1 activity.", exception.getMessage());
+    }
+
+    @Test
     public void delete_topicWithSameNameInDifferentCategory_doesNotAffectOtherCategory() throws Exception {
         TopicManager manager = new TopicManager(new ActivityManager());
         manager.add(ActivityCategory.ACADEMIC, "Project X");

@@ -57,6 +57,19 @@ public class Storage {
     }
 
     /**
+     * Loads activities from activities.txt, additionally rejecting any activity whose topic
+     * field does not correspond to a topic in the given list (typically already loaded from
+     * topics.txt). See {@link ActivityStorage#load(Path, List)}.
+     *
+     * @param validTopics every topic currently recorded in topics.txt
+     * @return the loaded activities plus warnings for any skipped malformed or invalid lines
+     * @throws StorageException if the file cannot be read
+     */
+    public LoadResult<Activity> loadActivities(List<Topic> validTopics) throws StorageException {
+        return activityStorage.load(activitiesFile, validTopics);
+    }
+
+    /**
      * Saves the given activities to activities.txt.
      *
      * @param activities the activities to save
@@ -117,6 +130,19 @@ public class Storage {
      */
     public LoadResult<Connection> loadConnections() throws StorageException {
         return connectionStorage.load(connectionsFile);
+    }
+
+    /**
+     * Loads connections from connections.txt, additionally rejecting any connection whose "from"
+     * or "to" endpoint does not match a known facility's name. See
+     * {@link ConnectionStorage#load(Path, List)}.
+     *
+     * @param knownFacilities every facility currently recorded in facilities.txt
+     * @return the loaded connections plus warnings for any skipped malformed or invalid lines
+     * @throws StorageException if the file cannot be read
+     */
+    public LoadResult<Connection> loadConnections(List<Facility> knownFacilities) throws StorageException {
+        return connectionStorage.load(connectionsFile, knownFacilities);
     }
 
     /**

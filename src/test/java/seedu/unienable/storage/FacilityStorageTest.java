@@ -102,4 +102,32 @@ class FacilityStorageTest {
 
         assertThrows(StorageException.class, () -> new FacilityStorage().load(missing));
     }
+
+    @Test
+    public void load_duplicateFacilityId_secondLineIsSkippedWithWarning() throws Exception {
+        Path file = writeFile(
+                "FACILITY|F01|COM3|First",
+                "FACILITY|F01|COM1|Second");
+
+        LoadResult<Facility> result = new FacilityStorage().load(file);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals("COM3", result.getRecords().get(0).getName());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("duplicate facility id"));
+    }
+
+    @Test
+    public void load_duplicateFacilityName_secondLineIsSkippedWithWarning() throws Exception {
+        Path file = writeFile(
+                "FACILITY|F01|COM3|First",
+                "FACILITY|F02|com3|Second");
+
+        LoadResult<Facility> result = new FacilityStorage().load(file);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals("F01", result.getRecords().get(0).getId());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("duplicate facility name"));
+    }
 }

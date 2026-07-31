@@ -1921,7 +1921,7 @@ ACADEMIC topics:
 2. CS2113
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: Topic Basketball Club is used by 1 activities.
+[Error] Conflict: Topic Basketball Club is used by 1 activity.
 ____________________________________________________________
 ____________________________________________________________
 Before: topic = Basketball Club

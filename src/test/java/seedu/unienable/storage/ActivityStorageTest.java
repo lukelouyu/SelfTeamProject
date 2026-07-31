@@ -21,6 +21,7 @@ import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
+import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.CompletionStatus;
 import seedu.unienable.model.enums.ScheduleType;
@@ -271,5 +272,64 @@ class ActivityStorageTest {
 
         assertEquals(0, result.getWarnings().size());
         assertEquals(2, result.getRecords().size());
+    }
+
+    @Test
+    public void loadWithValidTopics_unknownTopicReference_recordsWarning() throws Exception {
+        Path file = writeFile("FIXED|12|desc|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE|Ghost topic|");
+        List<Topic> validTopics = List.of(new Topic(ActivityCategory.ACADEMIC, "CG3207"));
+
+        LoadResult<Activity> result = new ActivityStorage().load(file, validTopics);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("topic"));
+        assertTrue(result.getWarnings().get(0).contains("Ghost topic"));
+    }
+
+    @Test
+    public void loadWithValidTopics_matchingTopic_loadsNormally() throws Exception {
+        Path file = writeFile("FIXED|12|desc|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE|CG3207|");
+        List<Topic> validTopics = List.of(new Topic(ActivityCategory.ACADEMIC, "CG3207"));
+
+        LoadResult<Activity> result = new ActivityStorage().load(file, validTopics);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals(0, result.getWarnings().size());
+    }
+
+    @Test
+    public void load_withValidTopics_sameNameUnderDifferentCategoryIsRejected() throws Exception {
+        // A topic is scoped to its category, so a topic recorded under CCA does not validate an
+        // activity's reference to a same-named topic under ACADEMIC.
+        Path file = writeFile("FIXED|12|desc|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE|CG3207|");
+        List<Topic> validTopics = List.of(new Topic(ActivityCategory.CCA, "CG3207"));
+
+        LoadResult<Activity> result = new ActivityStorage().load(file, validTopics);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+    }
+
+    @Test
+    public void loadWithValidTopics_noTopicOnActivity_neverTriggersCheck() throws Exception {
+        Path file = writeFile("FIXED|12|desc|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file, List.of());
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals(0, result.getWarnings().size());
+    }
+
+    @Test
+    public void load_withNullValidTopics_skipsTopicCrossCheckEntirely() throws Exception {
+        // Passing null (as the single-argument load() overload does) must behave exactly like
+        // the pre-existing single-file validation, with no topic cross-check at all.
+        Path file = writeFile("FIXED|12|desc|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE|Ghost topic|");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file, null);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals(0, result.getWarnings().size());
     }
 }

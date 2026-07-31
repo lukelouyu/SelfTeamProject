@@ -456,6 +456,21 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_activityTopicNotInTopicsFile_surfacesPartialLoadWarningAndKeepsValidRecords() throws Exception {
+        Files.writeString(tempDir.resolve("topics.txt"), "TOPIC|ACADEMIC|CG3207\n");
+        Files.writeString(tempDir.resolve("activities.txt"),
+                "FIXED|1|Valid lecture|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE|CG3207|\n"
+                        + "FIXED|2|Ghost topic lecture|ACADEMIC|2026-08-16|09:00|11:00|4|3|INCOMPLETE|Ghost topic|\n");
+
+        String output = runWithInput("list\nbye\n");
+
+        assertTrue(output.contains("[Warning] Partial data loaded: activities.txt"));
+        assertTrue(output.contains("Line 2 was skipped"));
+        assertTrue(output.contains("Valid lecture"));
+        assertTrue(!output.contains("Ghost topic lecture"));
+    }
+
+    @Test
     public void run_malformedFacilitiesFile_surfacesPartialLoadWarningAndKeepsValidRecords() throws Exception {
         Files.writeString(tempDir.resolve("facilities.txt"),
                 "FACILITY|F01|COM3|Engineering building\n"

@@ -115,10 +115,10 @@ public class ApplicationRunner {
     private boolean initialise() {
         try {
             storage.prepareDataFiles();
-            LoadResult<Activity> activityLoad = storage.loadActivities();
             LoadResult<Topic> topicLoad = storage.loadTopics();
+            LoadResult<Activity> activityLoad = storage.loadActivities(topicLoad.getRecords());
             LoadResult<Facility> facilityLoad = storage.loadFacilities();
-            LoadResult<Connection> connectionLoad = storage.loadConnections();
+            LoadResult<Connection> connectionLoad = storage.loadConnections(facilityLoad.getRecords());
             LoadResult<ActivityOrder> settingsLoad = storage.loadSettings();
 
             activityManager.loadAll(activityLoad.getRecords());

@@ -7,7 +7,10 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -17,6 +20,7 @@ import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
+import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.CompletionStatus;
 import seedu.unienable.parser.common.DateTimeParser;
@@ -51,6 +55,24 @@ public class ActivityStorage {
      * @throws StorageException if the file cannot be read
      */
     public LoadResult<Activity> load(Path filePath) throws StorageException {
+        return load(filePath, null);
+    }
+
+    /**
+     * Loads activities from the given file, additionally rejecting any activity whose topic
+     * field does not correspond to a topic actually recorded in topics.txt under the same
+     * category. Without this check, a hand-edited or otherwise corrupted activities.txt could
+     * reference a topic that was never created (or was since renamed/deleted), silently loading
+     * a topic reference the application would never let a user create through add/edit.
+     *
+     * @param filePath path to the activities text file
+     * @param validTopics every topic currently recorded in topics.txt, used to validate each
+     *     loaded activity's topic field; null skips this cross-file check entirely
+     * @return the loaded activities plus warnings for any skipped malformed or invalid lines
+     * @throws StorageException if the file cannot be read
+     */
+    public LoadResult<Activity> load(Path filePath, List<Topic> validTopics) throws StorageException {
+        Set<String> validTopicKeys = validTopics == null ? null : toTopicKeys(validTopics);
         List<String> lines = readLines(filePath);
         List<Activity> activities = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
@@ -63,12 +85,37 @@ public class ActivityStorage {
             try {
                 Activity activity = parseLine(line);
                 validateAgainstAlreadyLoaded(activity, activities);
+                validateTopicReference(activity, validTopicKeys);
                 activities.add(activity);
             } catch (IllegalArgumentException | InvalidActivityException | InvalidDateTimeException e) {
                 warnings.add("Line " + (i + 1) + " was skipped: " + e.getMessage());
             }
         }
         return new LoadResult<>(activities, warnings);
+    }
+
+    private Set<String> toTopicKeys(List<Topic> topics) {
+        Set<String> keys = new HashSet<>();
+        for (Topic topic : topics) {
+            keys.add(topicKey(topic.getCategory(), topic.getName()));
+        }
+        return keys;
+    }
+
+    private String topicKey(ActivityCategory category, String name) {
+        return category + "|" + name.toLowerCase(Locale.ROOT);
+    }
+
+    private void validateTopicReference(Activity activity, Set<String> validTopicKeys)
+            throws InvalidActivityException {
+        String topic = activity.getTopic();
+        if (validTopicKeys == null || topic == null) {
+            return;
+        }
+        if (!validTopicKeys.contains(topicKey(activity.getCategory(), topic))) {
+            throw new InvalidActivityException(
+                    "topic \"" + topic + "\" does not exist under " + activity.getCategory());
+        }
     }
 
     /**

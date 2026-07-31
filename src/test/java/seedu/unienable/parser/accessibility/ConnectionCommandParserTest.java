@@ -86,6 +86,13 @@ class ConnectionCommandParserTest {
     }
 
     @Test
+    public void parseFind_whitespaceOnlyArgs_throwsMissingInputException() {
+        ConnectionManager manager = new ConnectionManager(List.of());
+
+        assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "   "));
+    }
+
+    @Test
     public void parseFind_invalidType_throwsInvalidCommandException() {
         ConnectionManager manager = new ConnectionManager(List.of());
 

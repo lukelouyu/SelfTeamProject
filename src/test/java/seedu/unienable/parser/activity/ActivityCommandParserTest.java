@@ -495,6 +495,23 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseFind_whitespaceOnlyArgs_throwsMissingInputException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "   "));
+    }
+
+    @Test
+    public void parseFind_orderMarkerAloneWithNoKeywordOrFilter_throwsMissingInputException() {
+        // Regression test: order/ is find's last marker but is a display-ordering directive, not
+        // a keyword or filter. "find order/time" alone was previously accepted (since the fields
+        // map was non-empty) and silently returned every activity.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "order/time"));
+    }
+
+    @Test
     public void parseNext_buildsWorkingNextCommand() throws Exception {
         ActivityManager manager = new ActivityManager();
         manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,

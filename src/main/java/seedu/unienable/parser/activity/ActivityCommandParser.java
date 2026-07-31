@@ -243,7 +243,7 @@ public class ActivityCommandParser {
             throws MissingInputException, InvalidActivityException, InvalidCommandException,
             InvalidDateTimeException {
         Map<String, String> fields = extractPresentFields(args, FIND_MARKERS);
-        if (fields.isEmpty()) {
+        if (!hasKeywordOrFilter(fields)) {
             throw new MissingInputException("at least one keyword or filter is required.");
         }
 
@@ -257,6 +257,19 @@ public class ActivityCommandParser {
 
         return new FindCommand(activityManager, keywords, new ActivityFilter(null, category, topic, date),
                 order, false);
+    }
+
+    /**
+     * Checks whether a find command's extracted fields include at least one real keyword or
+     * filter. order/ alone does not count: it is a display-ordering directive, not something to
+     * search by, so "find order/time" with nothing else must still be rejected.
+     *
+     * @param fields the fields extracted from a find command's argument text
+     * @return true if at least one of k/, c/, topic/, or date/ is present
+     */
+    private boolean hasKeywordOrFilter(Map<String, String> fields) {
+        return fields.containsKey("k/") || fields.containsKey("c/") || fields.containsKey("topic/")
+                || fields.containsKey("date/");
     }
 
     /**

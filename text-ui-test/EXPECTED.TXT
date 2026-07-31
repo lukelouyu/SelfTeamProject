@@ -60,7 +60,24 @@ ____________________________________________________________
 ____________________________________________________________
 Edit an activity
 Format: edit ID PREFIX/NEW_VALUE [PREFIX/NEW_VALUE ...]
-The application validates all changes before asking for y/n.
+Any subset of fields may be supplied, in any order. Stable IDs never
+change. Every change is validated before the y/n prompt is shown.
+
+Example - list first, then edit one field:
+  list
+  edit 3 energy/5
+
+Example - change several fields at once:
+  edit 3 n/CG3207 tutorial date/2026-08-17 topic/CG3207
+
+Example - change a fixed activity's time:
+  edit 3 from/14:00 to/15:00
+
+Example - clear an existing note:
+  edit 3 note/
+
+After reviewing the before/after summary, answer y to save or n to
+cancel (anything other than y is treated as n).
 ____________________________________________________________
 ____________________________________________________________
 Find activities
@@ -131,9 +148,12 @@ is stored under data/. Do not edit data files while the application runs.
 ____________________________________________________________
 ____________________________________________________________
 Completion and daily load
-Use dashboard today, tomorrow, YYYY-MM-DD, or this week.
-Add detail to display the full 1-to-5 rating distribution.
-(Coming soon in a future release.)
+Completion tracking is available now - see guide completion for
+mark, unmark, and list status/....
+
+A dedicated completion/workload dashboard (dashboard today,
+tomorrow, YYYY-MM-DD, or this week, with a detail rating
+distribution) is coming soon in a future release.
 ____________________________________________________________
 ____________________________________________________________
 Text timetable
@@ -216,46 +236,26 @@ Examples:
   bye
 ____________________________________________________________
 ____________________________________________________________
-Add activities
-Use add with FIXED timing or a FLEXIBLE window and duration.
-Related commands: topic add, list, view
+Add, edit and delete activities
+add    - create a FIXED or FLEXIBLE activity. See: guide add
+edit   - change one or more fields of an existing activity. See: guide edit
+delete - remove an activity by its stable ID. See: guide delete
 
-Replace the description, date, times, and ratings below with
-your own values.
-
-Example - add a fixed activity:
-  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
-
-Example - add a flexible activity:
-  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
-
-Then view your activities:
-  list
-  list view/detail
-  list date/2026-08-15
-
-Optional - create and use a topic first:
-  topic add c/ACADEMIC n/PL1101E
-  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
+Quick examples:
+  add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1
+  edit 1 energy/5
+  delete 1
 ____________________________________________________________
 ____________________________________________________________
-Find activities
-Format: find [k/KEYWORD ...] [FILTERS]
-Multiple keywords and filters use AND.
+List, find and view activities
+list - show activities matching optional filters. See: guide list
+find - search by keyword and/or filter. See: guide find
+view - show every field of one activity. See: guide view
 
-Examples:
-  find k/PL1101E
+Quick examples:
+  list today
   find k/lecture
-  find c/ACADEMIC
-  find date/2026-08-15
-  find k/PL1101E c/ACADEMIC
-  find k/finish assignment order/time
-
-Example - checking when nothing matches:
-  find k/nonexistentkeyword12345
-
-Every supplied keyword and filter must match. Search is
-case-insensitive and can match part of a word.
+  view 1
 ____________________________________________________________
 ____________________________________________________________
 Categories and topics
@@ -340,46 +340,26 @@ Examples:
   bye
 ____________________________________________________________
 ____________________________________________________________
-Add activities
-Use add with FIXED timing or a FLEXIBLE window and duration.
-Related commands: topic add, list, view
+Add, edit and delete activities
+add    - create a FIXED or FLEXIBLE activity. See: guide add
+edit   - change one or more fields of an existing activity. See: guide edit
+delete - remove an activity by its stable ID. See: guide delete
 
-Replace the description, date, times, and ratings below with
-your own values.
-
-Example - add a fixed activity:
-  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
-
-Example - add a flexible activity:
-  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
-
-Then view your activities:
-  list
-  list view/detail
-  list date/2026-08-15
-
-Optional - create and use a topic first:
-  topic add c/ACADEMIC n/PL1101E
-  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
+Quick examples:
+  add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1
+  edit 1 energy/5
+  delete 1
 ____________________________________________________________
 ____________________________________________________________
-Find activities
-Format: find [k/KEYWORD ...] [FILTERS]
-Multiple keywords and filters use AND.
+List, find and view activities
+list - show activities matching optional filters. See: guide list
+find - search by keyword and/or filter. See: guide find
+view - show every field of one activity. See: guide view
 
-Examples:
-  find k/PL1101E
+Quick examples:
+  list today
   find k/lecture
-  find c/ACADEMIC
-  find date/2026-08-15
-  find k/PL1101E c/ACADEMIC
-  find k/finish assignment order/time
-
-Example - checking when nothing matches:
-  find k/nonexistentkeyword12345
-
-Every supplied keyword and filter must match. Search is
-case-insensitive and can match part of a word.
+  view 1
 ____________________________________________________________
 ____________________________________________________________
 Categories and topics
@@ -404,9 +384,12 @@ A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
 Completion and daily load
-Use dashboard today, tomorrow, YYYY-MM-DD, or this week.
-Add detail to display the full 1-to-5 rating distribution.
-(Coming soon in a future release.)
+Completion tracking is available now - see guide completion for
+mark, unmark, and list status/....
+
+A dedicated completion/workload dashboard (dashboard today,
+tomorrow, YYYY-MM-DD, or this week, with a detail rating
+distribution) is coming soon in a future release.
 ____________________________________________________________
 ____________________________________________________________
 Recommended timetable
@@ -1938,7 +1921,7 @@ ACADEMIC topics:
 2. CS2113
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: Topic Basketball Club is used by 1 activities.
+[Error] Conflict: Topic Basketball Club is used by 1 activity.
 ____________________________________________________________
 ____________________________________________________________
 Before: topic = Basketball Club

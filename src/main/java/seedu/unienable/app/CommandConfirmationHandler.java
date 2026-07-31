@@ -5,6 +5,7 @@ import java.util.Scanner;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.activity.DeleteCommand;
 import seedu.unienable.command.activity.EditCommand;
+import seedu.unienable.command.general.ResetCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;
 import seedu.unienable.command.topic.TopicRenameCommand;
 import seedu.unienable.exception.UniEnableException;
@@ -17,8 +18,9 @@ import seedu.unienable.ui.Ui;
  * Decides whether a dispatched command needs a y/n confirmation before it may execute, and
  * carries out that confirmation: showing the command-specific preview, reading the next input
  * line as the answer, and reporting cancellation. Confirmation is required for
- * {@link DeleteCommand}, {@link EditCommand}, {@link TopicRenameCommand}, and
- * {@link TopicDeleteCommand}; every other command proceeds without asking.
+ * {@link DeleteCommand}, {@link EditCommand}, {@link TopicRenameCommand},
+ * {@link TopicDeleteCommand}, and {@link ResetCommand} (unless there is nothing to reset); every
+ * other command proceeds without asking.
  */
 public class CommandConfirmationHandler {
     private final Ui ui;
@@ -62,6 +64,9 @@ public class CommandConfirmationHandler {
         if (command instanceof TopicDeleteCommand) {
             return confirmTopicDelete((TopicDeleteCommand) command);
         }
+        if (command instanceof ResetCommand) {
+            return confirmReset((ResetCommand) command);
+        }
         return true;
     }
 
@@ -88,6 +93,20 @@ public class CommandConfirmationHandler {
 
     private boolean confirmTopicDelete(TopicDeleteCommand delete) {
         return confirm("Delete topic \"" + delete.getName() + "\" under " + delete.getCategory() + "? (y/n)");
+    }
+
+    private boolean confirmReset(ResetCommand reset) {
+        if (!reset.hasAnythingToReset()) {
+            return true;
+        }
+        String preview = "Reset all user data?\n\n"
+                + "Activities to delete: " + reset.getActivityCount() + "\n"
+                + "Topics to delete   : " + reset.getTopicCount() + "\n"
+                + "Default order      : reset to chronological\n\n"
+                + "Facility and connection reference data will be kept.\n"
+                + "This action cannot be undone.\n"
+                + "Continue? (y/n)";
+        return confirm(preview);
     }
 
     private boolean confirm(String prompt) {

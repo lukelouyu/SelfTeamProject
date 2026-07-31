@@ -6,7 +6,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.accessibility.classes.FacilityFeature;
@@ -19,6 +22,10 @@ import seedu.unienable.exception.StorageException;
  * <p>Format: {@code FACILITY|id|name|description} followed by zero or more
  * {@code FEATURE|facilityId|type|status|notes} lines. A FACILITY line must appear before any FEATURE
  * line that references it. Fields must not contain the '|' delimiter; this is not escaped in v1.0.
+ *
+ * <p>Loading rejects a duplicate facility ID and a duplicate facility name (case-insensitively) -
+ * facilities are looked up by name (see FacilityManager.findByName), so two facilities sharing a
+ * name would make that lookup ambiguous.
  */
 public class FacilityStorage {
     private static final String FACILITY_TAG = "FACILITY";
@@ -34,6 +41,7 @@ public class FacilityStorage {
     public LoadResult<Facility> load(Path filePath) throws StorageException {
         List<String> lines = readLines(filePath);
         Map<String, PendingFacility> pending = new LinkedHashMap<>();
+        Set<String> seenNames = new HashSet<>();
         List<String> warnings = new ArrayList<>();
 
         for (int i = 0; i < lines.size(); i++) {
@@ -42,7 +50,7 @@ public class FacilityStorage {
                 continue;
             }
             try {
-                parseLine(line, pending);
+                parseLine(line, pending, seenNames);
             } catch (IllegalArgumentException e) {
                 warnings.add("Line " + (i + 1) + " was skipped: " + e.getMessage());
             }
@@ -56,11 +64,11 @@ public class FacilityStorage {
         return new LoadResult<>(facilities, warnings);
     }
 
-    private void parseLine(String line, Map<String, PendingFacility> pending) {
+    private void parseLine(String line, Map<String, PendingFacility> pending, Set<String> seenNames) {
         String[] fields = line.split("\\|", -1);
         switch (fields[0]) {
         case FACILITY_TAG:
-            parseFacilityLine(fields, pending);
+            parseFacilityLine(fields, pending, seenNames);
             break;
         case FEATURE_TAG:
             parseFeatureLine(fields, pending);
@@ -70,12 +78,20 @@ public class FacilityStorage {
         }
     }
 
-    private void parseFacilityLine(String[] fields, Map<String, PendingFacility> pending) {
+    private void parseFacilityLine(String[] fields, Map<String, PendingFacility> pending, Set<String> seenNames) {
         if (fields.length < 3) {
             throw new IllegalArgumentException("FACILITY line requires an id and a name");
         }
+        String id = fields[1];
+        String name = fields[2];
+        if (pending.containsKey(id)) {
+            throw new IllegalArgumentException("duplicate facility id " + id);
+        }
+        if (!seenNames.add(name.toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("duplicate facility name \"" + name + "\"");
+        }
         String description = fields.length > 3 && !fields[3].isEmpty() ? fields[3] : null;
-        pending.put(fields[1], new PendingFacility(fields[2], description));
+        pending.put(id, new PendingFacility(name, description));
     }
 
     private void parseFeatureLine(String[] fields, Map<String, PendingFacility> pending) {

@@ -175,6 +175,22 @@ class ActivityManagerTest {
     }
 
     @Test
+    public void add_afterDeletingMostRecentActivity_doesNotReuseDeletedId() throws Exception {
+        // Pinning test: IDs are permanent and never resequenced or reused, even when the
+        // deleted activity was the most recently added one (the case most likely to tempt a
+        // "reuse the freed slot" implementation).
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "First", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(11, 0), LocalTime.of(12, 0)));
+
+        manager.delete(2);
+        manager.add(newFixedActivity(manager.getNextId(), "Third", LocalTime.of(13, 0), LocalTime.of(14, 0)));
+
+        assertEquals(3, manager.getById(3).getId());
+        assertThrows(InvalidIndexException.class, () -> manager.getById(2));
+    }
+
+    @Test
     public void mark_existingId_marksActivityComplete() throws Exception {
         ActivityManager manager = new ActivityManager();
         manager.add(newFixedActivity(manager.getNextId()));
@@ -606,5 +622,22 @@ class ActivityManagerTest {
 
         assertEquals(1, manager.size());
         assertEquals("Second load", manager.getById(1).getDescription());
+    }
+
+    @Test
+    public void resetAll_clearsActivitiesResetsNextIdAndDefaultOrder() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "First", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(11, 0), LocalTime.of(12, 0)));
+        manager.setDefaultOrder(ActivityOrder.INPUT);
+
+        manager.resetAll();
+
+        assertEquals(0, manager.size());
+        assertEquals(1, manager.getNextId());
+        assertEquals(ActivityOrder.CHRONOLOGICAL, manager.getDefaultOrder());
+
+        manager.add(newFixedActivity(manager.getNextId(), "After reset", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        assertEquals(1, manager.getById(1).getId());
     }
 }

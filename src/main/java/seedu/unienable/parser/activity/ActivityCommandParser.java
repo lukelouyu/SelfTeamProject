@@ -1,9 +1,11 @@
 package seedu.unienable.parser.activity;
 
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -201,28 +203,121 @@ public class ActivityCommandParser {
     }
 
     /**
-     * Parses a list command's argument text into a ListCommand. Every field is optional and may
-     * appear in any order.
+     * Parses a list command's argument text into a ListCommand. Every marker field is optional
+     * and may appear in any order; an optional relative-date phrase ("today", "tomorrow", or
+     * "this week") may additionally appear at the very start of the text, before any markers.
      *
      * @param activityManager the manager the resulting command will read from
+     * @param now the current date and time, used to resolve "today"/"tomorrow"/"this week"
      * @param args the text after the "list" command word
      * @return the parsed ListCommand
      * @throws InvalidActivityException if the category is invalid
-     * @throws InvalidCommandException if status or order is invalid
+     * @throws InvalidCommandException if status or order is invalid, a relative-date phrase is
+     *     unrecognised, a relative-date phrase is combined with date/ or another relative-date
+     *     phrase, or unrecognised text follows a relative-date phrase
      * @throws InvalidDateTimeException if the date is invalid
      */
-    public ListCommand parseList(ActivityManager activityManager, String args)
+    public ListCommand parseList(ActivityManager activityManager, LocalDateTime now, String args)
             throws InvalidActivityException, InvalidCommandException, InvalidDateTimeException {
-        Map<String, String> fields = extractPresentFields(args, LIST_MARKERS);
+        RelativeDateAndRemainder parsed = extractRelativeDate(now, args);
+        Map<String, String> fields = extractPresentFields(parsed.remainder, LIST_MARKERS);
+        if (parsed.hasRelativeDate() && fields.containsKey("date/")) {
+            throw new InvalidCommandException(
+                    "date/ cannot be combined with today, tomorrow, or this week.");
+        }
 
         boolean detail = parseViewMode(fields.get("view/"));
         CompletionStatus status = parseStatus(fields.get("status/"));
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
-        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
+        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : parsed.date;
         ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
 
-        return new ListCommand(activityManager, new ActivityFilter(status, category, topic, date), order, detail);
+        ActivityFilter filter = new ActivityFilter(status, category, topic, date, parsed.dateFrom, parsed.dateTo);
+        return new ListCommand(activityManager, filter, order, detail);
+    }
+
+    /**
+     * Consumes an optional leading relative-date phrase ("today", "tomorrow", or "this week")
+     * from a list command's argument text, resolving it against now. Text that already starts
+     * with a recognised list marker is left untouched (no relative-date phrase is possible
+     * there), preserving every existing marker-only usage exactly as before.
+     *
+     * @param now the current date and time
+     * @param args the full text after the "list" command word
+     * @return the resolved relative date (if any) plus the remaining text to parse as markers
+     * @throws InvalidCommandException if the leading text is not blank, does not start with a
+     *     known marker, and is not a recognised relative-date phrase; or if a relative-date
+     *     phrase is followed by unrecognised text
+     */
+    private RelativeDateAndRemainder extractRelativeDate(LocalDateTime now, String args)
+            throws InvalidCommandException {
+        String trimmed = args.trim();
+        if (trimmed.isEmpty() || startsWithKnownMarker(trimmed)) {
+            return new RelativeDateAndRemainder(null, null, null, trimmed);
+        }
+
+        String[] words = trimmed.split("\\s+", 3);
+        LocalDate today = now.toLocalDate();
+        RelativeDateAndRemainder result;
+        if ("today".equalsIgnoreCase(words[0])) {
+            result = new RelativeDateAndRemainder(today, null, null, remainderAfter(trimmed, words, 1));
+        } else if ("tomorrow".equalsIgnoreCase(words[0])) {
+            result = new RelativeDateAndRemainder(today.plusDays(1), null, null, remainderAfter(trimmed, words, 1));
+        } else if ("this".equalsIgnoreCase(words[0])) {
+            if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
+                throw new InvalidCommandException(
+                        "Unknown list option \"this " + (words.length > 1 ? words[1] : "")
+                                + "\"; only \"this week\" is supported.");
+            }
+            LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            LocalDate sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+            result = new RelativeDateAndRemainder(null, monday, sunday, remainderAfter(trimmed, words, 2));
+        } else {
+            throw new InvalidCommandException("Unknown list option \"" + words[0] + "\".");
+        }
+
+        if (!result.remainder.isEmpty() && !startsWithKnownMarker(result.remainder)) {
+            throw new InvalidCommandException(
+                    "Unknown list option \"" + result.remainder.split("\\s+", 2)[0] + "\".");
+        }
+        return result;
+    }
+
+    private boolean startsWithKnownMarker(String text) {
+        for (String marker : LIST_MARKERS) {
+            if (FieldParser.indexOfMarker(text, marker, 0) == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String remainderAfter(String trimmed, String[] words, int wordCount) {
+        int consumed = 0;
+        for (int i = 0; i < wordCount; i++) {
+            consumed = trimmed.indexOf(words[i], consumed) + words[i].length();
+        }
+        return trimmed.substring(consumed).trim();
+    }
+
+    /** Carries a resolved relative date (exact or range) plus the marker text left to parse. */
+    private static final class RelativeDateAndRemainder {
+        private final LocalDate date;
+        private final LocalDate dateFrom;
+        private final LocalDate dateTo;
+        private final String remainder;
+
+        private RelativeDateAndRemainder(LocalDate date, LocalDate dateFrom, LocalDate dateTo, String remainder) {
+            this.date = date;
+            this.dateFrom = dateFrom;
+            this.dateTo = dateTo;
+            this.remainder = remainder;
+        }
+
+        private boolean hasRelativeDate() {
+            return date != null || dateFrom != null;
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,6 +54,19 @@ public class Storage {
      */
     public LoadResult<Activity> loadActivities() throws StorageException {
         return activityStorage.load(activitiesFile);
+    }
+
+    /**
+     * Loads activities from activities.txt, additionally rejecting any activity whose topic
+     * field does not correspond to a topic in the given list (typically already loaded from
+     * topics.txt). See {@link ActivityStorage#load(Path, List)}.
+     *
+     * @param validTopics every topic currently recorded in topics.txt
+     * @return the loaded activities plus warnings for any skipped malformed or invalid lines
+     * @throws StorageException if the file cannot be read
+     */
+    public LoadResult<Activity> loadActivities(List<Topic> validTopics) throws StorageException {
+        return activityStorage.load(activitiesFile, validTopics);
     }
 
     /**
@@ -119,6 +133,19 @@ public class Storage {
     }
 
     /**
+     * Loads connections from connections.txt, additionally rejecting any connection whose "from"
+     * or "to" endpoint does not match a known facility's name. See
+     * {@link ConnectionStorage#load(Path, List)}.
+     *
+     * @param knownFacilities every facility currently recorded in facilities.txt
+     * @return the loaded connections plus warnings for any skipped malformed or invalid lines
+     * @throws StorageException if the file cannot be read
+     */
+    public LoadResult<Connection> loadConnections(List<Facility> knownFacilities) throws StorageException {
+        return connectionStorage.load(connectionsFile, knownFacilities);
+    }
+
+    /**
      * Loads the saved default activity order from settings.txt.
      *
      * @return a LoadResult whose single record is the saved order (or the documented default,
@@ -137,6 +164,90 @@ public class Storage {
      */
     public void saveSettings(ActivityOrder order) throws StorageException {
         settingsStorage.saveDefaultOrder(settingsFile, order);
+    }
+
+    /**
+     * Saves activities, topics, and the default activity order together, so a multi-file mutation
+     * (e.g. "reset all", which touches all three) cannot leave activities.txt, topics.txt, and
+     * settings.txt disagreeing with each other on disk. Each file is first written to a sibling
+     * temporary file; only once every write has succeeded are the temporary files moved into
+     * place. If any write fails, no original file is touched and the temporary files are removed,
+     * so a partial failure leaves every file exactly as it was before this call.
+     *
+     * @param activities the activities to save
+     * @param topics the topics to save
+     * @param order the default activity order to save
+     * @throws StorageException if a field contains the '|' delimiter, or any file cannot be
+     *     written or committed
+     */
+    public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
+            throws StorageException {
+        Path activitiesTmp = tempSiblingOf(activitiesFile);
+        Path topicsTmp = tempSiblingOf(topicsFile);
+        Path settingsTmp = tempSiblingOf(settingsFile);
+        try {
+            activityStorage.save(activitiesTmp, activities);
+            topicStorage.save(topicsTmp, toTopicRecords(topics));
+            settingsStorage.saveDefaultOrder(settingsTmp, order);
+
+            checkWritable(activitiesFile);
+            checkWritable(topicsFile);
+            checkWritable(settingsFile);
+
+            commit(activitiesTmp, activitiesFile);
+            commit(topicsTmp, topicsFile);
+            commit(settingsTmp, settingsFile);
+        } catch (StorageException e) {
+            deleteQuietly(activitiesTmp);
+            deleteQuietly(topicsTmp);
+            deleteQuietly(settingsTmp);
+            throw e;
+        }
+    }
+
+    private List<TopicStorage.TopicRecord> toTopicRecords(List<Topic> topics) {
+        List<TopicStorage.TopicRecord> records = new ArrayList<>();
+        for (Topic topic : topics) {
+            records.add(new TopicStorage.TopicRecord(topic.getCategory(), topic.getName()));
+        }
+        return records;
+    }
+
+    private Path tempSiblingOf(Path file) {
+        return file.resolveSibling(file.getFileName() + ".tmp");
+    }
+
+    /**
+     * Rejects committing to a destination that exists but is not writable, checked for every
+     * destination before any of them is moved into place. Without this upfront check, a
+     * permission failure discovered partway through the commit sequence (e.g. topics.txt is
+     * read-only) would leave an earlier file (e.g. activities.txt) already overwritten while a
+     * later one is not - exactly the memory/disk divergence this method exists to prevent.
+     *
+     * @param destination the file about to be committed to
+     * @throws StorageException if destination exists and is not writable
+     */
+    private void checkWritable(Path destination) throws StorageException {
+        if (Files.exists(destination) && !Files.isWritable(destination)) {
+            throw new StorageException("could not write " + destination + " (not writable)");
+        }
+    }
+
+    private void commit(Path tempFile, Path destination) throws StorageException {
+        try {
+            Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new StorageException("could not write " + destination, e);
+        }
+    }
+
+    private void deleteQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            // Best-effort cleanup only; the original files were never touched, so a leftover
+            // temporary file does not put the application in an inconsistent state.
+        }
     }
 
     /**

@@ -29,14 +29,18 @@ class GuideCommandTest {
     }
 
     @Test
-    public void execute_implementedTopic_showsExactGuideText() {
-        // "edit" has no worked examples (out of scope for this pass), so it's still a compact,
-        // stable exact-text check; the topics with new examples (1-4) get their own tests below.
+    public void execute_editTopic_coversMultiFieldTimeAndNoteClearingExamples() {
         CommandResult result = new GuideCommand("edit").execute();
+        String feedback = result.getFeedback();
 
-        assertEquals("Edit an activity\n"
-                + "Format: edit ID PREFIX/NEW_VALUE [PREFIX/NEW_VALUE ...]\n"
-                + "The application validates all changes before asking for y/n.", result.getFeedback());
+        assertTrue(feedback.startsWith("Edit an activity"));
+        assertTrue(feedback.contains("list"));
+        assertTrue(feedback.contains("edit 3 n/CG3207 tutorial date/2026-08-17 topic/CG3207"));
+        assertTrue(feedback.contains("edit 3 from/14:00 to/15:00"));
+        assertTrue(feedback.contains("edit 3 note/"));
+        assertTrue(feedback.contains("Stable IDs never"));
+        assertTrue(feedback.contains("validated"));
+        assertTrue(feedback.contains("y/n"));
     }
 
     @Test
@@ -211,6 +215,55 @@ class GuideCommandTest {
 
         assertTrue(result.getFeedback().startsWith("Delete an activity"));
         assertTrue(result.getFeedback().contains("delete ID"));
+        assertTrue(result.getFeedback().contains("never reuses the deleted ID"));
+    }
+
+    @Test
+    public void execute_viewTopic_showsGuideText() {
+        CommandResult result = new GuideCommand("view").execute();
+
+        assertTrue(result.getFeedback().startsWith("View one activity"));
+        assertTrue(result.getFeedback().contains("view ID"));
+    }
+
+    @Test
+    public void execute_listTopic_coversViewsFiltersAndRelativeDates() {
+        CommandResult result = new GuideCommand("list").execute();
+        String feedback = result.getFeedback();
+
+        assertTrue(feedback.startsWith("List activities"));
+        assertTrue(feedback.contains("view/concise"));
+        assertTrue(feedback.contains("view/detail"));
+        assertTrue(feedback.contains("status/all|completed|incomplete"));
+        assertTrue(feedback.contains("c/CATEGORY"));
+        assertTrue(feedback.contains("topic/TOPIC"));
+        assertTrue(feedback.contains("date/YYYY-MM-DD"));
+        assertTrue(feedback.contains("order/input|time|chronological"));
+        assertTrue(feedback.contains("today"));
+        assertTrue(feedback.contains("tomorrow"));
+        assertTrue(feedback.contains("this week"));
+        assertTrue(feedback.contains("list this week status/incomplete c/ACADEMIC order/time"));
+    }
+
+    @Test
+    public void execute_completionTopic_coversMarkUnmarkAndStatusFilters() {
+        CommandResult result = new GuideCommand("completion").execute();
+        String feedback = result.getFeedback();
+
+        assertTrue(feedback.startsWith("Track completion"));
+        assertTrue(feedback.contains("mark 3"));
+        assertTrue(feedback.contains("unmark 3"));
+        assertTrue(feedback.contains("list status/completed"));
+        assertTrue(feedback.contains("list status/incomplete"));
+        assertTrue(feedback.contains("reversible and need no confirmation"));
+    }
+
+    @Test
+    public void execute_resetTopic_showsGuideText() {
+        CommandResult result = new GuideCommand("reset").execute();
+
+        assertTrue(result.getFeedback().startsWith("Reset all user data"));
+        assertTrue(result.getFeedback().contains("reset all"));
     }
 
     @Test
@@ -258,17 +311,35 @@ class GuideCommandTest {
     }
 
     @Test
-    public void execute_menuNumberTwo_resolvesToAdd() {
+    public void execute_menuNumberTwo_resolvesToActivitiesOverview() {
         CommandResult result = new GuideCommand("2").execute();
 
-        assertTrue(result.getFeedback().startsWith("Add activities"));
+        assertTrue(result.getFeedback().startsWith("Add, edit and delete activities"));
+        assertTrue(result.getFeedback().contains("add"));
+        assertTrue(result.getFeedback().contains("edit"));
+        assertTrue(result.getFeedback().contains("delete"));
     }
 
     @Test
-    public void execute_menuNumberThree_resolvesToFind() {
+    public void execute_menuNumberTwoAgreesWithItsOwnKeyword() {
+        assertEquals(new GuideCommand("2").execute().getFeedback(),
+                new GuideCommand("activities").execute().getFeedback());
+    }
+
+    @Test
+    public void execute_menuNumberThree_resolvesToBrowseOverview() {
         CommandResult result = new GuideCommand("3").execute();
 
-        assertTrue(result.getFeedback().startsWith("Find activities"));
+        assertTrue(result.getFeedback().startsWith("List, find and view activities"));
+        assertTrue(result.getFeedback().contains("list"));
+        assertTrue(result.getFeedback().contains("find"));
+        assertTrue(result.getFeedback().contains("view"));
+    }
+
+    @Test
+    public void execute_menuNumberThreeAgreesWithItsOwnKeyword() {
+        assertEquals(new GuideCommand("3").execute().getFeedback(),
+                new GuideCommand("browse").execute().getFeedback());
     }
 
     @Test

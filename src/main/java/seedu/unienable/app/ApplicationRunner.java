@@ -17,6 +17,7 @@ import seedu.unienable.command.activity.EditCommand;
 import seedu.unienable.command.activity.MarkCommand;
 import seedu.unienable.command.activity.OrderSetCommand;
 import seedu.unienable.command.activity.UnmarkCommand;
+import seedu.unienable.command.general.ResetCommand;
 import seedu.unienable.command.topic.TopicAddCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;
 import seedu.unienable.command.topic.TopicRenameCommand;
@@ -114,10 +115,10 @@ public class ApplicationRunner {
     private boolean initialise() {
         try {
             storage.prepareDataFiles();
-            LoadResult<Activity> activityLoad = storage.loadActivities();
             LoadResult<Topic> topicLoad = storage.loadTopics();
+            LoadResult<Activity> activityLoad = storage.loadActivities(topicLoad.getRecords());
             LoadResult<Facility> facilityLoad = storage.loadFacilities();
-            LoadResult<Connection> connectionLoad = storage.loadConnections();
+            LoadResult<Connection> connectionLoad = storage.loadConnections(facilityLoad.getRecords());
             LoadResult<ActivityOrder> settingsLoad = storage.loadSettings();
 
             activityManager.loadAll(activityLoad.getRecords());
@@ -232,7 +233,8 @@ public class ApplicationRunner {
                 || command instanceof OrderSetCommand
                 || command instanceof TopicAddCommand
                 || command instanceof TopicRenameCommand
-                || command instanceof TopicDeleteCommand;
+                || command instanceof TopicDeleteCommand
+                || command instanceof ResetCommand;
     }
 
     /**
@@ -244,9 +246,7 @@ public class ApplicationRunner {
      */
     private boolean trySave() {
         try {
-            storage.saveActivities(activityManager.getAll());
-            storage.saveTopics(topicManager.getAll());
-            storage.saveSettings(activityManager.getDefaultOrder());
+            storage.saveAll(activityManager.getAll(), topicManager.getAll(), activityManager.getDefaultOrder());
             hasUnsavedChanges = false;
             return true;
         } catch (StorageException e) {

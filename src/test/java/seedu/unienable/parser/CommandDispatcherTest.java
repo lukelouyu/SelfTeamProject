@@ -23,6 +23,7 @@ import seedu.unienable.command.accessibility.FacilityListCommand;
 import seedu.unienable.command.accessibility.FacilityViewCommand;
 import seedu.unienable.command.activity.FindCommand;
 import seedu.unienable.command.general.GuideCommand;
+import seedu.unienable.command.general.ResetCommand;
 import seedu.unienable.command.activity.ListCommand;
 import seedu.unienable.command.activity.MarkCommand;
 import seedu.unienable.command.activity.NextCommand;
@@ -35,6 +36,7 @@ import seedu.unienable.command.topic.TopicRenameCommand;
 import seedu.unienable.command.activity.UnmarkCommand;
 import seedu.unienable.command.activity.ViewCommand;
 import seedu.unienable.exception.InvalidCommandException;
+import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
@@ -226,6 +228,31 @@ class CommandDispatcherTest {
     @Test
     public void dispatch_commandWordIsCaseInsensitive() throws Exception {
         assertTrue(dispatcher.dispatch("BYE", NOW) instanceof ExitCommand);
+    }
+
+    @Test
+    public void dispatch_resetAll_returnsResetCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("reset all", NOW) instanceof ResetCommand);
+    }
+
+    @Test
+    public void dispatch_resetAllIsCaseInsensitive_returnsResetCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("reset ALL", NOW) instanceof ResetCommand);
+    }
+
+    @Test
+    public void dispatch_resetWithNoArguments_throwsMissingInputException() {
+        assertThrows(MissingInputException.class, () -> dispatcher.dispatch("reset", NOW));
+    }
+
+    @Test
+    public void dispatch_resetAllWithTrailingArguments_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("reset all extra", NOW));
+    }
+
+    @Test
+    public void dispatch_resetUnknownOption_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("reset everything", NOW));
     }
 
     @Test

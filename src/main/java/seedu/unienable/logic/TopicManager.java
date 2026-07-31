@@ -185,7 +185,8 @@ public class TopicManager {
         }
         int usageCount = countActivitiesUsing(category, name);
         if (usageCount > 0) {
-            throw new DuplicateActivityException("Topic " + name + " is used by " + usageCount + " activities.");
+            throw new DuplicateActivityException("Topic " + name + " is used by " + usageCount
+                    + (usageCount == 1 ? " activity." : " activities."));
         }
     }
 
@@ -197,6 +198,13 @@ public class TopicManager {
             }
         }
         return count;
+    }
+
+    /** Clears every stored topic across every category. Used by "reset all". */
+    public void resetAll() {
+        for (List<Topic> topics : topicsByCategory.values()) {
+            topics.clear();
+        }
     }
 
     private Topic findTopic(ActivityCategory category, String name) {

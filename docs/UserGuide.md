@@ -69,7 +69,8 @@ accessibility information, or medical advice.
 - Multiple search keywords use AND: every keyword must match.
 - Binary confirmation prompts accept only `y` or `n` (uppercase `Y`/`N` also accepted); anything
   else is treated as `n` (cancel).
-- Stable activity IDs never change when another activity is deleted.
+- Activity IDs are permanent. After deletion, remaining IDs do not change. Use `reset all` to
+  restart from ID `[1]`.
 - Commands documented as taking no arguments (`next`, `bye`, `order view`, `facility list`,
   `connection list`) reject any trailing text rather than silently ignoring it.
 
@@ -88,6 +89,7 @@ accessibility information, or medical advice.
 | Activities | `delete ID` | v1.0 |
 | Activities | `mark ID` / `unmark ID` | v1.0 |
 | Activities | `next` | v1.0 |
+| General | `reset all` | v1.0 |
 | Topics | `topic add/list/rename/delete ...` | v1.0 |
 | Accessibility | `facility list/view/find ...` | v1.0 |
 | Accessibility | `connection list/view/find ...` | v1.0 |
@@ -166,14 +168,15 @@ window. As with a fixed activity, a supplied `topic/` must already exist under t
 ### 6.3 List Activities: `list`
 
 ```text
-list [view/concise|detail]
+list [today|tomorrow|this week]
+     [view/concise|detail]
      [status/all|completed|incomplete]
      [c/CATEGORY] [topic/TOPIC] [date/DATE]
      [order/input|time|chronological]
 ```
 
-Every field is optional and may appear in any order. With no fields, `list` shows every activity
-in the saved default order. Header wording is `"Here are N matching activity/activities:"`
+Every marker field is optional and may appear in any order. With no fields, `list` shows every
+activity in the saved default order. Header wording is `"Here are N matching activity/activities:"`
 regardless of whether filters were supplied. If `view/` is supplied, its value must be exactly
 `concise` or `detail`; any other value is rejected rather than silently falling back to concise.
 
@@ -182,6 +185,31 @@ category (and topic if set), and `E`/`S` energy/sensory ratings.
 
 `view/detail` shows scheduling type, complete timing, and the note field (`None` if unset)
 instead.
+
+An optional relative-date word or phrase may appear right after `list`, before any marker fields:
+
+```text
+list today
+list tomorrow
+list this week status/incomplete c/ACADEMIC order/time
+list tomorrow view/detail
+```
+
+- `today` — activities on the current local date.
+- `tomorrow` — activities on the current local date plus one day.
+- `this week` — activities from Monday through Sunday of the week containing today.
+
+A relative-date phrase can be freely combined with the other filters above, but not with
+`date/YYYY-MM-DD` (which still works on its own) or with another relative-date phrase; either
+combination, or unrecognised trailing text after a relative-date phrase, is rejected with a clear
+error rather than silently falling back to plain `list`:
+
+```text
+list today date/2026-08-15
+list today tomorrow
+list this month
+list today extra
+```
 
 ### 6.4 View One Activity: `view`
 
@@ -301,6 +329,10 @@ You now have 7 activities.
 ____________________________________________________________
 ```
 
+Activity IDs are permanent: deleting activity `[8]` does not renumber any other activity, and a
+future `add` never reuses `[8]`. The only way to restart ID assignment from `[1]` is `reset all`
+(section 6.11), which clears every activity and topic.
+
 ### 6.9 Mark/Unmark Completion: `mark` / `unmark`
 
 ```text
@@ -343,6 +375,44 @@ ____________________________________________________________
 Selection order: an incomplete fixed activity currently in progress; otherwise the nearest
 upcoming incomplete fixed activity; otherwise the incomplete flexible activity whose window ends
 soonest. Completed and overdue activities are never selected.
+
+### 6.11 Reset All User Data: `reset all`
+
+```text
+reset all
+```
+
+Clears every activity and user-created topic, resets your saved default order back to
+`chronological`, and resets the next activity ID back to `[1]`. Facility and connection reference
+data (the read-only accessibility dataset) is always kept.
+
+```text
+____________________________________________________________
+Reset all user data?
+
+Activities to delete: 3
+Topics to delete   : 1
+Default order      : reset to chronological
+
+Facility and connection reference data will be kept.
+This action cannot be undone.
+Continue? (y/n)
+____________________________________________________________
+```
+
+After `y`:
+
+```text
+____________________________________________________________
+All user data has been reset.
+Your next activity will use ID [1].
+____________________________________________________________
+```
+
+`reset all` is the only accepted form; `reset`, `reset all extra`, and any other option after
+`reset` are rejected. If there is nothing to reset (no activities, no topics, and the default
+order is already chronological), the confirmation prompt is skipped and the reset succeeds
+immediately.
 
 ## 7. Topic Commands
 
@@ -536,16 +606,21 @@ guide NUMBER
 ```
 
 `guide` alone shows a 10-item numbered menu. `guide TOPIC` shows one topic's text directly.
-Implemented topics: `getting-started`, `add`, `edit`, `find`, `topic`, `facility`, `storage`.
-Topics for v2.0-only features (`dashboard`, `timetable`, `recommend`, `route`, `export`) are
-still listed but end with `(Coming soon in a future release.)` where the underlying command
-isn't built yet.
+Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`, `list`, `edit`,
+`delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`, `topic`, `facility`,
+`storage`. Topics for v2.0-only features (`timetable`, `recommend`, `route`, `export`) are still
+listed but end with `(Coming soon in a future release.)` where the underlying command isn't built
+yet; `dashboard` explains that completion tracking itself is already available (see `completion`)
+while the aggregate dashboard view is still coming.
 
 Each menu item can also be selected by its number, either as `guide NUMBER` or by entering the
 bare number as its own command right after the menu is shown (e.g. `1` selects "Getting
-started"). Menu items that span more than one topic keyword (e.g. "2. Add, edit and delete
-activities") resolve to their single most representative topic. Item `10` ("Return") is not a
-topic; it just acknowledges the selection and returns to the command prompt.
+started"). Menu items that span more than one command topic use a dedicated overview topic
+instead of picking just one: item `2` ("Add, edit and delete activities") is the `activities`
+topic, and item `3` ("List, find and view activities") is the `browse` topic; each overview points
+onward to the individual command's own topic (`add`, `edit`, `delete`, `list`, `find`, `view`) for
+full detail. Item `10` ("Return") is not a topic; it just acknowledges the selection and returns
+to the command prompt.
 
 ## 10. Exit: `bye`
 
@@ -578,12 +653,27 @@ overwritten. `settings.txt` stores your saved default activity order (see `order
 6); a missing or malformed file safely falls back to the documented `chronological` default.
 
 The application only saves activities, topics, and settings after a command that actually changes
-them (`add`, `edit`, `delete`, `mark`, `unmark`, `order set`, and the `topic` commands) — read-only
-commands such as `list`, `find`, `view`, and `next` never write to disk. `settings.txt` is
-therefore created the first time you run any such data-changing command, not only when you first
-use `order set`. If a save ever fails (for example, a read-only or locked file), the application
-reports the storage error instead of a false success message, and `bye` will say so plainly rather
-than claiming your data was saved.
+them (`add`, `edit`, `delete`, `mark`, `unmark`, `order set`, `reset all`, and the `topic`
+commands) — read-only commands such as `list`, `find`, `view`, and `next` never write to disk.
+`settings.txt` is therefore created the first time you run any such data-changing command, not
+only when you first use `order set`; `reset all` also writes it, since it resets the saved default
+order back to `chronological`. Activities, topics, and settings are always saved together as one
+unit: if any of the three files cannot be written, none of them are updated, so a failure never
+leaves the files disagreeing with each other on disk. If a save ever fails (for example, a
+read-only or locked file), the application reports the storage error instead of a false success
+message, and `bye` will say so plainly rather than claiming your data was saved.
+
+Every data file is validated line-by-line when the application starts, not just parsed for shape.
+A line that fails validation is skipped with a warning (see `[Warning] Partial data loaded` below)
+instead of silently loading bad data:
+
+- `activities.txt` — positive/unique IDs, non-blank descriptions, end-after-start timing, a
+  flexible window/duration that fits, no exact duplicate, no fixed-activity overlap, and a topic
+  field that matches a topic actually recorded in `topics.txt` under the same category.
+- `connections.txt` — positive/unique IDs, a positive distance, and `from`/`to` endpoints that
+  both match a known facility's name in `facilities.txt`.
+- `facilities.txt` — unique facility IDs and unique facility names (facilities are looked up by
+  name, so a duplicate name would otherwise make that lookup ambiguous).
 
 ## 12. Error Handling
 
@@ -635,7 +725,7 @@ bye
 
 add n/DESCRIPTION c/CATEGORY date/DATE type/FIXED from/START to/END energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]
 add n/DESCRIPTION c/CATEGORY date/DATE type/FLEXIBLE earliest/TIME latest/TIME dur/MINUTES energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]
-list [view/concise|detail] [status/all|completed|incomplete] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
+list [today|tomorrow|this week] [view/concise|detail] [status/all|completed|incomplete] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
 view ID
 find [k/KEYWORD ...] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
 order view
@@ -645,6 +735,7 @@ delete ID
 mark ID
 unmark ID
 next
+reset all
 
 topic add c/CATEGORY n/TOPIC
 topic list [c/CATEGORY]

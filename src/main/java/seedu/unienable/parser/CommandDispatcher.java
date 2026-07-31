@@ -6,6 +6,7 @@ import java.util.Locale;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.general.ExitCommand;
 import seedu.unienable.command.general.GuideCommand;
+import seedu.unienable.command.general.ResetCommand;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
@@ -75,7 +76,7 @@ public class CommandDispatcher {
         case "add":
             return activityCommandParser.parseAdd(activityManager, topicManager, args);
         case "list":
-            return activityCommandParser.parseList(activityManager, args);
+            return activityCommandParser.parseList(activityManager, now, args);
         case "view":
             return activityCommandParser.parseView(activityManager, args);
         case "find":
@@ -100,6 +101,8 @@ public class CommandDispatcher {
             return dispatchConnection(args);
         case "guide":
             return new GuideCommand(args.isEmpty() ? null : args);
+        case "reset":
+            return dispatchReset(args);
         case "bye":
             requireNoArguments("bye", args);
             return new ExitCommand();
@@ -111,6 +114,26 @@ public class CommandDispatcher {
         default:
             throw new InvalidCommandException("Unknown command \"" + commandWord + "\". Enter guide for help.");
         }
+    }
+
+    /**
+     * Parses "reset all" - the only accepted form. A missing, misspelled, or trailing argument is
+     * rejected clearly rather than silently accepted or ignored.
+     *
+     * @param args the text after the "reset" command word
+     * @return the parsed ResetCommand
+     * @throws MissingInputException if no argument is supplied
+     * @throws InvalidCommandException if the argument is anything other than exactly "all"
+     */
+    private Command dispatchReset(String args) throws MissingInputException, InvalidCommandException {
+        String trimmed = args.trim();
+        if (trimmed.isEmpty()) {
+            throw new MissingInputException("reset requires \"all\".");
+        }
+        if (!"all".equalsIgnoreCase(trimmed)) {
+            throw new InvalidCommandException("reset only accepts \"all\".");
+        }
+        return new ResetCommand(activityManager, topicManager);
     }
 
     private Command dispatchTopic(String args)

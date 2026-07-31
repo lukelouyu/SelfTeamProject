@@ -2,6 +2,11 @@ package seedu.unienable.exception;
 
 /** Signals that a date or time value could not be parsed or is out of range. */
 public class InvalidDateTimeException extends UniEnableException {
+    /**
+     * Creates an InvalidDateTimeException with the given detail message.
+     *
+     * @param message the detail message shown to the user
+     */
     public InvalidDateTimeException(String message) {
         super(message);
     }

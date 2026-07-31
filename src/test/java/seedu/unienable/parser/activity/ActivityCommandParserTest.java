@@ -579,6 +579,31 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseFind_whitespaceOnlyKeywordAlone_throwsMissingInputException() {
+        // Regression test: a blank k/ does not count as a supplied keyword, same principle as
+        // topic/ and order/ above. Previously "find k/   " passed the "at least one keyword or
+        // filter" check (fields.containsKey("k/") was true) and String.split on the resulting
+        // trimmed-to-empty value produced a single empty-string "keyword" that every activity's
+        // description trivially contains, silently matching every activity instead of being
+        // rejected.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "k/   "));
+    }
+
+    @Test
+    public void parseFind_whitespaceOnlyKeywordWithOtherFilter_ignoresKeywordUsesOtherFilter() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "No-topic lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "c/ACADEMIC k/   ").execute();
+
+        assertTrue(result.getFeedback().contains("No-topic lecture"));
+    }
+
+    @Test
     public void parseNext_buildsWorkingNextCommand() throws Exception {
         ActivityManager manager = new ActivityManager();
         manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,

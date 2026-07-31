@@ -254,8 +254,9 @@ public class ActivityCommandParser {
             throw new MissingInputException("at least one keyword or filter is required.");
         }
 
-        List<String> keywords = fields.containsKey("k/")
-                ? Arrays.asList(fields.get("k/").trim().split("\\s+"))
+        String rawKeywords = blankToNull(fields.get("k/"));
+        List<String> keywords = rawKeywords != null
+                ? Arrays.asList(rawKeywords.split("\\s+"))
                 : List.of();
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
@@ -272,13 +273,17 @@ public class ActivityCommandParser {
      * search by, so "find order/time" with nothing else must still be rejected. A whitespace-only
      * topic/ also does not count, the same way it does not count as a stored topic anywhere else:
      * "find topic/   " with nothing else must still be rejected rather than matching everything.
+     * A whitespace-only k/ does not count either, for the same reason: without this check, the
+     * blank keyword survives as a single empty-string token that every activity's fields trivially
+     * "contain," so "find k/   " with nothing else would silently match every activity instead of
+     * being rejected.
      *
      * @param fields the fields extracted from a find command's argument text
-     * @return true if at least one of k/, c/, a non-blank topic/, or date/ is present
+     * @return true if at least one of a non-blank k/, c/, a non-blank topic/, or date/ is present
      */
     private boolean hasKeywordOrFilter(Map<String, String> fields) {
-        return fields.containsKey("k/") || fields.containsKey("c/") || blankToNull(fields.get("topic/")) != null
-                || fields.containsKey("date/");
+        return blankToNull(fields.get("k/")) != null || fields.containsKey("c/")
+                || blankToNull(fields.get("topic/")) != null || fields.containsKey("date/");
     }
 
     /**

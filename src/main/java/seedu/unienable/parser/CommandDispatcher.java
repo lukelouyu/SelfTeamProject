@@ -76,7 +76,7 @@ public class CommandDispatcher {
         case "add":
             return activityCommandParser.parseAdd(activityManager, topicManager, args);
         case "list":
-            return activityCommandParser.parseList(activityManager, args);
+            return activityCommandParser.parseList(activityManager, now, args);
         case "view":
             return activityCommandParser.parseView(activityManager, args);
         case "find":

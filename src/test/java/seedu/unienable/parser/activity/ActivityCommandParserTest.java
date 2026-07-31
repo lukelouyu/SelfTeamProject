@@ -32,6 +32,8 @@ import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.model.enums.ScheduleType;
 
 class ActivityCommandParserTest {
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 15, 10, 0);
+
     private final ActivityCommandParser parser = new ActivityCommandParser();
 
     @Test
@@ -475,7 +477,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parseList(manager, "").execute();
+        CommandResult result = parser.parseList(manager, NOW, "").execute();
 
         assertTrue(result.getFeedback().contains("Lecture"));
     }
@@ -492,7 +494,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parseList(manager, "status/incomplete").execute();
+        CommandResult result = parser.parseList(manager, NOW, "status/incomplete").execute();
 
         String feedback = result.getFeedback();
         assertTrue(feedback.contains("Pending task"));
@@ -507,7 +509,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parseList(manager, "view/detail").execute();
+        CommandResult result = parser.parseList(manager, NOW, "view/detail").execute();
 
         assertTrue(result.getFeedback().contains("Status: Incomplete | Type: FIXED"));
     }
@@ -519,7 +521,7 @@ class ActivityCommandParserTest {
         // never rejected.
         ActivityManager manager = new ActivityManager();
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "view/nonsense"));
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "view/nonsense"));
     }
 
     @Test
@@ -533,7 +535,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CS2113", null));
 
-        CommandResult result = parser.parseList(manager, "c/ACADEMIC topic/CG3207").execute();
+        CommandResult result = parser.parseList(manager, NOW, "c/ACADEMIC topic/CG3207").execute();
 
         String feedback = result.getFeedback();
         assertTrue(feedback.contains("CG3207 lecture"));
@@ -550,7 +552,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
 
-        CommandResult result = parser.parseList(manager, "topic/CG3207").execute();
+        CommandResult result = parser.parseList(manager, NOW, "topic/CG3207").execute();
 
         assertTrue(result.getFeedback().contains("CG3207 lecture"));
     }
@@ -567,7 +569,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parseList(manager, "topic/   ").execute();
+        CommandResult result = parser.parseList(manager, NOW, "topic/   ").execute();
 
         assertTrue(result.getFeedback().contains("No-topic lecture"));
     }
@@ -577,7 +579,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "status/bogus"));
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "status/bogus"));
     }
 
     @Test
@@ -585,7 +587,206 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "order/bogus"));
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "order/bogus"));
+    }
+
+    @Test
+    public void parseList_today_matchesOnlyTodaysActivities() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        LocalDate today = NOW.toLocalDate();
+        manager.add(new FixedActivity(manager.getNextId(), "Today's lecture", ActivityCategory.ACADEMIC,
+                today, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Tomorrow's lecture", ActivityCategory.ACADEMIC,
+                today.plusDays(1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, NOW, "today").execute().getFeedback();
+
+        assertTrue(feedback.contains("Today's lecture"));
+        assertTrue(!feedback.contains("Tomorrow's lecture"));
+    }
+
+    @Test
+    public void parseList_todayIsCaseInsensitive_matchesTodaysActivities() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        LocalDate today = NOW.toLocalDate();
+        manager.add(new FixedActivity(manager.getNextId(), "Today's lecture", ActivityCategory.ACADEMIC,
+                today, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, NOW, "TODAY").execute().getFeedback();
+
+        assertTrue(feedback.contains("Today's lecture"));
+    }
+
+    @Test
+    public void parseList_tomorrow_matchesOnlyTomorrowsActivities() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        LocalDate today = NOW.toLocalDate();
+        manager.add(new FixedActivity(manager.getNextId(), "Today's lecture", ActivityCategory.ACADEMIC,
+                today, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Tomorrow's lecture", ActivityCategory.ACADEMIC,
+                today.plusDays(1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, NOW, "tomorrow").execute().getFeedback();
+
+        assertTrue(feedback.contains("Tomorrow's lecture"));
+        assertTrue(!feedback.contains("Today's lecture"));
+    }
+
+    @Test
+    public void parseList_tomorrowCombinedWithViewDetail_appliesBothFilterAndView() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        LocalDate today = NOW.toLocalDate();
+        manager.add(new FixedActivity(manager.getNextId(), "Tomorrow's lecture", ActivityCategory.ACADEMIC,
+                today.plusDays(1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, NOW, "tomorrow view/detail").execute().getFeedback();
+
+        assertTrue(feedback.contains("Tomorrow's lecture"));
+        assertTrue(feedback.contains("Status: Incomplete | Type: FIXED"));
+    }
+
+    @Test
+    public void parseList_thisWeekMondayNow_matchesMondayThroughSunday() throws Exception {
+        LocalDateTime mondayNow = LocalDateTime.of(2026, 8, 17, 10, 0); // a Monday
+        LocalDate monday = mondayNow.toLocalDate();
+        LocalDate sunday = monday.plusDays(6);
+
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Monday activity", ActivityCategory.ACADEMIC,
+                monday, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3),
+                null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Sunday activity", ActivityCategory.ACADEMIC,
+                sunday, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3),
+                null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Next Monday activity", ActivityCategory.ACADEMIC,
+                sunday.plusDays(1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, mondayNow, "this week").execute().getFeedback();
+
+        assertTrue(feedback.contains("Monday activity"));
+        assertTrue(feedback.contains("Sunday activity"));
+        assertTrue(!feedback.contains("Next Monday activity"));
+    }
+
+    @Test
+    public void parseList_thisWeekSundayNow_stillMatchesSameWeek() throws Exception {
+        LocalDateTime sundayNow = LocalDateTime.of(2026, 8, 23, 10, 0); // a Sunday
+        LocalDate sunday = sundayNow.toLocalDate();
+        LocalDate monday = sunday.minusDays(6);
+
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Monday activity", ActivityCategory.ACADEMIC,
+                monday, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3),
+                null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Sunday activity", ActivityCategory.ACADEMIC,
+                sunday, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3),
+                null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Day after activity", ActivityCategory.ACADEMIC,
+                sunday.plusDays(1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, sundayNow, "this week").execute().getFeedback();
+
+        assertTrue(feedback.contains("Monday activity"));
+        assertTrue(feedback.contains("Sunday activity"));
+        assertTrue(!feedback.contains("Day after activity"));
+    }
+
+    @Test
+    public void parseList_thisWeekYearBoundary_computesCorrectWeek() throws Exception {
+        // 2026-01-01 is a Thursday; its week runs 2025-12-29 (Mon) to 2026-01-04 (Sun), crossing
+        // the year boundary.
+        LocalDateTime now = LocalDateTime.of(2026, 1, 1, 10, 0);
+
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Last year activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2025, 12, 29), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "New year activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 1, 4), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Outside week activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 1, 5), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "this week").execute().getFeedback();
+
+        assertTrue(feedback.contains("Last year activity"));
+        assertTrue(feedback.contains("New year activity"));
+        assertTrue(!feedback.contains("Outside week activity"));
+    }
+
+    @Test
+    public void parseList_thisWeekCombinedWithFilters_appliesAllFilters() throws Exception {
+        LocalDate today = NOW.toLocalDate();
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Matching", ActivityCategory.ACADEMIC,
+                today, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3),
+                null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Wrong category", ActivityCategory.CCA,
+                today, LocalTime.of(11, 0), LocalTime.of(12, 0), EnergyRating.of(4), SensoryRating.of(3),
+                null, null));
+        manager.mark(2);
+
+        String feedback = parser.parseList(manager, NOW,
+                "this week status/incomplete c/ACADEMIC order/time").execute().getFeedback();
+
+        assertTrue(feedback.contains("Matching"));
+        assertTrue(!feedback.contains("Wrong category"));
+    }
+
+    @Test
+    public void parseList_todayCombinedWithDateMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "today date/2026-08-15"));
+    }
+
+    @Test
+    public void parseList_todayThenTomorrow_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "today tomorrow"));
+    }
+
+    @Test
+    public void parseList_thisMonth_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "this month"));
+    }
+
+    @Test
+    public void parseList_todayWithTrailingGarbage_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "today extra"));
+    }
+
+    @Test
+    public void parseList_unknownLeadingWord_throwsInvalidCommandException() {
+        // Family bug check: leading text that is neither a marker nor a recognised relative-date
+        // phrase must be rejected, not silently ignored as if "list" had no arguments at all.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "bogus"));
+    }
+
+    @Test
+    public void parseList_dateMarkerStillWorksWithoutRelativeDate() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Fixed-date lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 20), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, NOW, "date/2026-08-20").execute().getFeedback();
+
+        assertTrue(feedback.contains("Fixed-date lecture"));
     }
 
     @Test

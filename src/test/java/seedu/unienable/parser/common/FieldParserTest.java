@@ -2,10 +2,39 @@ package seedu.unienable.parser.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 class FieldParserTest {
+    // Every marker used by any parser in the app, as of this session. Kept as one flat list
+    // (rather than per-parser sets) because the boundary check in indexOfMarker() is global: a
+    // collision only matters if the two colliding markers could realistically appear in the same
+    // command's argument text, but it costs nothing to check the full vocabulary and is simpler
+    // to keep in sync than reasoning about which markers are ever mixed together.
+    private static final String[] ALL_KNOWN_MARKERS = {
+        "n/", "c/", "date/", "type/", "from/", "to/", "earliest/", "latest/", "dur/", "energy/",
+        "sensory/", "topic/", "note/", "view/", "status/", "order/", "k/", "old/", "new/", "shelter/",
+    };
+
+    @Test
+    public void indexOfMarker_noKnownMarkerIsMistakenlyMatchedInsideAnother() {
+        // Systematic version of the "topic/" vs "c/" regression: for every pair of known markers
+        // where one is a trailing substring of the other (e.g. "c/" inside "topic/"), the shorter
+        // marker must not match when it appears embedded in the longer one with nothing else
+        // preceding it in the text (so there is no whitespace boundary to legitimise the match).
+        for (String longerMarker : ALL_KNOWN_MARKERS) {
+            for (String shorterMarker : ALL_KNOWN_MARKERS) {
+                if (shorterMarker.equals(longerMarker) || !longerMarker.endsWith(shorterMarker)) {
+                    continue;
+                }
+                int result = FieldParser.indexOfMarker(longerMarker, shorterMarker, 0);
+                assertTrue(result == -1, "\"" + shorterMarker + "\" was matched inside \"" + longerMarker
+                        + "\" at index " + result + " with no preceding whitespace boundary");
+            }
+        }
+    }
+
     @Test
     public void extractField_withEndMarker_returnsTrimmedValue() {
         String input = "n/CG3207 lecture c/ACADEMIC";

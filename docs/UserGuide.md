@@ -89,6 +89,7 @@ accessibility information, or medical advice.
 | Activities | `delete ID` | v1.0 |
 | Activities | `mark ID` / `unmark ID` | v1.0 |
 | Activities | `next` | v1.0 |
+| General | `reset all` | v1.0 |
 | Topics | `topic add/list/rename/delete ...` | v1.0 |
 | Accessibility | `facility list/view/find ...` | v1.0 |
 | Accessibility | `connection list/view/find ...` | v1.0 |
@@ -304,7 +305,7 @@ ____________________________________________________________
 
 Activity IDs are permanent: deleting activity `[8]` does not renumber any other activity, and a
 future `add` never reuses `[8]`. The only way to restart ID assignment from `[1]` is `reset all`
-(section 6.13), which clears every activity and topic.
+(section 6.11), which clears every activity and topic.
 
 ### 6.9 Mark/Unmark Completion: `mark` / `unmark`
 
@@ -348,6 +349,44 @@ ____________________________________________________________
 Selection order: an incomplete fixed activity currently in progress; otherwise the nearest
 upcoming incomplete fixed activity; otherwise the incomplete flexible activity whose window ends
 soonest. Completed and overdue activities are never selected.
+
+### 6.11 Reset All User Data: `reset all`
+
+```text
+reset all
+```
+
+Clears every activity and user-created topic, resets your saved default order back to
+`chronological`, and resets the next activity ID back to `[1]`. Facility and connection reference
+data (the read-only accessibility dataset) is always kept.
+
+```text
+____________________________________________________________
+Reset all user data?
+
+Activities to delete: 3
+Topics to delete   : 1
+Default order      : reset to chronological
+
+Facility and connection reference data will be kept.
+This action cannot be undone.
+Continue? (y/n)
+____________________________________________________________
+```
+
+After `y`:
+
+```text
+____________________________________________________________
+All user data has been reset.
+Your next activity will use ID [1].
+____________________________________________________________
+```
+
+`reset all` is the only accepted form; `reset`, `reset all extra`, and any other option after
+`reset` are rejected. If there is nothing to reset (no activities, no topics, and the default
+order is already chronological), the confirmation prompt is skipped and the reset succeeds
+immediately.
 
 ## 7. Topic Commands
 
@@ -583,12 +622,15 @@ overwritten. `settings.txt` stores your saved default activity order (see `order
 6); a missing or malformed file safely falls back to the documented `chronological` default.
 
 The application only saves activities, topics, and settings after a command that actually changes
-them (`add`, `edit`, `delete`, `mark`, `unmark`, `order set`, and the `topic` commands) — read-only
-commands such as `list`, `find`, `view`, and `next` never write to disk. `settings.txt` is
-therefore created the first time you run any such data-changing command, not only when you first
-use `order set`. If a save ever fails (for example, a read-only or locked file), the application
-reports the storage error instead of a false success message, and `bye` will say so plainly rather
-than claiming your data was saved.
+them (`add`, `edit`, `delete`, `mark`, `unmark`, `order set`, `reset all`, and the `topic`
+commands) — read-only commands such as `list`, `find`, `view`, and `next` never write to disk.
+`settings.txt` is therefore created the first time you run any such data-changing command, not
+only when you first use `order set`; `reset all` also writes it, since it resets the saved default
+order back to `chronological`. Activities, topics, and settings are always saved together as one
+unit: if any of the three files cannot be written, none of them are updated, so a failure never
+leaves the files disagreeing with each other on disk. If a save ever fails (for example, a
+read-only or locked file), the application reports the storage error instead of a false success
+message, and `bye` will say so plainly rather than claiming your data was saved.
 
 ## 12. Error Handling
 

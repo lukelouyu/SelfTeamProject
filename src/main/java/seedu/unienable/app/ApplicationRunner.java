@@ -17,6 +17,7 @@ import seedu.unienable.command.activity.EditCommand;
 import seedu.unienable.command.activity.MarkCommand;
 import seedu.unienable.command.activity.OrderSetCommand;
 import seedu.unienable.command.activity.UnmarkCommand;
+import seedu.unienable.command.general.ResetCommand;
 import seedu.unienable.command.topic.TopicAddCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;
 import seedu.unienable.command.topic.TopicRenameCommand;
@@ -232,7 +233,8 @@ public class ApplicationRunner {
                 || command instanceof OrderSetCommand
                 || command instanceof TopicAddCommand
                 || command instanceof TopicRenameCommand
-                || command instanceof TopicDeleteCommand;
+                || command instanceof TopicDeleteCommand
+                || command instanceof ResetCommand;
     }
 
     /**

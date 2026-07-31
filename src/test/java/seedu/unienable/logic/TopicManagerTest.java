@@ -242,4 +242,17 @@ class TopicManagerTest {
         assertFalse(manager.exists(ActivityCategory.ACADEMIC, "First load"));
         assertTrue(manager.exists(ActivityCategory.ACADEMIC, "Second load"));
     }
+
+    @Test
+    public void resetAll_clearsTopicsInEveryCategory() throws Exception {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+        manager.add(ActivityCategory.CCA, "Computing Club");
+
+        manager.resetAll();
+
+        assertTrue(manager.getAll().isEmpty());
+        assertFalse(manager.exists(ActivityCategory.ACADEMIC, "CG3207"));
+        assertFalse(manager.exists(ActivityCategory.CCA, "Computing Club"));
+    }
 }

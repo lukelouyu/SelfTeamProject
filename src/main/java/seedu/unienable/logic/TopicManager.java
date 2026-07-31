@@ -199,6 +199,13 @@ public class TopicManager {
         return count;
     }
 
+    /** Clears every stored topic across every category. Used by "reset all". */
+    public void resetAll() {
+        for (List<Topic> topics : topicsByCategory.values()) {
+            topics.clear();
+        }
+    }
+
     private Topic findTopic(ActivityCategory category, String name) {
         for (Topic topic : topicsByCategory.get(category)) {
             if (topic.getName().equalsIgnoreCase(name)) {

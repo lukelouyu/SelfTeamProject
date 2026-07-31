@@ -167,6 +167,17 @@ public class GuideCommand extends Command {
                 + "  order view\n"
                 + "  order set time\n"
                 + "  list order/chronological");
+        topics.put("reset", "Reset all user data\n"
+                + "Format: reset all\n"
+                + "Clears every activity and topic, resets your saved default order to\n"
+                + "chronological, and resets the next activity ID back to [1].\n"
+                + "Facility and connection reference data is kept.\n"
+                + "\n"
+                + "Example:\n"
+                + "  reset all\n"
+                + "\n"
+                + "Shows a preview (how many activities and topics would be deleted) and\n"
+                + "asks for y/n before making any change. This cannot be undone.");
         topics.put("find", "Find activities\n"
                 + "Format: find [k/KEYWORD ...] [FILTERS]\n"
                 + "Multiple keywords and filters use AND.\n"

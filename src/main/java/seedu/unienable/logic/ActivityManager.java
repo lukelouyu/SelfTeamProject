@@ -450,4 +450,15 @@ public class ActivityManager {
     public int size() {
         return activities.size();
     }
+
+    /**
+     * Clears every stored activity, resets the next-ID counter back to 1, and resets the saved
+     * default order to chronological. Used by "reset all"; unlike loadAll(), this always starts
+     * from an empty, ID-1 state rather than restoring previously-saved data.
+     */
+    public void resetAll() {
+        activities.clear();
+        nextId = 1;
+        defaultOrder = ActivityOrder.CHRONOLOGICAL;
+    }
 }

@@ -147,6 +147,113 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_resetAllOnEmptyState_skipsConfirmationAndSucceedsImmediately() {
+        String output = runWithInput("reset all\nbye\n");
+
+        assertTrue(!output.contains("Continue? (y/n)"));
+        assertTrue(output.contains("All user data has been reset."));
+        assertTrue(output.contains("Your next activity will use ID [1]."));
+    }
+
+    @Test
+    public void run_resetAllShowsPreviewAndConfirmsOnY() {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "topic add c/ACADEMIC n/CS2113\n"
+                        + "reset all\n"
+                        + "y\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Reset all user data?"));
+        assertTrue(output.contains("Activities to delete: 1"));
+        assertTrue(output.contains("Topics to delete   : 1"));
+        assertTrue(output.contains("Default order      : reset to chronological"));
+        assertTrue(output.contains("Facility and connection reference data will be kept."));
+        assertTrue(output.contains("This action cannot be undone."));
+        assertTrue(output.contains("All user data has been reset."));
+        assertTrue(output.contains("Your next activity will use ID [1]."));
+    }
+
+    @Test
+    public void run_resetAllCancelledWithN_keepsDataOnDisk() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "reset all\n"
+                        + "n\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Cancelled. No changes were made."));
+
+        Storage storage = new Storage(tempDir);
+        assertEquals(1, storage.loadActivities().getRecords().size());
+    }
+
+    @Test
+    public void run_resetAllAtEndOfInput_cancelsAndKeepsDataOnDisk() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "reset all\n");
+
+        assertTrue(output.contains("Continue? (y/n)"));
+        assertTrue(output.contains("Cancelled. No changes were made."));
+
+        Storage storage = new Storage(tempDir);
+        assertEquals(1, storage.loadActivities().getRecords().size());
+    }
+
+    @Test
+    public void run_resetAllPersistsAcrossRestart() {
+        runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "topic add c/ACADEMIC n/CS2113\n"
+                        + "order set input\n"
+                        + "reset all\n"
+                        + "y\n"
+                        + "bye\n");
+
+        String secondRunOutput = runWithInput("list\ntopic list c/ACADEMIC\norder view\nbye\n");
+
+        assertTrue(secondRunOutput.contains("No activities found."));
+        assertTrue(!secondRunOutput.contains("CS2113"));
+        assertTrue(secondRunOutput.contains("Saved default activity order: chronological"));
+    }
+
+    @Test
+    public void run_resetAllPreservesAccessibilityData() {
+        // "Facility and connection reference data will be kept." must be true, not just claimed.
+        String firstRunOutput = runWithInput("facility list\nbye\n");
+
+        runWithInput("add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                + "energy/4 sensory/3\nreset all\ny\nbye\n");
+
+        String secondRunOutput = runWithInput("facility list\nbye\n");
+
+        assertEquals(firstRunOutput.replaceAll("Welcome[^\\n]*\\n", ""),
+                secondRunOutput.replaceAll("Welcome[^\\n]*\\n", ""));
+    }
+
+    @Test
+    public void run_resetUnknownOption_showsErrorAndDoesNotClearData() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "reset\n"
+                        + "reset extra\n"
+                        + "reset all extra\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("[Error]"));
+        assertTrue(!output.contains("All user data has been reset."));
+
+        Storage storage = new Storage(tempDir);
+        assertEquals(1, storage.loadActivities().getRecords().size());
+    }
+
+    @Test
     public void run_readOnlyCommands_neverCreateSettingsFile() {
         // Regression test: saveApplicationState() previously ran after every successfully
         // executed command, including read-only ones, so settings.txt was created the first

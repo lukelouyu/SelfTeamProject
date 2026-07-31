@@ -623,4 +623,21 @@ class ActivityManagerTest {
         assertEquals(1, manager.size());
         assertEquals("Second load", manager.getById(1).getDescription());
     }
+
+    @Test
+    public void resetAll_clearsActivitiesResetsNextIdAndDefaultOrder() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "First", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(11, 0), LocalTime.of(12, 0)));
+        manager.setDefaultOrder(ActivityOrder.INPUT);
+
+        manager.resetAll();
+
+        assertEquals(0, manager.size());
+        assertEquals(1, manager.getNextId());
+        assertEquals(ActivityOrder.CHRONOLOGICAL, manager.getDefaultOrder());
+
+        manager.add(newFixedActivity(manager.getNextId(), "After reset", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        assertEquals(1, manager.getById(1).getId());
+    }
 }

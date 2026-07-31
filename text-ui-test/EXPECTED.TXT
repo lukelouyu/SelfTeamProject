@@ -24,11 +24,38 @@ ____________________________________________________________
 Getting started
 Run the JAR, enter guide when needed, and use bye to exit.
 Related commands: guide, bye
+
+Enter guide to see the numbered menu, then either type a number
+such as 2 or go straight to a topic by name, for example guide add.
+
+Examples:
+  guide
+  guide 2
+  guide add
+  bye
 ____________________________________________________________
 ____________________________________________________________
 Add activities
 Use add with FIXED timing or a FLEXIBLE window and duration.
 Related commands: topic add, list, view
+
+Replace the description, date, times, and ratings below with
+your own values.
+
+Example - add a fixed activity:
+  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
+
+Example - add a flexible activity:
+  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
+
+Then view your activities:
+  list
+  list view/detail
+  list date/2026-08-15
+
+Optional - create and use a topic first:
+  topic add c/ACADEMIC n/PL1101E
+  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
 ____________________________________________________________
 ____________________________________________________________
 Edit an activity
@@ -39,11 +66,41 @@ ____________________________________________________________
 Find activities
 Format: find [k/KEYWORD ...] [FILTERS]
 Multiple keywords and filters use AND.
+
+Examples:
+  find k/PL1101E
+  find k/lecture
+  find c/ACADEMIC
+  find date/2026-08-15
+  find k/PL1101E c/ACADEMIC
+  find k/finish assignment order/time
+
+Example - checking when nothing matches:
+  find k/nonexistentkeyword12345
+
+Every supplied keyword and filter must match. Search is
+case-insensitive and can match part of a word.
 ____________________________________________________________
 ____________________________________________________________
 Categories and topics
 Topics are optional one-level groupings inside fixed categories.
 Related commands: topic add, topic list, topic rename, topic delete
+
+Example - create and use a topic:
+  topic add c/ACADEMIC n/PL1101E
+  topic list c/ACADEMIC
+  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
+
+Example - rename a topic:
+  topic rename c/ACADEMIC old/PL1101E new/PL1101E Revision
+
+Renaming asks for y or n before saving, and updates every
+activity already using the old topic name.
+
+Example - delete an unused topic:
+  topic delete c/ACADEMIC n/Unused Topic
+
+A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
 Accessible facilities
@@ -109,11 +166,101 @@ ____________________________________________________________
 Add activities
 Use add with FIXED timing or a FLEXIBLE window and duration.
 Related commands: topic add, list, view
+
+Replace the description, date, times, and ratings below with
+your own values.
+
+Example - add a fixed activity:
+  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
+
+Example - add a flexible activity:
+  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
+
+Then view your activities:
+  list
+  list view/detail
+  list date/2026-08-15
+
+Optional - create and use a topic first:
+  topic add c/ACADEMIC n/PL1101E
+  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
 ____________________________________________________________
 ____________________________________________________________
 Getting started
 Run the JAR, enter guide when needed, and use bye to exit.
 Related commands: guide, bye
+
+Enter guide to see the numbered menu, then either type a number
+such as 2 or go straight to a topic by name, for example guide add.
+
+Examples:
+  guide
+  guide 2
+  guide add
+  bye
+____________________________________________________________
+____________________________________________________________
+Add activities
+Use add with FIXED timing or a FLEXIBLE window and duration.
+Related commands: topic add, list, view
+
+Replace the description, date, times, and ratings below with
+your own values.
+
+Example - add a fixed activity:
+  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
+
+Example - add a flexible activity:
+  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
+
+Then view your activities:
+  list
+  list view/detail
+  list date/2026-08-15
+
+Optional - create and use a topic first:
+  topic add c/ACADEMIC n/PL1101E
+  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
+____________________________________________________________
+____________________________________________________________
+Find activities
+Format: find [k/KEYWORD ...] [FILTERS]
+Multiple keywords and filters use AND.
+
+Examples:
+  find k/PL1101E
+  find k/lecture
+  find c/ACADEMIC
+  find date/2026-08-15
+  find k/PL1101E c/ACADEMIC
+  find k/finish assignment order/time
+
+Example - checking when nothing matches:
+  find k/nonexistentkeyword12345
+
+Every supplied keyword and filter must match. Search is
+case-insensitive and can match part of a word.
+____________________________________________________________
+____________________________________________________________
+Categories and topics
+Topics are optional one-level groupings inside fixed categories.
+Related commands: topic add, topic list, topic rename, topic delete
+
+Example - create and use a topic:
+  topic add c/ACADEMIC n/PL1101E
+  topic list c/ACADEMIC
+  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
+
+Example - rename a topic:
+  topic rename c/ACADEMIC old/PL1101E new/PL1101E Revision
+
+Renaming asks for y or n before saving, and updates every
+activity already using the old topic name.
+
+Example - delete an unused topic:
+  topic delete c/ACADEMIC n/Unused Topic
+
+A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
 Returning to the command prompt.
@@ -144,21 +291,78 @@ ____________________________________________________________
 Getting started
 Run the JAR, enter guide when needed, and use bye to exit.
 Related commands: guide, bye
+
+Enter guide to see the numbered menu, then either type a number
+such as 2 or go straight to a topic by name, for example guide add.
+
+Examples:
+  guide
+  guide 2
+  guide add
+  bye
 ____________________________________________________________
 ____________________________________________________________
 Add activities
 Use add with FIXED timing or a FLEXIBLE window and duration.
 Related commands: topic add, list, view
+
+Replace the description, date, times, and ratings below with
+your own values.
+
+Example - add a fixed activity:
+  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
+
+Example - add a flexible activity:
+  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
+
+Then view your activities:
+  list
+  list view/detail
+  list date/2026-08-15
+
+Optional - create and use a topic first:
+  topic add c/ACADEMIC n/PL1101E
+  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
 ____________________________________________________________
 ____________________________________________________________
 Find activities
 Format: find [k/KEYWORD ...] [FILTERS]
 Multiple keywords and filters use AND.
+
+Examples:
+  find k/PL1101E
+  find k/lecture
+  find c/ACADEMIC
+  find date/2026-08-15
+  find k/PL1101E c/ACADEMIC
+  find k/finish assignment order/time
+
+Example - checking when nothing matches:
+  find k/nonexistentkeyword12345
+
+Every supplied keyword and filter must match. Search is
+case-insensitive and can match part of a word.
 ____________________________________________________________
 ____________________________________________________________
 Categories and topics
 Topics are optional one-level groupings inside fixed categories.
 Related commands: topic add, topic list, topic rename, topic delete
+
+Example - create and use a topic:
+  topic add c/ACADEMIC n/PL1101E
+  topic list c/ACADEMIC
+  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
+
+Example - rename a topic:
+  topic rename c/ACADEMIC old/PL1101E new/PL1101E Revision
+
+Renaming asks for y or n before saving, and updates every
+activity already using the old topic name.
+
+Example - delete an unused topic:
+  topic delete c/ACADEMIC n/Unused Topic
+
+A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
 Completion and daily load

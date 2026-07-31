@@ -15,6 +15,9 @@ guide bogus-topic-xyz
 GUIDE
 Guide ADD
 guide 1
+guide 2
+guide 3
+guide 4
 guide 10
 guide 0
 guide 11

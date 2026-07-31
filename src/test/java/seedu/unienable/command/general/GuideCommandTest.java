@@ -30,11 +30,120 @@ class GuideCommandTest {
 
     @Test
     public void execute_implementedTopic_showsExactGuideText() {
+        // "edit" has no worked examples (out of scope for this pass), so it's still a compact,
+        // stable exact-text check; the topics with new examples (1-4) get their own tests below.
+        CommandResult result = new GuideCommand("edit").execute();
+
+        assertEquals("Edit an activity\n"
+                + "Format: edit ID PREFIX/NEW_VALUE [PREFIX/NEW_VALUE ...]\n"
+                + "The application validates all changes before asking for y/n.", result.getFeedback());
+    }
+
+    @Test
+    public void execute_gettingStartedTopic_showsExactGuideTextWithExamples() {
+        CommandResult result = new GuideCommand("getting-started").execute();
+
+        assertEquals("Getting started\n"
+                + "Run the JAR, enter guide when needed, and use bye to exit.\n"
+                + "Related commands: guide, bye\n"
+                + "\n"
+                + "Enter guide to see the numbered menu, then either type a number\n"
+                + "such as 2 or go straight to a topic by name, for example guide add.\n"
+                + "\n"
+                + "Examples:\n"
+                + "  guide\n"
+                + "  guide 2\n"
+                + "  guide add\n"
+                + "  bye", result.getFeedback());
+    }
+
+    @Test
+    public void execute_addTopic_showsExactGuideTextWithExamples() {
+        CommandResult result = new GuideCommand("add").execute();
+
+        assertEquals("Add activities\n"
+                + "Use add with FIXED timing or a FLEXIBLE window and duration.\n"
+                + "Related commands: topic add, list, view\n"
+                + "\n"
+                + "Replace the description, date, times, and ratings below with\n"
+                + "your own values.\n"
+                + "\n"
+                + "Example - add a fixed activity:\n"
+                + "  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                + "energy/1 sensory/1 note/Bring laptop and charger\n"
+                + "\n"
+                + "Example - add a flexible activity:\n"
+                + "  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 "
+                + "latest/18:00 dur/90 energy/4 sensory/2\n"
+                + "\n"
+                + "Then view your activities:\n"
+                + "  list\n"
+                + "  list view/detail\n"
+                + "  list date/2026-08-15\n"
+                + "\n"
+                + "Optional - create and use a topic first:\n"
+                + "  topic add c/ACADEMIC n/PL1101E\n"
+                + "  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 "
+                + "energy/2 sensory/2 topic/PL1101E", result.getFeedback());
+    }
+
+    @Test
+    public void execute_addTopicFixedExample_doesNotUseATopicField() {
+        // Regression guard for the task requirement: the basic fixed-activity example must not
+        // reference topic/ before the guide explains that the topic needs to be created first.
+        String firstExample = new GuideCommand("add").execute().getFeedback()
+                .split("Example - add a flexible activity:")[0];
+
+        assertTrue(!firstExample.contains("topic/"));
+    }
+
+    @Test
+    public void execute_findTopic_showsExactGuideTextWithExamples() {
         CommandResult result = new GuideCommand("find").execute();
 
         assertEquals("Find activities\n"
                 + "Format: find [k/KEYWORD ...] [FILTERS]\n"
-                + "Multiple keywords and filters use AND.", result.getFeedback());
+                + "Multiple keywords and filters use AND.\n"
+                + "\n"
+                + "Examples:\n"
+                + "  find k/PL1101E\n"
+                + "  find k/lecture\n"
+                + "  find c/ACADEMIC\n"
+                + "  find date/2026-08-15\n"
+                + "  find k/PL1101E c/ACADEMIC\n"
+                + "  find k/finish assignment order/time\n"
+                + "\n"
+                + "Example - checking when nothing matches:\n"
+                + "  find k/nonexistentkeyword12345\n"
+                + "\n"
+                + "Every supplied keyword and filter must match. Search is\n"
+                + "case-insensitive and can match part of a word.", result.getFeedback());
+    }
+
+    @Test
+    public void execute_topicTopic_showsExactGuideTextWithExamples() {
+        CommandResult result = new GuideCommand("topic").execute();
+
+        assertEquals("Categories and topics\n"
+                + "Topics are optional one-level groupings inside fixed categories.\n"
+                + "Related commands: topic add, topic list, topic rename, topic delete\n"
+                + "\n"
+                + "Example - create and use a topic:\n"
+                + "  topic add c/ACADEMIC n/PL1101E\n"
+                + "  topic list c/ACADEMIC\n"
+                + "  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                + "energy/1 sensory/1 topic/PL1101E\n"
+                + "\n"
+                + "Example - rename a topic:\n"
+                + "  topic rename c/ACADEMIC old/PL1101E new/PL1101E Revision\n"
+                + "\n"
+                + "Renaming asks for y or n before saving, and updates every\n"
+                + "activity already using the old topic name.\n"
+                + "\n"
+                + "Example - delete an unused topic:\n"
+                + "  topic delete c/ACADEMIC n/Unused Topic\n"
+                + "\n"
+                + "A topic cannot be deleted while any activity is still using it.", result.getFeedback());
     }
 
     @Test

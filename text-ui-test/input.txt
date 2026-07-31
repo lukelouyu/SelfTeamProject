@@ -14,6 +14,23 @@ guide export
 guide bogus-topic-xyz
 GUIDE
 Guide ADD
+guide 1
+guide 10
+guide 0
+guide 11
+guide
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+0
+11
 
 banana
 adds n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/2

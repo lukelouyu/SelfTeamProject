@@ -65,4 +65,92 @@ class GuideCommandTest {
         assertEquals("No guide topic named \"bogus\". Enter guide to see the list of topics.",
                 result.getFeedback());
     }
+
+    @Test
+    public void execute_menuNumberOne_resolvesToGettingStarted() {
+        CommandResult result = new GuideCommand("1").execute();
+
+        assertTrue(result.getFeedback().startsWith("Getting started"));
+    }
+
+    @Test
+    public void execute_menuNumberTwo_resolvesToAdd() {
+        CommandResult result = new GuideCommand("2").execute();
+
+        assertTrue(result.getFeedback().startsWith("Add activities"));
+    }
+
+    @Test
+    public void execute_menuNumberThree_resolvesToFind() {
+        CommandResult result = new GuideCommand("3").execute();
+
+        assertTrue(result.getFeedback().startsWith("Find activities"));
+    }
+
+    @Test
+    public void execute_menuNumberFour_resolvesToTopic() {
+        CommandResult result = new GuideCommand("4").execute();
+
+        assertTrue(result.getFeedback().startsWith("Categories and topics"));
+    }
+
+    @Test
+    public void execute_menuNumberFive_resolvesToDashboard() {
+        CommandResult result = new GuideCommand("5").execute();
+
+        assertTrue(result.getFeedback().startsWith("Completion and daily load"));
+    }
+
+    @Test
+    public void execute_menuNumberSix_resolvesToRecommend() {
+        CommandResult result = new GuideCommand("6").execute();
+
+        assertTrue(result.getFeedback().startsWith("Recommended timetable"));
+    }
+
+    @Test
+    public void execute_menuNumberSeven_resolvesToFacility() {
+        CommandResult result = new GuideCommand("7").execute();
+
+        assertTrue(result.getFeedback().startsWith("Accessible facilities"));
+    }
+
+    @Test
+    public void execute_menuNumberEight_resolvesToExport() {
+        CommandResult result = new GuideCommand("8").execute();
+
+        assertTrue(result.getFeedback().startsWith("CSV exports"));
+    }
+
+    @Test
+    public void execute_menuNumberNine_resolvesToStorage() {
+        CommandResult result = new GuideCommand("9").execute();
+
+        assertTrue(result.getFeedback().startsWith("Data files and storage"));
+    }
+
+    @Test
+    public void execute_menuNumberTen_returnsWithoutShowingATopic() {
+        CommandResult result = new GuideCommand("10").execute();
+
+        assertEquals("Returning to the command prompt.", result.getFeedback());
+    }
+
+    @Test
+    public void execute_menuNumberOutOfRangeBelow_showsFallbackMessage() {
+        // "0" is deliberately not treated as a menu number, matching CommandDispatcher's dispatch
+        // table which also only recognises "1" through "10" as bare commands.
+        CommandResult result = new GuideCommand("0").execute();
+
+        assertEquals("No guide topic named \"0\". Enter guide to see the list of topics.",
+                result.getFeedback());
+    }
+
+    @Test
+    public void execute_menuNumberOutOfRangeAbove_showsFallbackMessage() {
+        CommandResult result = new GuideCommand("11").execute();
+
+        assertEquals("No guide topic named \"11\". Enter guide to see the list of topics.",
+                result.getFeedback());
+    }
 }

@@ -7,9 +7,28 @@ import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.AccessibilityDisclaimer;
 
-/** Displays the built-in application guide: either the main numbered menu or one topic's text. */
+/**
+ * Displays the built-in application guide: either the main numbered menu or one topic's text.
+ *
+ * <p>The main menu's items can be selected either by their existing text keyword (e.g. "add") or
+ * by the number shown next to them in the menu (e.g. "1"), both as the argument to "guide" and as
+ * a bare top-level command entered right after the menu is displayed. Menu item 10 ("Return") is
+ * not a topic; it's a no-op that acknowledges the selection instead of showing topic text.
+ */
 public class GuideCommand extends Command {
     private static final String COMING_SOON_NOTE = "\n(Coming soon in a future release.)";
+    private static final String RETURN_MESSAGE = "Returning to the command prompt.";
+
+    /**
+     * The topic each numbered menu item resolves to, in menu order (index 0 is item "1"). Some
+     * menu items span more than one existing topic keyword (e.g. item 2 covers add/edit/delete);
+     * those map to the single most representative keyword rather than a topic that doesn't exist.
+     * Item 10 ("Return") is handled separately, not through this list.
+     */
+    private static final String[] MENU_NUMBER_TOPICS = {
+        "getting-started", "add", "find", "topic", "dashboard",
+        "recommend", "facility", "export", "storage",
+    };
 
     private static final String MAIN_MENU = "Application Guide\n\n"
             + "1. Getting started\n"
@@ -31,7 +50,7 @@ public class GuideCommand extends Command {
     /**
      * Creates a GuideCommand.
      *
-     * @param topic the topic keyword after "guide", or null for the main menu
+     * @param topic the topic keyword or menu number after "guide", or null for the main menu
      */
     public GuideCommand(String topic) {
         this.topic = topic;
@@ -42,12 +61,33 @@ public class GuideCommand extends Command {
         if (topic == null) {
             return new CommandResult(MAIN_MENU);
         }
-        String text = TOPICS.get(topic.toLowerCase());
+        if (topic.equals("10")) {
+            return new CommandResult(RETURN_MESSAGE);
+        }
+        String text = TOPICS.get(resolveMenuNumber(topic).toLowerCase());
         if (text == null) {
             return new CommandResult("No guide topic named \"" + topic + "\". Enter guide to see the list "
                     + "of topics.");
         }
         return new CommandResult(text);
+    }
+
+    /**
+     * Translates a main-menu number (e.g. "1") into the topic keyword it stands for. A value that
+     * isn't a whole number from 1 to {@code MENU_NUMBER_TOPICS.length}, including topic keywords
+     * themselves, is returned unchanged.
+     *
+     * @param rawTopic the raw topic argument supplied to "guide"
+     * @return the resolved topic keyword
+     */
+    private String resolveMenuNumber(String rawTopic) {
+        int number;
+        try {
+            number = Integer.parseInt(rawTopic);
+        } catch (NumberFormatException e) {
+            return rawTopic;
+        }
+        return number >= 1 && number <= MENU_NUMBER_TOPICS.length ? MENU_NUMBER_TOPICS[number - 1] : rawTopic;
     }
 
     private static Map<String, String> buildTopics() {

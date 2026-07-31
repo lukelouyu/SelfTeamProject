@@ -98,6 +98,11 @@ public class CommandDispatcher {
             return new GuideCommand(args.isEmpty() ? null : args);
         case "bye":
             return new ExitCommand();
+        case "1": case "2": case "3": case "4": case "5":
+        case "6": case "7": case "8": case "9": case "10":
+            // A bare menu number entered right after "guide" displays the main menu, matching
+            // its own "Enter a number from 1 to 10." instruction; see GuideCommand's Javadoc.
+            return new GuideCommand(commandWord);
         default:
             throw new InvalidCommandException("Unknown command \"" + commandWord + "\". Enter guide for help.");
         }

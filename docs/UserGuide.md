@@ -515,13 +515,20 @@ connection is two-way, `from/` and `to/` each match either endpoint, not a speci
 ```text
 guide
 guide TOPIC
+guide NUMBER
 ```
 
 `guide` alone shows a 10-item numbered menu. `guide TOPIC` shows one topic's text directly.
-Implemented topics: `getting-started`, `add`, `edit`, `find`, `topic`, `facility`. Topics for
-v2.0-only features (`dashboard`, `timetable`, `recommend`, `route`, `export`, `storage`) are
+Implemented topics: `getting-started`, `add`, `edit`, `find`, `topic`, `facility`, `storage`.
+Topics for v2.0-only features (`dashboard`, `timetable`, `recommend`, `route`, `export`) are
 still listed but end with `(Coming soon in a future release.)` where the underlying command
 isn't built yet.
+
+Each menu item can also be selected by its number, either as `guide NUMBER` or by entering the
+bare number as its own command right after the menu is shown (e.g. `1` selects "Getting
+started"). Menu items that span more than one topic keyword (e.g. "2. Add, edit and delete
+activities") resolve to their single most representative topic. Item `10` ("Return") is not a
+topic; it just acknowledges the selection and returns to the command prompt.
 
 ## 10. Exit: `bye`
 
@@ -597,6 +604,7 @@ the application.
 ```text
 guide
 guide TOPIC
+guide NUMBER
 bye
 
 add n/DESCRIPTION c/CATEGORY date/DATE type/FIXED from/START to/END energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]

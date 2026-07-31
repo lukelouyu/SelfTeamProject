@@ -111,6 +111,94 @@ Use add with FIXED timing or a FLEXIBLE window and duration.
 Related commands: topic add, list, view
 ____________________________________________________________
 ____________________________________________________________
+Getting started
+Run the JAR, enter guide when needed, and use bye to exit.
+Related commands: guide, bye
+____________________________________________________________
+____________________________________________________________
+Returning to the command prompt.
+____________________________________________________________
+____________________________________________________________
+No guide topic named "0". Enter guide to see the list of topics.
+____________________________________________________________
+____________________________________________________________
+No guide topic named "11". Enter guide to see the list of topics.
+____________________________________________________________
+____________________________________________________________
+Application Guide
+
+1. Getting started
+2. Add, edit and delete activities
+3. List, find and view activities
+4. Categories and topics
+5. Completion and dashboard
+6. Recommended timetable
+7. Accessible facilities and routes
+8. CSV export
+9. Data files and storage
+10. Return
+
+Enter a number from 1 to 10.
+____________________________________________________________
+____________________________________________________________
+Getting started
+Run the JAR, enter guide when needed, and use bye to exit.
+Related commands: guide, bye
+____________________________________________________________
+____________________________________________________________
+Add activities
+Use add with FIXED timing or a FLEXIBLE window and duration.
+Related commands: topic add, list, view
+____________________________________________________________
+____________________________________________________________
+Find activities
+Format: find [k/KEYWORD ...] [FILTERS]
+Multiple keywords and filters use AND.
+____________________________________________________________
+____________________________________________________________
+Categories and topics
+Topics are optional one-level groupings inside fixed categories.
+Related commands: topic add, topic list, topic rename, topic delete
+____________________________________________________________
+____________________________________________________________
+Completion and daily load
+Use dashboard today, tomorrow, YYYY-MM-DD, or this week.
+Add detail to display the full 1-to-5 rating distribution.
+(Coming soon in a future release.)
+____________________________________________________________
+____________________________________________________________
+Recommended timetable
+Use recommend PERIOD [PREFERENCE_OVERRIDES].
+Review the plan before choosing whether to adopt it.
+(Coming soon in a future release.)
+____________________________________________________________
+____________________________________________________________
+Accessible facilities
+Use facility list, facility view, or facility find (and connection list/view/find
+for the route graph between facilities). This data is read-only.
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+CSV exports
+Use export activities, export schedule, export all, or export.
+Each export creates a timestamped historical record.
+(Coming soon in a future release.)
+____________________________________________________________
+____________________________________________________________
+Data files and storage
+Application data is stored under data/. CSV history is under
+exports/. Do not edit data files while the application runs.
+____________________________________________________________
+____________________________________________________________
+Returning to the command prompt.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown command "0". Enter guide for help.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown command "11". Enter guide for help.
+____________________________________________________________
+____________________________________________________________
 [Error] Invalid input: Unknown command "banana". Enter guide for help.
 ____________________________________________________________
 ____________________________________________________________

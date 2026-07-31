@@ -101,6 +101,42 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_whitespaceOnlyTopic_isTreatedAsAbsent() throws Exception {
+        // Regression test: "topic/   " (whitespace only) previously stored an empty string
+        // instead of being treated the same as omitting topic/ entirely.
+        ActivityManager manager = new ActivityManager();
+        AddCommand command = parser.parseAdd(manager,
+                "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2 topic/    note/Bring headphones");
+
+        command.execute();
+
+        assertNull(manager.getById(1).getTopic());
+    }
+
+    @Test
+    public void parseAdd_whitespaceOnlyNote_isTreatedAsAbsent() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        AddCommand command = parser.parseAdd(manager,
+                "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2 note/    ");
+
+        command.execute();
+
+        assertNull(manager.getById(1).getNote());
+    }
+
+    @Test
+    public void parseAdd_whitespaceOnlyDescription_throwsMissingInputException() {
+        // Required fields already reject a whitespace-only value via requireField's
+        // isEmpty()-after-trim check; this pins that existing (correct) behaviour.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager,
+                "n/    c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
+    }
+
+    @Test
     public void parseAdd_missingDescription_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
 
@@ -545,6 +581,33 @@ class ActivityCommandParserTest {
         assertEquals(60, ((FlexibleActivity) updated).getDurationMinutes());
         assertEquals("Finish assignment 1", updated.getDescription());
         assertEquals("CG3207", updated.getTopic());
+    }
+
+    @Test
+    public void parseEdit_whitespaceOnlyTopic_clearsTopicToNull() throws Exception {
+        // Regression test: editing topic/ to a whitespace-only value previously stored an empty
+        // string rather than clearing the topic to null, the same way it is represented when
+        // never set.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
+
+        parser.parseEdit(manager, "1 topic/   ").execute();
+
+        assertNull(manager.getById(1).getTopic());
+    }
+
+    @Test
+    public void parseEdit_whitespaceOnlyNote_clearsNoteToNull() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, "Bring laptop"));
+
+        parser.parseEdit(manager, "1 note/   ").execute();
+
+        assertNull(manager.getById(1).getNote());
     }
 
     @Test

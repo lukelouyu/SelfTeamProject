@@ -35,6 +35,13 @@ class TopicCommandParserTest {
     }
 
     @Test
+    public void parseAdd_whitespaceOnlyName_throwsMissingInputException() {
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, "c/ACADEMIC n/   "));
+    }
+
+    @Test
     public void parseAdd_invalidCategory_throwsInvalidActivityException() {
         TopicManager manager = new TopicManager(new ActivityManager());
 

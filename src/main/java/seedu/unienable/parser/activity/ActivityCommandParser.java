@@ -119,9 +119,9 @@ public class ActivityCommandParser {
         String topic = null;
         if (FieldParser.indexOfMarker(args, "topic/", 0) != -1) {
             String topicEndMarker = firstPresentMarker(args, "topic/", "note/");
-            topic = FieldParser.extractField(args, "topic/", topicEndMarker);
+            topic = blankToNull(FieldParser.extractField(args, "topic/", topicEndMarker));
         }
-        String note = FieldParser.extractField(args, "note/", null);
+        String note = blankToNull(FieldParser.extractField(args, "note/", null));
         return new CommonTail(energy, sensory, topic, note);
     }
 
@@ -360,6 +360,17 @@ public class ActivityCommandParser {
         }
     }
 
+    /**
+     * Normalises a whitespace-only optional field value (e.g. "topic/   ") to null, so it is
+     * treated the same as the field being omitted entirely rather than stored as an empty string.
+     *
+     * @param value an already-trimmed field value, or null if the field was not present
+     * @return value, or null if value is null or empty
+     */
+    private String blankToNull(String value) {
+        return value == null || value.isEmpty() ? null : value;
+    }
+
     private String firstToken(String text) {
         return text.trim().split("\\s+", 2)[0];
     }
@@ -448,8 +459,8 @@ public class ActivityCommandParser {
                 ? RatingParser.parseEnergyRating(fields.get("energy/")) : old.getEnergyRating();
         SensoryRating sensory = fields.containsKey("sensory/")
                 ? RatingParser.parseSensoryRating(fields.get("sensory/")) : old.getSensoryRating();
-        String topic = fields.getOrDefault("topic/", old.getTopic());
-        String note = fields.getOrDefault("note/", old.getNote());
+        String topic = fields.containsKey("topic/") ? blankToNull(fields.get("topic/")) : old.getTopic();
+        String note = fields.containsKey("note/") ? blankToNull(fields.get("note/")) : old.getNote();
 
         ScheduleType oldType = old.getScheduleType();
         ScheduleType newType = fields.containsKey("type/") ? parseScheduleType(fields.get("type/")) : oldType;

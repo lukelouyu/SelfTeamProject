@@ -82,6 +82,23 @@ public class ActivityManager {
         activities.set(index, newActivity);
     }
 
+    /**
+     * Checks whether the given candidate would be accepted as a replacement for the activity with
+     * the given ID, without mutating any stored state. Used as a side-effect-free preflight check
+     * so a doomed edit (an exact duplicate, or a fixed-activity overlap) can be rejected before a
+     * confirmation prompt is shown, rather than only failing later when replace() itself runs
+     * after the user has already answered "y". replace() re-runs the same check at execution
+     * time as defensive protection against state changes between the two calls.
+     *
+     * @param candidate the proposed replacement activity
+     * @param excludeId the ID of the activity being replaced, excluded from the conflict check
+     * @throws DuplicateActivityException if candidate exactly duplicates another activity, or
+     *     (for a FixedActivity) overlaps another fixed activity on the same date
+     */
+    public void checkNoConflicts(Activity candidate, int excludeId) throws DuplicateActivityException {
+        validateNoDuplicateOrOverlap(candidate, excludeId);
+    }
+
     private void validateNoDuplicateOrOverlap(Activity candidate, int excludeId) throws DuplicateActivityException {
         if (isDuplicate(candidate, excludeId)) {
             throw new DuplicateActivityException(DUPLICATE_MESSAGE);

@@ -9,12 +9,14 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.storage.Storage;
 
 /**
@@ -296,6 +298,33 @@ class UniEnableTest {
 
         assertTrue(output.contains("No changes to activity [1]."));
         assertTrue(!output.contains("Save changes? (y/n)"));
+    }
+
+    @Test
+    public void run_editWouldOverlapAnotherActivity_rejectsBeforePromptAndKeepsSubsequentLineAsCommand()
+            throws Exception {
+        // Regression test: overlap validation previously only ran inside
+        // ActivityManager.replace(), called from EditCommand.execute() - after the confirmation
+        // prompt was already shown and answered. The next line of scripted input ("y", meant to
+        // answer that prompt) was silently consumed as the confirmation answer even though the
+        // edit was about to fail anyway. Now the conflict is caught during parsing, before
+        // dispatch() ever returns a command to confirm, so "y" falls through as its own (unknown)
+        // top-level command instead of being consumed.
+        String output = runWithInput(
+                "add n/Base c/ACADEMIC date/2026-08-20 type/FIXED from/10:00 to/12:00 energy/2 sensory/2\n"
+                        + "add n/Later c/ACADEMIC date/2026-08-20 type/FIXED from/13:00 to/14:00 "
+                        + "energy/2 sensory/2\n"
+                        + "edit 2 from/10:30 to/11:30\n"
+                        + "y\n"
+                        + "bye\n");
+
+        assertTrue(!output.contains("Save changes? (y/n)"));
+        assertTrue(output.contains("[Error] Conflict: This timing overlaps activity [1], Base (10:00 -> 12:00)."));
+        assertTrue(output.contains("[Error] Invalid input: Unknown command \"y\""));
+
+        Storage storage = new Storage(tempDir);
+        Activity unchanged = storage.loadActivities().getRecords().get(1);
+        assertEquals(LocalTime.of(13, 0), ((FixedActivity) unchanged).getStartTime());
     }
 
     @Test

@@ -6,6 +6,7 @@ import java.util.Locale;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.general.ExitCommand;
 import seedu.unienable.command.general.GuideCommand;
+import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -61,10 +62,12 @@ public class CommandDispatcher {
      *     invalid
      * @throws InvalidDateTimeException if a date or time value is invalid
      * @throws InvalidIndexException if a referenced stable ID does not exist
+     * @throws DuplicateActivityException if an edit would exactly duplicate or overlap another
+     *     activity, or a topic rename/delete conflicts with existing topics or usage
      */
     public Command dispatch(String input, LocalDateTime now)
             throws MissingInputException, InvalidActivityException, InvalidCommandException,
-            InvalidDateTimeException, InvalidIndexException {
+            InvalidDateTimeException, InvalidIndexException, DuplicateActivityException {
         String commandWord = Parser.getCommandWord(input);
         String args = Parser.getArguments(input);
 
@@ -110,7 +113,8 @@ public class CommandDispatcher {
     }
 
     private Command dispatchTopic(String args)
-            throws MissingInputException, InvalidActivityException, InvalidCommandException {
+            throws MissingInputException, InvalidActivityException, InvalidCommandException, InvalidIndexException,
+            DuplicateActivityException {
         String[] parts = splitSubCommand(args);
         switch (parts[0]) {
         case "add":

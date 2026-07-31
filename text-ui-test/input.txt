@@ -199,7 +199,6 @@ edit 1 type/FIXED
 edit 1 type/FIXED from/09:00 to/11:00
 y
 edit 13 from/10:30 to/11:30
-y
 edit 6 n/New name energy/3 sensory/99
 view 1
 view 6
@@ -274,13 +273,10 @@ view 1
 topic rename c/ACADEMIC old/CS3207 new/CS3207
 y
 topic rename c/ACADEMIC old/CS3207 new/CS2113
-y
 topic rename c/ACADEMIC old/NonexistentTopic new/Whatever
-y
 topic rename c/ACADEMIC old/CS3207 new/
 topic list c/ACADEMIC
 topic delete c/CCA n/Basketball Club
-y
 edit 3 topic/
 y
 view 3
@@ -290,7 +286,6 @@ topic delete c/CCA n/Basketball Club
 y
 topic list c/CCA
 topic delete c/CCA n/Basketball Club
-y
 topic delete c/OTHERS n/Personal
 y
 topic delete c/BOGUS n/Test

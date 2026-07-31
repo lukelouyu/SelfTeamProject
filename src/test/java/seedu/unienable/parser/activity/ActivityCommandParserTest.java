@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import seedu.unienable.command.activity.AddCommand;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -987,6 +988,57 @@ class ActivityCommandParserTest {
 
         assertThrows(InvalidIndexException.class,
                 () -> parser.parseEdit(manager, topicManager, "1 topic/NeverCreated"));
+    }
+
+    @Test
+    public void parseEdit_resultingOverlap_throwsDuplicateActivityExceptionAndDoesNotMutate() throws Exception {
+        // Regression test: overlap/duplicate validation previously only ran inside
+        // ActivityManager.replace(), which EditCommand.execute() calls - after the user has
+        // already been shown the before/after diff and asked "Save changes? (y/n)". Moving the
+        // same check into parseEdit (via the new checkNoConflicts() preflight) means a doomed
+        // edit is rejected before the confirmation prompt is ever shown.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FixedActivity(manager.getNextId(), "Base", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 20), LocalTime.of(10, 0), LocalTime.of(12, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Contained", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 20), LocalTime.of(13, 0), LocalTime.of(14, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        assertThrows(DuplicateActivityException.class,
+                () -> parser.parseEdit(manager, topicManager, "2 from/10:30 to/11:30"));
+
+        Activity unchanged = manager.getById(2);
+        assertEquals(LocalTime.of(13, 0), ((FixedActivity) unchanged).getStartTime());
+    }
+
+    @Test
+    public void parseEdit_resultingExactDuplicate_throwsDuplicateActivityException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 20), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 21), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        assertThrows(DuplicateActivityException.class,
+                () -> parser.parseEdit(manager, topicManager, "2 date/2026-08-20"));
+    }
+
+    @Test
+    public void parseEdit_nonConflictingChange_stillSucceeds() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FixedActivity(manager.getNextId(), "Base", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 20), LocalTime.of(10, 0), LocalTime.of(12, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        parser.parseEdit(manager, topicManager, "1 from/09:00 to/11:00").execute();
+
+        assertEquals(LocalTime.of(9, 0), ((FixedActivity) manager.getById(1)).getStartTime());
     }
 
     @Test

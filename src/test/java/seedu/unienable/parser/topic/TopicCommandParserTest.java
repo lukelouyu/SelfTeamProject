@@ -5,13 +5,21 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
+import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
+import seedu.unienable.model.classes.EnergyRating;
+import seedu.unienable.model.classes.FixedActivity;
+import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
 
 class TopicCommandParserTest {
@@ -118,6 +126,50 @@ class TopicCommandParserTest {
 
         assertThrows(InvalidActivityException.class,
                 () -> parser.parseRename(manager, "c/ACADEMIC old/CG3207 new/CS3207|CS2113"));
+    }
+
+    @Test
+    public void parseRename_oldNameDoesNotExist_throwsInvalidIndexExceptionAtParseTime() {
+        // Regression test: TopicManager.rename() already threw this exception, but only from
+        // inside TopicRenameCommand.execute() - which UniEnable's confirmation flow calls after
+        // showing a before/after diff and asking "Save changes? (y/n)". Checking it here, in
+        // parseRename() itself, rejects the command before that prompt is ever shown.
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertThrows(InvalidIndexException.class,
+                () -> parser.parseRename(manager, "c/ACADEMIC old/NeverCreated new/Whatever"));
+    }
+
+    @Test
+    public void parseRename_newNameAlreadyExists_throwsDuplicateActivityExceptionAtParseTime() throws Exception {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+        manager.add(ActivityCategory.ACADEMIC, "CS2113");
+
+        assertThrows(DuplicateActivityException.class,
+                () -> parser.parseRename(manager, "c/ACADEMIC old/CG3207 new/CS2113"));
+    }
+
+    @Test
+    public void parseDelete_topicDoesNotExist_throwsInvalidIndexExceptionAtParseTime() {
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertThrows(InvalidIndexException.class, () -> parser.parseDelete(manager, "c/ACADEMIC n/NeverCreated"));
+    }
+
+    @Test
+    public void parseDelete_topicStillInUse_throwsDuplicateActivityExceptionAtParseTime() throws Exception {
+        // Regression test: same principle as parseRename's - the "still in use" check previously
+        // only ran inside TopicDeleteCommand.execute(), after the "Delete topic ...? (y/n)"
+        // prompt had already been shown.
+        ActivityManager activityManager = new ActivityManager();
+        TopicManager manager = new TopicManager(activityManager);
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+        activityManager.add(new FixedActivity(activityManager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), "CG3207", null));
+
+        assertThrows(DuplicateActivityException.class, () -> parser.parseDelete(manager, "c/ACADEMIC n/CG3207"));
     }
 
     @Test

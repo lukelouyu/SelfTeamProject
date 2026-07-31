@@ -6,7 +6,9 @@ import seedu.unienable.command.topic.TopicAddCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;
 import seedu.unienable.command.topic.TopicListCommand;
 import seedu.unienable.command.topic.TopicRenameCommand;
+import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
+import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.enums.ActivityCategory;
@@ -57,13 +59,18 @@ public class TopicCommandParser {
      * @return the parsed TopicRenameCommand
      * @throws MissingInputException if the category, old name, or new name is missing
      * @throws InvalidActivityException if the category is invalid
+     * @throws InvalidIndexException if the old topic name does not exist under the category
+     * @throws DuplicateActivityException if the new name already exists under the category as a
+     *     different topic
      */
     public TopicRenameCommand parseRename(TopicManager topicManager, String args)
-            throws MissingInputException, InvalidActivityException {
+            throws MissingInputException, InvalidActivityException, InvalidIndexException,
+            DuplicateActivityException {
         ActivityCategory category = parseCategory(requireField(args, "c/", "old/", "category"));
         String oldName = requireField(args, "old/", "new/", "old topic name");
         String newName = requireField(args, "new/", null, "new topic name");
         validateNoDelimiter(newName, "new topic name");
+        topicManager.checkCanRename(category, oldName, newName);
         return new TopicRenameCommand(topicManager, category, oldName, newName);
     }
 
@@ -76,11 +83,16 @@ public class TopicCommandParser {
      * @return the parsed TopicDeleteCommand
      * @throws MissingInputException if the category or name is missing
      * @throws InvalidActivityException if the category is invalid
+     * @throws InvalidIndexException if the topic does not exist under the category
+     * @throws DuplicateActivityException if any activity under the category is still assigned to
+     *     the topic
      */
     public TopicDeleteCommand parseDelete(TopicManager topicManager, String args)
-            throws MissingInputException, InvalidActivityException {
+            throws MissingInputException, InvalidActivityException, InvalidIndexException,
+            DuplicateActivityException {
         ActivityCategory category = parseCategory(requireField(args, "c/", "n/", "category"));
         String name = requireField(args, "n/", null, "topic name");
+        topicManager.checkCanDelete(category, name);
         return new TopicDeleteCommand(topicManager, category, name);
     }
 

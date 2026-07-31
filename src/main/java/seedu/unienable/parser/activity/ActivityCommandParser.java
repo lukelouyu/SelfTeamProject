@@ -24,6 +24,7 @@ import seedu.unienable.command.activity.OrderSetCommand;
 import seedu.unienable.command.activity.OrderViewCommand;
 import seedu.unienable.command.activity.UnmarkCommand;
 import seedu.unienable.command.activity.ViewCommand;
+import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -515,10 +516,12 @@ public class ActivityCommandParser {
      *     exist under the resulting category
      * @throws InvalidActivityException if a field value fails validation
      * @throws InvalidDateTimeException if a date or time value is invalid
+     * @throws DuplicateActivityException if the resulting activity exactly duplicates another,
+     *     or (for a FixedActivity) overlaps another fixed activity on the same date
      */
     public EditCommand parseEdit(ActivityManager activityManager, TopicManager topicManager, String args)
             throws MissingInputException, InvalidCommandException, InvalidIndexException, InvalidActivityException,
-            InvalidDateTimeException {
+            InvalidDateTimeException, DuplicateActivityException {
         String[] parts = args.trim().split("\\s+", 2);
         int id = parseEditId(parts[0]);
         String fieldsText = parts.length > 1 ? parts[1] : "";
@@ -556,6 +559,7 @@ public class ActivityCommandParser {
                 ? buildFixed(id, description, category, date, energy, sensory, topic, note, fields, old, typeChanged)
                 : buildFlexible(id, description, category, date, energy, sensory, topic, note, fields, old,
                         typeChanged);
+        activityManager.checkNoConflicts(newActivity, id);
 
         if (old.isComplete()) {
             newActivity.mark();

@@ -96,14 +96,8 @@ public class TopicManager {
      */
     public int rename(ActivityCategory category, String oldName, String newName)
             throws InvalidIndexException, DuplicateActivityException {
+        checkCanRename(category, oldName, newName);
         Topic topic = findTopic(category, oldName);
-        if (topic == null) {
-            throw new InvalidIndexException("Topic \"" + oldName + "\" does not exist under " + category + ".");
-        }
-        if (!oldName.equalsIgnoreCase(newName) && exists(category, newName)) {
-            throw new DuplicateActivityException(
-                    "Topic \"" + newName + "\" already exists under " + category + ".");
-        }
         topic.setName(newName);
 
         int updated = 0;
@@ -114,6 +108,30 @@ public class TopicManager {
             }
         }
         return updated;
+    }
+
+    /**
+     * Checks whether renaming oldName to newName under category would succeed, without
+     * performing the rename. Used as a side-effect-free preflight check so a doomed rename can be
+     * rejected before a confirmation prompt is shown, rather than only failing later when
+     * rename() itself runs after the user has already answered "y".
+     *
+     * @param category the category the topic belongs to
+     * @param oldName the topic's current name
+     * @param newName the topic's proposed new name
+     * @throws InvalidIndexException if oldName does not exist under that category
+     * @throws DuplicateActivityException if newName already exists (case-insensitively) under
+     *     that category as a different topic
+     */
+    public void checkCanRename(ActivityCategory category, String oldName, String newName)
+            throws InvalidIndexException, DuplicateActivityException {
+        if (findTopic(category, oldName) == null) {
+            throw new InvalidIndexException("Topic \"" + oldName + "\" does not exist under " + category + ".");
+        }
+        if (!oldName.equalsIgnoreCase(newName) && exists(category, newName)) {
+            throw new DuplicateActivityException(
+                    "Topic \"" + newName + "\" already exists under " + category + ".");
+        }
     }
 
     /**
@@ -128,15 +146,31 @@ public class TopicManager {
      */
     public void delete(ActivityCategory category, String name)
             throws InvalidIndexException, DuplicateActivityException {
-        Topic topic = findTopic(category, name);
-        if (topic == null) {
+        checkCanDelete(category, name);
+        topicsByCategory.get(category).remove(findTopic(category, name));
+    }
+
+    /**
+     * Checks whether deleting a topic would succeed, without performing the deletion. Used as a
+     * side-effect-free preflight check so a doomed delete can be rejected before a confirmation
+     * prompt is shown, rather than only failing later when delete() itself runs after the user
+     * has already answered "y".
+     *
+     * @param category the category the topic belongs to
+     * @param name the topic name
+     * @throws InvalidIndexException if the topic does not exist under that category
+     * @throws DuplicateActivityException if any activity under that category is still assigned
+     *     to it
+     */
+    public void checkCanDelete(ActivityCategory category, String name)
+            throws InvalidIndexException, DuplicateActivityException {
+        if (findTopic(category, name) == null) {
             throw new InvalidIndexException("Topic \"" + name + "\" does not exist under " + category + ".");
         }
         int usageCount = countActivitiesUsing(category, name);
         if (usageCount > 0) {
             throw new DuplicateActivityException("Topic " + name + " is used by " + usageCount + " activities.");
         }
-        topicsByCategory.get(category).remove(topic);
     }
 
     private int countActivitiesUsing(ActivityCategory category, String name) {

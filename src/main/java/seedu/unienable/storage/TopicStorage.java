@@ -12,9 +12,10 @@ import seedu.unienable.model.enums.ActivityCategory;
 /**
  * Loads and saves topic records from/to a pipe-delimited topics.txt-format file.
  *
- * <p>Format: {@code TOPIC|category|name}. A dedicated Topic model class is deferred to
- * v1-topic-category; until then this stores plain category/name pairs. Fields must not contain
- * the '|' delimiter; this is not escaped in v1.0.
+ * <p>Format: {@code TOPIC|category|name}. Uses its own {@link TopicRecord} category/name pair
+ * rather than the {@link seedu.unienable.model.classes.Topic} model class directly; the main
+ * loop converts between them at load/save time. Fields must not contain the '|' delimiter; this
+ * is not escaped in v1.0.
  */
 public class TopicStorage {
     private static final String TOPIC_TAG = "TOPIC";
@@ -97,20 +98,28 @@ public class TopicStorage {
         }
     }
 
-    /** A category/name pair loaded from or saved to topics.txt, ahead of a dedicated Topic model class. */
+    /** A category/name pair loaded from or saved to topics.txt. */
     public static final class TopicRecord {
         private final ActivityCategory category;
         private final String name;
 
+        /**
+         * Creates a TopicRecord.
+         *
+         * @param category the fixed category the topic belongs to
+         * @param name the topic name
+         */
         public TopicRecord(ActivityCategory category, String name) {
             this.category = category;
             this.name = name;
         }
 
+        /** Returns the fixed category the topic belongs to. */
         public ActivityCategory getCategory() {
             return category;
         }
 
+        /** Returns the topic name. */
         public String getName() {
             return name;
         }

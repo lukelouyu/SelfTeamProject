@@ -126,7 +126,9 @@ Optional: `topic/`, `note/`.
 
 The application rejects the activity when a required field is missing or invalid, the end time
 is not later than the start time, an exact duplicate exists (same description/date/timing), or it
-overlaps another fixed activity on the same date.
+overlaps another fixed activity on the same date. If `topic/` is supplied, that topic must already
+exist under the given category (create it first with `topic add`) — otherwise the activity is
+rejected with a "does not exist" error rather than silently accepting an unregistered topic name.
 
 ### 6.2 Add a Flexible Activity: `add`
 
@@ -157,7 +159,7 @@ ____________________________________________________________
 ```
 
 `dur/` must be a positive whole number of minutes that fits inside the `earliest/`–`latest/`
-window.
+window. As with a fixed activity, a supplied `topic/` must already exist under the given category.
 
 ### 6.3 List Activities: `list`
 
@@ -232,6 +234,14 @@ edit ID PREFIX/NEW_VALUE [PREFIX/NEW_VALUE ...]
 Editable prefixes: `n/`, `c/`, `date/`, `type/`, `from/`, `to/`, `earliest/`, `latest/`, `dur/`,
 `energy/`, `sensory/`, `topic/`, `note/`. At least one is required. Changing `type/` between
 `FIXED` and `FLEXIBLE` requires supplying every timing field the new type needs.
+
+Topics are one-level groupings inside a fixed category, so the application enforces that
+invariant on every edit: the activity's resulting topic (whether left unchanged or newly
+supplied) must exist under its resulting category. Changing `c/` to a category that does not have
+the activity's current topic is rejected — supply a valid `topic/NEW_TOPIC` for the new category
+in the same edit, or clear the topic with a blank `topic/`, before the category change is applied.
+This check runs before the confirmation prompt, so a rejected edit never asks "Save changes?" and
+never changes the stored activity.
 
 Before applying any change, the application shows a concise before/after diff of only the fields
 that actually differ, then asks for confirmation:

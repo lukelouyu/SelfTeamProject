@@ -128,6 +128,13 @@ atomic: a rejected request always leaves prior state completely unchanged.
   performed by `ActivityCommandParser` before construction, not inside the model classes. This
   keeps the model classes simple data holders and keeps all user-facing validation messages in one
   place.
+- **An activity's topic is validated against `TopicManager`, not stored as a free-floating
+  string.** `ActivityCommandParser.parseAdd`/`parseEdit` take a `TopicManager` and reject a
+  non-null `topic/` that does not exist under the activity's resulting category, before the
+  activity is built. This closes off two related failure modes that a plain string field would
+  otherwise allow: referencing a topic that was never created, and an edit that changes category
+  silently stranding the activity's existing topic outside the category it is registered under.
+  The check runs during parsing, so a rejected request never reaches `confirmIfNeeded()`.
 - **Confirmation prompts are a growing `instanceof` chain.** `UniEnable.confirmIfNeeded()` checks
   the command's runtime type to decide whether to show a diff and ask "(y/n)" before executing:
   `DeleteCommand`, `EditCommand`, `TopicRenameCommand`, `TopicDeleteCommand`, in that order. This

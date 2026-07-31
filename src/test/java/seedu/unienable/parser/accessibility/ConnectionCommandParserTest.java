@@ -93,6 +93,29 @@ class ConnectionCommandParserTest {
     }
 
     @Test
+    public void parseFind_whitespaceOnlyFromAlone_throwsMissingInputException() {
+        // Regression test: a blank from/ does not count as a supplied filter, so
+        // "connection find from/   " with nothing else must still be rejected rather than
+        // silently matching every connection.
+        ConnectionManager manager = new ConnectionManager(List.of());
+
+        assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "from/   "));
+    }
+
+    @Test
+    public void parseFind_whitespaceOnlyFromWithOtherFilter_ignoresFromUsesOtherFilter() throws Exception {
+        Connection match = newConnection(12, "COM3", "COM1");
+        Connection nonMatch = newConnection(13, "COM1", "AS6");
+        ConnectionManager manager = new ConnectionManager(List.of(match, nonMatch));
+
+        CommandResult result = parser.parseFind(manager, "from/    to/COM1").execute();
+
+        String feedback = result.getFeedback();
+        assertTrue(feedback.contains("[12]"));
+        assertTrue(feedback.contains("[13]"));
+    }
+
+    @Test
     public void parseFind_invalidType_throwsInvalidCommandException() {
         ConnectionManager manager = new ConnectionManager(List.of());
 

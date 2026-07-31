@@ -421,6 +421,22 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseList_whitespaceOnlyTopicFilter_isIgnoredNotTreatedAsLiteralFilter() throws Exception {
+        // Regression test: "list topic/   " previously filtered for an activity whose topic
+        // equals the literal empty string, which no activity ever has (topic is null when unset),
+        // so the filter silently excluded everything instead of being ignored like an omitted
+        // topic/ field.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "No-topic lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseList(manager, "topic/   ").execute();
+
+        assertTrue(result.getFeedback().contains("No-topic lecture"));
+    }
+
+    @Test
     public void parseList_invalidStatus_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
 
@@ -492,6 +508,28 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(MissingInputException.class, () -> parser.parseFind(manager, ""));
+    }
+
+    @Test
+    public void parseFind_whitespaceOnlyTopicFilterAlone_throwsMissingInputException() {
+        // Regression test: a blank topic/ does not count as a supplied filter -- same principle
+        // as order/ alone not counting -- so "find topic/   " with nothing else must still be
+        // rejected rather than silently matching every activity.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "topic/   "));
+    }
+
+    @Test
+    public void parseFind_whitespaceOnlyTopicWithOtherFilter_ignoresTopicUsesOtherFilter() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "No-topic lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "c/ACADEMIC topic/   ").execute();
+
+        assertTrue(result.getFeedback().contains("No-topic lecture"));
     }
 
     @Test

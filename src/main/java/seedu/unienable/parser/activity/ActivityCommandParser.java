@@ -199,7 +199,7 @@ public class ActivityCommandParser {
         boolean detail = "detail".equalsIgnoreCase(fields.get("view/"));
         CompletionStatus status = parseStatus(fields.get("status/"));
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
-        String topic = fields.get("topic/");
+        String topic = blankToNull(fields.get("topic/"));
         LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
         ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
 
@@ -251,7 +251,7 @@ public class ActivityCommandParser {
                 ? Arrays.asList(fields.get("k/").trim().split("\\s+"))
                 : List.of();
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
-        String topic = fields.get("topic/");
+        String topic = blankToNull(fields.get("topic/"));
         LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
         ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
 
@@ -262,13 +262,15 @@ public class ActivityCommandParser {
     /**
      * Checks whether a find command's extracted fields include at least one real keyword or
      * filter. order/ alone does not count: it is a display-ordering directive, not something to
-     * search by, so "find order/time" with nothing else must still be rejected.
+     * search by, so "find order/time" with nothing else must still be rejected. A whitespace-only
+     * topic/ also does not count, the same way it does not count as a stored topic anywhere else:
+     * "find topic/   " with nothing else must still be rejected rather than matching everything.
      *
      * @param fields the fields extracted from a find command's argument text
-     * @return true if at least one of k/, c/, topic/, or date/ is present
+     * @return true if at least one of k/, c/, a non-blank topic/, or date/ is present
      */
     private boolean hasKeywordOrFilter(Map<String, String> fields) {
-        return fields.containsKey("k/") || fields.containsKey("c/") || fields.containsKey("topic/")
+        return fields.containsKey("k/") || fields.containsKey("c/") || blankToNull(fields.get("topic/")) != null
                 || fields.containsKey("date/");
     }
 

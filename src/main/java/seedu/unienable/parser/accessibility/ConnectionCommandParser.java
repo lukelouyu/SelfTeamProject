@@ -66,11 +66,15 @@ public class ConnectionCommandParser {
     public ConnectionFindCommand parseFind(ConnectionManager connectionManager, String args)
             throws MissingInputException, InvalidCommandException {
         Map<String, String> fields = extractPresentFields(args, FIND_MARKERS);
-        if (fields.isEmpty()) {
+        String from = blankToNull(fields.get("from/"));
+        String to = blankToNull(fields.get("to/"));
+        if (from == null && to == null && !fields.containsKey("type/") && !fields.containsKey("status/")
+                && !fields.containsKey("shelter/")) {
+            // A whitespace-only from/ or to/ does not count as a supplied filter, the same way it
+            // does not count as a stored value anywhere else: "connection find from/   " with
+            // nothing else must still be rejected rather than matching every connection.
             throw new MissingInputException("at least one filter is required.");
         }
-        String from = fields.get("from/");
-        String to = fields.get("to/");
         TraversalType type = fields.containsKey("type/") ? parseType(fields.get("type/")) : null;
         AccessibilityStatus status = fields.containsKey("status/") ? parseStatus(fields.get("status/")) : null;
         ShelterStatus shelter = fields.containsKey("shelter/") ? parseShelter(fields.get("shelter/")) : null;
@@ -99,6 +103,18 @@ public class ConnectionCommandParser {
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("shelter must be YES, NO, or UNKNOWN.");
         }
+    }
+
+    /**
+     * Normalises a whitespace-only optional filter value (e.g. "from/   ") to null, so it is
+     * treated as the filter being omitted entirely rather than a literal empty endpoint name that
+     * can never match a real connection.
+     *
+     * @param value an already-trimmed field value, or null if the field was not present
+     * @return value, or null if value is null or empty
+     */
+    private String blankToNull(String value) {
+        return value == null || value.isEmpty() ? null : value;
     }
 
     private Map<String, String> extractPresentFields(String text, String... markers) {

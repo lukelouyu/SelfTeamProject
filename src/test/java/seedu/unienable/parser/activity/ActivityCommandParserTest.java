@@ -20,6 +20,7 @@ import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
@@ -35,7 +36,9 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_fixedActivity_buildsMatchingActivity() throws Exception {
         ActivityManager manager = new ActivityManager();
-        AddCommand command = parser.parseAdd(manager,
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+        AddCommand command = parser.parseAdd(manager, topicManager,
                 "n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
                         + "energy/4 sensory/3 topic/CG3207 note/Bring laptop");
 
@@ -57,7 +60,9 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_flexibleActivity_buildsMatchingActivity() throws Exception {
         ActivityManager manager = new ActivityManager();
-        AddCommand command = parser.parseAdd(manager,
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+        AddCommand command = parser.parseAdd(manager, topicManager,
                 "n/Finish assignment 1 c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "dur/90 energy/5 sensory/2 topic/CG3207");
 
@@ -75,7 +80,8 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_noteWithoutTopic_parsesNoteCorrectly() throws Exception {
         ActivityManager manager = new ActivityManager();
-        AddCommand command = parser.parseAdd(manager,
+        TopicManager topicManager = new TopicManager(manager);
+        AddCommand command = parser.parseAdd(manager, topicManager,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 note/Bring headphones");
 
@@ -89,7 +95,9 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_topicWithoutNote_parsesTopicCorrectly() throws Exception {
         ActivityManager manager = new ActivityManager();
-        AddCommand command = parser.parseAdd(manager,
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.OTHERS, "Misc");
+        AddCommand command = parser.parseAdd(manager, topicManager,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 topic/Misc");
 
@@ -101,11 +109,41 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_topicNeverCreated_throwsInvalidIndexExceptionAndConsumesNoId() {
+        // Regression test: topic/ was previously accepted as an unvalidated free-text string, so
+        // an activity could reference a topic that was never created with "topic add".
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        int idBefore = manager.getNextId();
+
+        assertThrows(InvalidIndexException.class, () -> parser.parseAdd(manager, topicManager,
+                "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2 topic/NeverCreated"));
+
+        assertEquals(idBefore, manager.getNextId());
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseAdd_topicExistsUnderDifferentCategory_throwsInvalidIndexException() throws Exception {
+        // A topic name is scoped to its category, so a topic that exists under ACADEMIC must not
+        // satisfy a topic/ reference on an activity being added under OTHERS.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.ACADEMIC, "Misc");
+
+        assertThrows(InvalidIndexException.class, () -> parser.parseAdd(manager, topicManager,
+                "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2 topic/Misc"));
+    }
+
+    @Test
     public void parseAdd_whitespaceOnlyTopic_isTreatedAsAbsent() throws Exception {
         // Regression test: "topic/   " (whitespace only) previously stored an empty string
         // instead of being treated the same as omitting topic/ entirely.
         ActivityManager manager = new ActivityManager();
-        AddCommand command = parser.parseAdd(manager,
+        TopicManager topicManager = new TopicManager(manager);
+        AddCommand command = parser.parseAdd(manager, topicManager,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 topic/    note/Bring headphones");
 
@@ -117,7 +155,8 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_whitespaceOnlyNote_isTreatedAsAbsent() throws Exception {
         ActivityManager manager = new ActivityManager();
-        AddCommand command = parser.parseAdd(manager,
+        TopicManager topicManager = new TopicManager(manager);
+        AddCommand command = parser.parseAdd(manager, topicManager,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 note/    ");
 
@@ -131,8 +170,9 @@ class ActivityCommandParserTest {
         // Required fields already reject a whitespace-only value via requireField's
         // isEmpty()-after-trim check; this pins that existing (correct) behaviour.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager,
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/    c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
@@ -142,16 +182,18 @@ class ActivityCommandParserTest {
         // description containing '|' was previously accepted here, reported as added, and then
         // permanently failed to persist on every later save instead of being rejected up front.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Bad|Desc c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
     @Test
     public void parseAdd_topicContainsDelimiter_throwsInvalidActivityException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3 "
                         + "topic/Bad|Topic"));
     }
@@ -159,8 +201,9 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_noteContainsDelimiter_throwsInvalidActivityException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3 "
                         + "note/Bad|Note"));
     }
@@ -172,7 +215,8 @@ class ActivityCommandParserTest {
         // boundary-based (first "n/" to the next distinct marker), the value is "A n/B" -- the
         // second "n/" is absorbed as literal text rather than starting a new field or erroring.
         ActivityManager manager = new ActivityManager();
-        AddCommand command = parser.parseAdd(manager,
+        TopicManager topicManager = new TopicManager(manager);
+        AddCommand command = parser.parseAdd(manager, topicManager,
                 "n/A n/B c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3");
 
         command.execute();
@@ -183,48 +227,54 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_missingDescription_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager,
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager,
                 "c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
     @Test
     public void parseAdd_missingType_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager,
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Lecture c/ACADEMIC date/2026-08-15"));
     }
 
     @Test
     public void parseAdd_invalidType_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/BOGUS from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
     @Test
     public void parseAdd_endNotAfterStart_throwsInvalidActivityException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/11:00 to/09:00 energy/4 sensory/3"));
     }
 
     @Test
     public void parseAdd_invalidCategory_throwsInvalidActivityException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Lecture c/BOGUS date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
     @Test
     public void parseAdd_invalidDate_throwsInvalidDateTimeException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Lecture c/ACADEMIC date/15-08-2026 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
@@ -234,9 +284,10 @@ class ActivityCommandParserTest {
         // to 2026-02-28), so this add would have succeeded and consumed ID 1. Parsing must fail
         // before AddCommand is even built, so no activity is added and no ID is consumed.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         int idBefore = manager.getNextId();
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Exam c/ACADEMIC date/2026-02-30 type/FIXED from/09:00 to/10:00 energy/3 sensory/3"));
 
         assertEquals(idBefore, manager.getNextId());
@@ -246,24 +297,27 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_hourTwentyFour_throwsInvalidDateTimeException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Late c/ACADEMIC date/2026-08-20 type/FIXED from/24:00 to/01:00 energy/3 sensory/3"));
     }
 
     @Test
     public void parseAdd_invalidEnergyRating_throwsInvalidActivityException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/7 sensory/3"));
     }
 
     @Test
     public void parseAdd_flexibleInvalidDuration_throwsInvalidActivityException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "dur/0 energy/5 sensory/2"));
     }
@@ -271,8 +325,9 @@ class ActivityCommandParserTest {
     @Test
     public void parseAdd_flexibleNegativeDuration_throwsInvalidActivityException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "dur/-30 energy/5 sensory/2"));
     }
@@ -282,9 +337,10 @@ class ActivityCommandParserTest {
         // Regression test: earliest/10:00 latest/11:00 is a 60-minute window, but dur/500 was
         // previously accepted with no validation at all against the window size.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         InvalidActivityException exception = assertThrows(InvalidActivityException.class, () -> parser.parseAdd(
-                manager, "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 "
+                manager, topicManager, "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 "
                         + "dur/500 energy/5 sensory/2"));
         assertTrue(exception.getMessage().contains("60 min available"));
     }
@@ -294,7 +350,8 @@ class ActivityCommandParserTest {
         // Boundary: duration equal to the window size is the edge of "must fit inside the
         // window" and should be accepted, not rejected.
         ActivityManager manager = new ActivityManager();
-        AddCommand command = parser.parseAdd(manager,
+        TopicManager topicManager = new TopicManager(manager);
+        AddCommand command = parser.parseAdd(manager, topicManager,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 "
                         + "dur/60 energy/5 sensory/2");
 
@@ -309,8 +366,9 @@ class ActivityCommandParserTest {
         // extraction greedily captures the trailing "energy/5 sensory/2" text, which then fails
         // time parsing before a dedicated "dur is required" check is ever reached.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager,
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "energy/5 sensory/2"));
     }
@@ -318,6 +376,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseDelete_validId_returnsWorkingDeleteCommand() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Briefing",
                 ActivityCategory.WORK_INTERNSHIP, LocalDate.of(2026, 8, 16), LocalTime.of(10, 0),
                 LocalTime.of(11, 0), EnergyRating.of(3), SensoryRating.of(2), null, null));
@@ -330,6 +389,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseDelete_missingId_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseDelete(manager, "  "));
     }
@@ -337,6 +397,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseDelete_nonNumericId_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(InvalidCommandException.class, () -> parser.parseDelete(manager, "abc"));
     }
@@ -344,6 +405,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseMark_validId_returnsWorkingMarkCommand() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Briefing", ActivityCategory.WORK_INTERNSHIP,
                 LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
                 EnergyRating.of(3), SensoryRating.of(2), null, null));
@@ -356,6 +418,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseMark_nonNumericId_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(InvalidCommandException.class, () -> parser.parseMark(manager, "abc"));
     }
@@ -363,6 +426,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseUnmark_validId_returnsWorkingUnmarkCommand() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Briefing", ActivityCategory.WORK_INTERNSHIP,
                 LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
                 EnergyRating.of(3), SensoryRating.of(2), null, null));
@@ -376,6 +440,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseUnmark_missingId_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseUnmark(manager, ""));
     }
@@ -383,6 +448,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseView_validId_returnsWorkingViewCommand() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Briefing", ActivityCategory.WORK_INTERNSHIP,
                 LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
                 EnergyRating.of(3), SensoryRating.of(2), null, null));
@@ -395,6 +461,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseView_missingId_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseView(manager, ""));
     }
@@ -402,6 +469,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseList_noFields_listsEverythingInDefaultOrder() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -414,6 +482,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseList_statusIncompleteFilter_excludesCompletedActivities() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Done task", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -432,6 +501,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseList_viewDetail_usesDetailFormat() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -444,6 +514,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseList_categoryAndTopicFilter_combineWithAnd() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
@@ -463,6 +534,7 @@ class ActivityCommandParserTest {
         // Regression test: same root cause as parseEdit's - "topic/" alone (no c/) previously
         // triggered a false "c/" match embedded inside the "topic/" marker text.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
@@ -479,6 +551,7 @@ class ActivityCommandParserTest {
         // so the filter silently excluded everything instead of being ignored like an omitted
         // topic/ field.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "No-topic lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -491,6 +564,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseList_invalidStatus_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "status/bogus"));
     }
@@ -498,6 +572,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseList_invalidOrder_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "order/bogus"));
     }
@@ -505,6 +580,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseFind_singleKeyword_findsMatchingActivity() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -517,6 +593,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseFind_multiWordKeyword_splitsIntoAndedKeywords() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -534,6 +611,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseFind_filterOnlyNoKeyword_isAllowed() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
@@ -546,6 +624,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseFind_topicFilterAloneWithNoExplicitCategory_doesNotThrow() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
@@ -558,6 +637,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseFind_neitherKeywordNorFilter_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseFind(manager, ""));
     }
@@ -568,6 +648,7 @@ class ActivityCommandParserTest {
         // as order/ alone not counting -- so "find topic/   " with nothing else must still be
         // rejected rather than silently matching every activity.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "topic/   "));
     }
@@ -575,6 +656,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseFind_whitespaceOnlyTopicWithOtherFilter_ignoresTopicUsesOtherFilter() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "No-topic lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -587,6 +669,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseFind_whitespaceOnlyArgs_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "   "));
     }
@@ -597,6 +680,7 @@ class ActivityCommandParserTest {
         // a keyword or filter. "find order/time" alone was previously accepted (since the fields
         // map was non-empty) and silently returned every activity.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "order/time"));
     }
@@ -610,6 +694,7 @@ class ActivityCommandParserTest {
         // description trivially contains, silently matching every activity instead of being
         // rejected.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseFind(manager, "k/   "));
     }
@@ -617,6 +702,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseFind_whitespaceOnlyKeywordWithOtherFilter_ignoresKeywordUsesOtherFilter() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "No-topic lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -629,6 +715,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseNext_buildsWorkingNextCommand() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
@@ -642,6 +729,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseOrder_view_returnsWorkingOrderViewCommand() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         CommandResult result = parser.parseOrder(manager, "view").execute();
 
@@ -651,6 +739,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseOrder_setInput_updatesManagerDefaultOrder() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         parser.parseOrder(manager, "set input").execute();
 
@@ -660,6 +749,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseOrder_missingSubCommand_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseOrder(manager, ""));
     }
@@ -667,6 +757,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseOrder_setMissingOrderValue_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(MissingInputException.class, () -> parser.parseOrder(manager, "set"));
     }
@@ -674,6 +765,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseOrder_unknownSubCommand_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(InvalidCommandException.class, () -> parser.parseOrder(manager, "bogus"));
     }
@@ -681,6 +773,7 @@ class ActivityCommandParserTest {
     @Test
     public void parseOrder_setInvalidOrderValue_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
         assertThrows(InvalidCommandException.class, () -> parser.parseOrder(manager, "set bogus"));
     }
@@ -718,11 +811,13 @@ class ActivityCommandParserTest {
     @Test
     public void parseEdit_singleField_updatesOnlyThatField() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
         manager.add(new FlexibleActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
                 EnergyRating.of(5), SensoryRating.of(2), "CG3207", null));
 
-        parser.parseEdit(manager, "1 dur/60").execute();
+        parser.parseEdit(manager, topicManager, "1 dur/60").execute();
 
         Activity updated = manager.getById(1);
         assertEquals(60, ((FlexibleActivity) updated).getDurationMinutes());
@@ -736,11 +831,12 @@ class ActivityCommandParserTest {
         // string rather than clearing the topic to null, the same way it is represented when
         // never set.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
 
-        parser.parseEdit(manager, "1 topic/   ").execute();
+        parser.parseEdit(manager, topicManager, "1 topic/   ").execute();
 
         assertNull(manager.getById(1).getTopic());
     }
@@ -748,11 +844,12 @@ class ActivityCommandParserTest {
     @Test
     public void parseEdit_whitespaceOnlyNote_clearsNoteToNull() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, "Bring laptop"));
 
-        parser.parseEdit(manager, "1 note/   ").execute();
+        parser.parseEdit(manager, topicManager, "1 note/   ").execute();
 
         assertNull(manager.getById(1).getNote());
     }
@@ -762,31 +859,35 @@ class ActivityCommandParserTest {
         // Regression test: same root cause as parseAdd's equivalent test, exercised through
         // edit's any-order field map instead.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 n/Bad|Desc"));
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, "1 n/Bad|Desc"));
     }
 
     @Test
     public void parseEdit_topicContainsDelimiter_throwsInvalidActivityException() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 topic/Bad|Topic"));
+        assertThrows(InvalidActivityException.class,
+                () -> parser.parseEdit(manager, topicManager, "1 topic/Bad|Topic"));
     }
 
     @Test
     public void parseEdit_noteContainsDelimiter_throwsInvalidActivityException() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 note/Bad|Note"));
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, "1 note/Bad|Note"));
     }
 
     @Test
@@ -794,11 +895,12 @@ class ActivityCommandParserTest {
         // Pinning test, not a bug fix: same boundary-based extraction behaviour as add's
         // equivalent test, exercised through edit's any-order field map instead.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, "1 n/X n/Y").execute();
+        parser.parseEdit(manager, topicManager, "1 n/X n/Y").execute();
 
         assertEquals("X n/Y", manager.getById(1).getDescription());
     }
@@ -810,11 +912,13 @@ class ActivityCommandParserTest {
         // embedded inside "topic/"'s own marker text, and reject the edit with "category must be
         // one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS."
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CS2113");
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, "1 topic/CS2113").execute();
+        parser.parseEdit(manager, topicManager, "1 topic/CS2113").execute();
 
         Activity updated = manager.getById(1);
         assertEquals("CS2113", updated.getTopic());
@@ -822,13 +926,78 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseEdit_categoryChangeWouldOrphanExistingTopic_throwsInvalidIndexExceptionAndDoesNotMutate()
+            throws Exception {
+        // Regression test: topics are one-level groupings inside a fixed category, but editing an
+        // activity's category previously carried its old topic straight over with no check that
+        // the topic still exists under the new category, silently stranding the topic outside the
+        // category it is registered under (e.g. an ACADEMIC/CS2113 activity became CCA/CS2113
+        // while CS2113 stayed registered only under ACADEMIC).
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CS2113");
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CS2113", null));
+
+        assertThrows(InvalidIndexException.class, () -> parser.parseEdit(manager, topicManager, "1 c/CCA"));
+
+        Activity unchanged = manager.getById(1);
+        assertEquals(ActivityCategory.ACADEMIC, unchanged.getCategory());
+        assertEquals("CS2113", unchanged.getTopic());
+    }
+
+    @Test
+    public void parseEdit_categoryChangeWithValidTargetTopic_succeedsAtomically() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CS2113");
+        topicManager.add(ActivityCategory.CCA, "Basketball Club");
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CS2113", null));
+
+        parser.parseEdit(manager, topicManager, "1 c/CCA topic/Basketball Club").execute();
+
+        Activity updated = manager.getById(1);
+        assertEquals(ActivityCategory.CCA, updated.getCategory());
+        assertEquals("Basketball Club", updated.getTopic());
+    }
+
+    @Test
+    public void parseEdit_categoryChangeWithNoTopic_isAllowed() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        parser.parseEdit(manager, topicManager, "1 c/CCA").execute();
+
+        assertEquals(ActivityCategory.CCA, manager.getById(1).getCategory());
+    }
+
+    @Test
+    public void parseEdit_topicNeverCreated_throwsInvalidIndexException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertThrows(InvalidIndexException.class,
+                () -> parser.parseEdit(manager, topicManager, "1 topic/NeverCreated"));
+    }
+
+    @Test
     public void parseEdit_multipleFields_updatesAllGivenFields() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FlexibleActivity(manager.getNextId(), "Prepare slides", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
                 EnergyRating.of(3), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, "1 n/New activity name energy/4 sensory/2").execute();
+        parser.parseEdit(manager, topicManager, "1 n/New activity name energy/4 sensory/2").execute();
 
         Activity updated = manager.getById(1);
         assertEquals("New activity name", updated.getDescription());
@@ -839,11 +1008,13 @@ class ActivityCommandParserTest {
     @Test
     public void parseEdit_noteOnly_leavesOtherFieldsUnchanged() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.OTHERS, "Misc");
         manager.add(new FixedActivity(manager.getNextId(), "Consultation", ActivityCategory.OTHERS,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), "Misc", null));
 
-        parser.parseEdit(manager, "1 note/Bring headphones").execute();
+        parser.parseEdit(manager, topicManager, "1 note/Bring headphones").execute();
 
         Activity updated = manager.getById(1);
         assertEquals("Bring headphones", updated.getNote());
@@ -854,12 +1025,13 @@ class ActivityCommandParserTest {
     @Test
     public void parseEdit_preservesCompletionStatus() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FlexibleActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
                 EnergyRating.of(5), SensoryRating.of(2), null, null));
         manager.mark(1);
 
-        parser.parseEdit(manager, "1 dur/60").execute();
+        parser.parseEdit(manager, topicManager, "1 dur/60").execute();
 
         assertTrue(manager.getById(1).isComplete());
     }
@@ -867,11 +1039,12 @@ class ActivityCommandParserTest {
     @Test
     public void parseEdit_changingTypeWithAllNewTimingFields_succeeds() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, "1 type/FLEXIBLE earliest/10:00 latest/18:00 dur/90").execute();
+        parser.parseEdit(manager, topicManager, "1 type/FLEXIBLE earliest/10:00 latest/18:00 dur/90").execute();
 
         Activity updated = manager.getById(1);
         assertEquals(ScheduleType.FLEXIBLE, updated.getScheduleType());
@@ -883,66 +1056,73 @@ class ActivityCommandParserTest {
         // Regression test: editing only dur/ must still validate against the activity's existing
         // (unchanged) earliest/latest window, not just when the window is also being edited.
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FlexibleActivity(manager.getNextId(), "Finish assignment 1", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0), 60,
                 EnergyRating.of(5), SensoryRating.of(2), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 dur/500"));
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, "1 dur/500"));
     }
 
     @Test
     public void parseEdit_changingTypeWithDurationExceedingNewWindow_throwsInvalidActivityException()
             throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager,
                 "1 type/FLEXIBLE earliest/10:00 latest/11:00 dur/500"));
     }
 
     @Test
     public void parseEdit_changingTypeWithoutNewTimingFields_throwsMissingInputException() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, "1 type/FLEXIBLE"));
+        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, topicManager, "1 type/FLEXIBLE"));
     }
 
     @Test
     public void parseEdit_noFieldsSupplied_throwsMissingInputException() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, "1"));
+        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, topicManager, "1"));
     }
 
     @Test
     public void parseEdit_unknownId_throwsInvalidIndexException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidIndexException.class, () -> parser.parseEdit(manager, "999 dur/60"));
+        assertThrows(InvalidIndexException.class, () -> parser.parseEdit(manager, topicManager, "999 dur/60"));
     }
 
     @Test
     public void parseEdit_nonNumericId_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseEdit(manager, "abc dur/60"));
+        assertThrows(InvalidCommandException.class, () -> parser.parseEdit(manager, topicManager, "abc dur/60"));
     }
 
     @Test
     public void parseEdit_invalidNewCategory_throwsInvalidActivityException() throws Exception {
         ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 c/BOGUS"));
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, "1 c/BOGUS"));
     }
 }

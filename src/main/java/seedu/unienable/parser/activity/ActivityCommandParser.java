@@ -30,6 +30,7 @@ import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityFilter;
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
@@ -57,16 +58,19 @@ public class ActivityCommandParser {
      * documented in the User Guide.
      *
      * @param activityManager the manager the resulting command will add to
+     * @param topicManager the manager used to validate that a supplied topic/ already exists
+     *     under the activity's category
      * @param args the text after the "add" command word
      * @return the parsed AddCommand
      * @throws MissingInputException if a required field is missing
      * @throws InvalidActivityException if a field value fails validation
      * @throws InvalidDateTimeException if the date or a time value is invalid
      * @throws InvalidCommandException if type is neither FIXED nor FLEXIBLE
+     * @throws InvalidIndexException if topic/ does not exist under the category
      */
-    public AddCommand parseAdd(ActivityManager activityManager, String args)
+    public AddCommand parseAdd(ActivityManager activityManager, TopicManager topicManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
-            InvalidCommandException {
+            InvalidCommandException, InvalidIndexException {
         String description = requireField(args, "n/", "c/", "description");
         validateNoDelimiter(description, "description");
         ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category"));
@@ -75,28 +79,33 @@ public class ActivityCommandParser {
 
         int id = activityManager.getNextId();
         if ("FIXED".equalsIgnoreCase(type)) {
-            return new AddCommand(activityManager, parseFixed(args, id, description, category, date));
+            return new AddCommand(activityManager,
+                    parseFixed(args, id, description, category, date, topicManager));
         }
         if ("FLEXIBLE".equalsIgnoreCase(type)) {
-            return new AddCommand(activityManager, parseFlexible(args, id, description, category, date));
+            return new AddCommand(activityManager,
+                    parseFlexible(args, id, description, category, date, topicManager));
         }
         throw new InvalidCommandException("type must be FIXED or FLEXIBLE.");
     }
 
     private FixedActivity parseFixed(String args, int id, String description, ActivityCategory category,
-            LocalDate date) throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
+            LocalDate date, TopicManager topicManager)
+            throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
         LocalTime start = DateTimeParser.parseTime(requireField(args, "from/", "to/", "from"));
         LocalTime end = DateTimeParser.parseTime(requireField(args, "to/", "energy/", "to"));
         if (!end.isAfter(start)) {
             throw new InvalidActivityException("end time must be later than start time.");
         }
         CommonTail tail = parseCommonTail(args, "energy/");
+        validateTopicExists(topicManager, category, tail.topic);
         return new FixedActivity(id, description, category, date, start, end, tail.energy, tail.sensory,
                 tail.topic, tail.note);
     }
 
     private FlexibleActivity parseFlexible(String args, int id, String description, ActivityCategory category,
-            LocalDate date) throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
+            LocalDate date, TopicManager topicManager)
+            throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
         LocalTime earliestStart = DateTimeParser.parseTime(requireField(args, "earliest/", "latest/", "earliest"));
         LocalTime latestEnd = DateTimeParser.parseTime(requireField(args, "latest/", "dur/", "latest"));
         if (!latestEnd.isAfter(earliestStart)) {
@@ -105,6 +114,7 @@ public class ActivityCommandParser {
         int durationMinutes = parsePositiveInt(requireField(args, "dur/", "energy/", "dur"), "dur");
         validateDurationFitsWindow(earliestStart, latestEnd, durationMinutes);
         CommonTail tail = parseCommonTail(args, "energy/");
+        validateTopicExists(topicManager, category, tail.topic);
         return new FlexibleActivity(id, description, category, date, earliestStart, latestEnd, durationMinutes,
                 tail.energy, tail.sensory, tail.topic, tail.note);
     }
@@ -414,6 +424,26 @@ public class ActivityCommandParser {
         }
     }
 
+    /**
+     * Rejects a non-null topic that does not exist under the given category, preserving the
+     * "topics are one-level groupings inside a fixed category" invariant. Without this check, an
+     * activity's topic/ field was just an unvalidated string: an add could reference a topic that
+     * was never created, and an edit that changed category could silently strand an existing
+     * topic outside the category it is registered under.
+     *
+     * @param topicManager the manager to check the topic against
+     * @param category the activity's resulting category
+     * @param topic the activity's resulting topic, or null if it has none
+     * @throws InvalidIndexException if topic is non-null and does not exist under category
+     */
+    private void validateTopicExists(TopicManager topicManager, ActivityCategory category, String topic)
+            throws InvalidIndexException {
+        if (topic != null && !topicManager.exists(category, topic)) {
+            throw new InvalidIndexException("Topic \"" + topic + "\" does not exist under " + category
+                    + ". Create it first with \"topic add\", supply a different topic/, or clear it with topic/.");
+        }
+    }
+
     private String firstToken(String text) {
         return text.trim().split("\\s+", 2)[0];
     }
@@ -472,17 +502,20 @@ public class ActivityCommandParser {
      * from the old type's timing fields cannot carry over.
      *
      * @param activityManager the manager holding the activity being edited
+     * @param topicManager the manager used to validate that the activity's resulting topic
+     *     (carried over or newly supplied) exists under its resulting category
      * @param args the text after the "edit" command word, starting with the activity ID
      * @return the parsed EditCommand
      * @throws MissingInputException if no ID, no fields, or a required new-type timing field is
      *     missing
      * @throws InvalidCommandException if the ID is not a whole number, or type is neither FIXED
      *     nor FLEXIBLE
-     * @throws InvalidIndexException if no activity has that ID
+     * @throws InvalidIndexException if no activity has that ID, or the resulting topic does not
+     *     exist under the resulting category
      * @throws InvalidActivityException if a field value fails validation
      * @throws InvalidDateTimeException if a date or time value is invalid
      */
-    public EditCommand parseEdit(ActivityManager activityManager, String args)
+    public EditCommand parseEdit(ActivityManager activityManager, TopicManager topicManager, String args)
             throws MissingInputException, InvalidCommandException, InvalidIndexException, InvalidActivityException,
             InvalidDateTimeException {
         String[] parts = args.trim().split("\\s+", 2);
@@ -512,6 +545,7 @@ public class ActivityCommandParser {
         if (note != null) {
             validateNoDelimiter(note, "note");
         }
+        validateTopicExists(topicManager, category, topic);
 
         ScheduleType oldType = old.getScheduleType();
         ScheduleType newType = fields.containsKey("type/") ? parseScheduleType(fields.get("type/")) : oldType;

@@ -1,9 +1,13 @@
 # About us
 
-Display | Name | Github Profile | Portfolio 
+UniEnable is a CS2113 team project (tP) built solo, simulating the workflow of a small team.
+
+Display | Name | Github Profile | Portfolio
 --------|:----:|:--------------:|:---------:
-![](https://via.placeholder.com/100.png?text=Photo) | John Doe | [Github](https://github.com/) | [Portfolio](docs/team/johndoe.md)
-![](https://via.placeholder.com/100.png?text=Photo) | Don Joe | [Github](https://github.com/) | [Portfolio](docs/team/johndoe.md)
-![](https://via.placeholder.com/100.png?text=Photo) | Ron John | [Github](https://github.com/) | [Portfolio](docs/team/johndoe.md)
-![](https://via.placeholder.com/100.png?text=Photo) | John Roe | [Github](https://github.com/) | [Portfolio](docs/team/johndoe.md)
-![](https://via.placeholder.com/100.png?text=Photo) | Don Roe | [Github](https://github.com/) | [Portfolio](docs/team/johndoe.md)
+![](https://github.com/lukelouyu.png?size=100) | Luke Louyu | [Github](https://github.com/lukelouyu) | [Portfolio](team/lukelouyu.md)
+
+## Project role
+
+As the sole developer, Luke was responsible for the full v1.0 workflow: requirements and use-case
+definition, architecture, all command/parser/model/storage/UI code, the JUnit and text-UI test
+suites, and the User Guide and Developer Guide.

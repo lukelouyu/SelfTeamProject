@@ -22,8 +22,10 @@ mutating command.
 
 ```mermaid
 flowchart TB
+    Entry["UniEnable<br/>(main/run entry point)"]
+    Runner["app.ApplicationRunner<br/>(startup, run loop, persistence)"]
+    Confirm["app.CommandConfirmationHandler<br/>(y/n confirmation)"]
     UI["ui.Ui<br/>(console I/O, framing)"]
-    Main["UniEnable<br/>(startup, run loop, confirmation)"]
     Dispatcher["parser.CommandDispatcher"]
     Parsers["parser.activity / .topic / .accessibility / .common<br/>(one parser class per domain)"]
     Commands["command.activity / .topic / .accessibility / .general<br/>(one Command class per user action)"]
@@ -32,14 +34,17 @@ flowchart TB
     Accessibility["accessibility.classes / .enums<br/>(Facility, Connection - read-only reference data)"]
     Storage["storage.*Storage<br/>(pipe-delimited text-file persistence)"]
 
-    Main --> UI
-    Main --> Dispatcher
+    Entry --> Runner
+    Runner --> UI
+    Runner --> Confirm
+    Confirm --> UI
+    Runner --> Dispatcher
     Dispatcher --> Parsers
     Parsers --> Commands
     Commands --> Logic
     Logic --> Model
     Logic --> Accessibility
-    Main --> Storage
+    Runner --> Storage
     Storage --> Model
     Storage --> Accessibility
 ```
@@ -48,8 +53,9 @@ Each box above is a package-level component:
 
 | Component | Responsibility |
 |---|---|
-| `UniEnable` | Application entry point: loads data at startup, runs the read-execute-print loop, and hosts the confirmation-prompt logic for mutating commands (see below). |
-| `ui` | All console output framing (`Ui`) and activity-to-text formatting (`MessageFormatter`). No parsing or business logic. |
+| `UniEnable` | The application's sole public entry point (`main`, and the `run(Path, InputStream)` test seam that end-to-end tests call directly). Delegates immediately to `app.ApplicationRunner`; holds no other logic, since Gradle and the Shadow JAR need this exact class name as the main class. |
+| `app` | `ApplicationRunner` coordinates one full run: configuring startup (suppressing JDK logging, showing the welcome message), loading and populating stored data, running the read-execute-print command loop, and persisting activities/topics/settings after every executed command. `CommandConfirmationHandler` owns the y/n confirmation step for the four commands that need one (see below), including EOF-as-cancel handling. Both hold their dependencies (UI, scanner, storage, managers, dispatcher) as fields rather than passing them through parameter lists. |
+| `ui` | All console output framing (`Ui`) and activity-to-text formatting (`MessageFormatter`). `Ui` also formats the partial-load-warning block (`showLoadWarnings`); `ApplicationRunner` decides *when* to call it, but not what the warning text looks like. No parsing or business logic. |
 | `parser` | Turns one command line into a `Command` object. `CommandDispatcher` routes by command word to a domain-specific parser (`ActivityCommandParser`, `TopicCommandParser`, `FacilityCommandParser`, `ConnectionCommandParser`), which all share small utilities in `parser.common` (`FieldParser`, `DateTimeParser`, `RatingParser`). |
 | `command` | One class per user action (`AddCommand`, `EditCommand`, `FacilityFindCommand`, ...), each holding just the data it needs and an `execute()` method. Commands never parse raw text themselves. |
 | `logic` | In-memory managers: `ActivityManager` (CRUD, duplicate/overlap validation, sorting, "next relevant activity"), `TopicManager` (topic CRUD scoped per category, cascading rename/delete-guard), `FacilityManager`/`ConnectionManager` (read-only lookups over the loaded accessibility dataset), plus `ActivityFilter` (a small value object bundling list/find's filter criteria). |
@@ -60,36 +66,38 @@ Each box above is a package-level component:
 
 ### A representative flow: editing an activity
 
-`edit` is a good example because it touches every layer and exercises UniEnable's confirmation
-step. Editing activity `1`'s duration (`edit 1 dur/60`) proceeds as follows:
+`edit` is a good example because it touches every layer and exercises the confirmation step.
+Editing activity `1`'s duration (`edit 1 dur/60`) proceeds as follows:
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Main as UniEnable
+    participant Runner as ApplicationRunner
+    participant Confirm as CommandConfirmationHandler
     participant Dispatcher as CommandDispatcher
     participant Parser as ActivityCommandParser
     participant Manager as ActivityManager
     participant Cmd as EditCommand
     participant Storage
 
-    User->>Main: "edit 1 dur/60"
-    Main->>Dispatcher: dispatch(input, now)
-    Dispatcher->>Parser: parseEdit(activityManager, "1 dur/60")
+    User->>Runner: "edit 1 dur/60"
+    Runner->>Dispatcher: dispatch(input, now)
+    Dispatcher->>Parser: parseEdit(activityManager, topicManager, "1 dur/60")
     Parser->>Manager: getById(1)
     Manager-->>Parser: old Activity
     Note over Parser: builds a complete new Activity,<br/>validating every changed field first
     Parser-->>Dispatcher: EditCommand(1, newActivity)
-    Dispatcher-->>Main: EditCommand
-    Main->>Main: confirmIfNeeded(command)
-    Main->>User: show diff, "Save changes? (y/n)"
-    User->>Main: "y"
-    Main->>Cmd: execute()
+    Dispatcher-->>Runner: EditCommand
+    Runner->>Confirm: confirmIfNeeded(command)
+    Confirm->>User: show diff, "Save changes? (y/n)"
+    User->>Confirm: "y"
+    Confirm-->>Runner: true
+    Runner->>Cmd: execute()
     Cmd->>Manager: replace(1, newActivity)
     Manager-->>Cmd: (validated, replaced)
-    Cmd-->>Main: CommandResult
-    Main->>Storage: saveActivities(activityManager.getAll())
-    Main->>User: framed feedback
+    Cmd-->>Runner: CommandResult
+    Runner->>Storage: saveActivities(activityManager.getAll())
+    Runner->>User: framed feedback
 ```
 
 The key design point: the parser builds a *complete, fully-validated* replacement `Activity`
@@ -135,12 +143,15 @@ atomic: a rejected request always leaves prior state completely unchanged.
   otherwise allow: referencing a topic that was never created, and an edit that changes category
   silently stranding the activity's existing topic outside the category it is registered under.
   The check runs during parsing, so a rejected request never reaches `confirmIfNeeded()`.
-- **Confirmation prompts are a growing `instanceof` chain.** `UniEnable.confirmIfNeeded()` checks
-  the command's runtime type to decide whether to show a diff and ask "(y/n)" before executing:
-  `DeleteCommand`, `EditCommand`, `TopicRenameCommand`, `TopicDeleteCommand`, in that order. This
-  is simple and readable at four branches, but is flagged here as a design decision to revisit
-  (e.g. a small `Confirmable` interface) if v2.0's `recommend` "adopt this recommendation?" step
-  makes the chain much longer.
+- **Confirmation prompts are a growing `instanceof` chain.**
+  `CommandConfirmationHandler.confirmIfNeeded()` checks the command's runtime type to decide
+  whether to show a diff and ask "(y/n)" before executing: `DeleteCommand`, `EditCommand`,
+  `TopicRenameCommand`, `TopicDeleteCommand`, in that order. This is simple and readable at four
+  branches, but is flagged here as a design decision to revisit (e.g. a small `Confirmable`
+  interface) if v2.0's `recommend` "adopt this recommendation?" step makes the chain much longer.
+  Kept as an `instanceof` chain deliberately during the app-layer extraction that gave this logic
+  its own class: introducing a command hierarchy at the same time would have mixed two unrelated
+  changes into one refactor.
 - **Every confirmation-requiring command validates before prompting, via a side-effect-free
   preflight check.** `delete`/`edit` validate that the target activity exists before showing the
   y/n prompt (`ActivityManager.getById()`, called from the parser); `edit` additionally preflights

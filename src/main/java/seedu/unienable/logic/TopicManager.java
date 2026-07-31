@@ -83,6 +83,22 @@ public class TopicManager {
     }
 
     /**
+     * Returns every stored topic across all categories, in a deterministic order: categories in
+     * {@link ActivityCategory#values()} order, each category's topics in creation order. Used to
+     * persist the full topic registry without exposing the internal per-category map.
+     *
+     * @return a defensive copy of every topic, safe to iterate or store independently of this
+     *     manager's internal state
+     */
+    public List<Topic> getAll() {
+        List<Topic> all = new ArrayList<>();
+        for (ActivityCategory category : ActivityCategory.values()) {
+            all.addAll(topicsByCategory.get(category));
+        }
+        return Collections.unmodifiableList(all);
+    }
+
+    /**
      * Renames a topic, cascading the change to every activity currently assigned to it under the
      * same category.
      *

@@ -23,6 +23,7 @@ import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.SensoryRating;
+import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
 
 class StorageTest {
@@ -50,13 +51,14 @@ class StorageTest {
 
     @Test
     public void saveThenLoadTopics_delegatesToTopicsFile() throws Exception {
+        // Storage's public API works with the Topic domain class directly; the TopicRecord
+        // conversion is an internal detail (see TopicStorageTest for record-level coverage).
         write("topics.txt");
         Storage storage = new Storage(tempDir);
-        List<TopicStorage.TopicRecord> topics = List.of(
-                new TopicStorage.TopicRecord(ActivityCategory.ACADEMIC, "CG3207"));
+        List<Topic> topics = List.of(new Topic(ActivityCategory.ACADEMIC, "CG3207"));
 
         storage.saveTopics(topics);
-        LoadResult<TopicStorage.TopicRecord> result = storage.loadTopics();
+        LoadResult<Topic> result = storage.loadTopics();
 
         assertEquals(1, result.getRecords().size());
         assertEquals("CG3207", result.getRecords().get(0).getName());

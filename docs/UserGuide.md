@@ -168,14 +168,15 @@ window. As with a fixed activity, a supplied `topic/` must already exist under t
 ### 6.3 List Activities: `list`
 
 ```text
-list [view/concise|detail]
+list [today|tomorrow|this week]
+     [view/concise|detail]
      [status/all|completed|incomplete]
      [c/CATEGORY] [topic/TOPIC] [date/DATE]
      [order/input|time|chronological]
 ```
 
-Every field is optional and may appear in any order. With no fields, `list` shows every activity
-in the saved default order. Header wording is `"Here are N matching activity/activities:"`
+Every marker field is optional and may appear in any order. With no fields, `list` shows every
+activity in the saved default order. Header wording is `"Here are N matching activity/activities:"`
 regardless of whether filters were supplied. If `view/` is supplied, its value must be exactly
 `concise` or `detail`; any other value is rejected rather than silently falling back to concise.
 
@@ -184,6 +185,31 @@ category (and topic if set), and `E`/`S` energy/sensory ratings.
 
 `view/detail` shows scheduling type, complete timing, and the note field (`None` if unset)
 instead.
+
+An optional relative-date word or phrase may appear right after `list`, before any marker fields:
+
+```text
+list today
+list tomorrow
+list this week status/incomplete c/ACADEMIC order/time
+list tomorrow view/detail
+```
+
+- `today` — activities on the current local date.
+- `tomorrow` — activities on the current local date plus one day.
+- `this week` — activities from Monday through Sunday of the week containing today.
+
+A relative-date phrase can be freely combined with the other filters above, but not with
+`date/YYYY-MM-DD` (which still works on its own) or with another relative-date phrase; either
+combination, or unrecognised trailing text after a relative-date phrase, is rejected with a clear
+error rather than silently falling back to plain `list`:
+
+```text
+list today date/2026-08-15
+list today tomorrow
+list this month
+list today extra
+```
 
 ### 6.4 View One Activity: `view`
 
@@ -580,16 +606,21 @@ guide NUMBER
 ```
 
 `guide` alone shows a 10-item numbered menu. `guide TOPIC` shows one topic's text directly.
-Implemented topics: `getting-started`, `add`, `edit`, `find`, `topic`, `facility`, `storage`.
-Topics for v2.0-only features (`dashboard`, `timetable`, `recommend`, `route`, `export`) are
-still listed but end with `(Coming soon in a future release.)` where the underlying command
-isn't built yet.
+Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`, `list`, `edit`,
+`delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`, `topic`, `facility`,
+`storage`. Topics for v2.0-only features (`timetable`, `recommend`, `route`, `export`) are still
+listed but end with `(Coming soon in a future release.)` where the underlying command isn't built
+yet; `dashboard` explains that completion tracking itself is already available (see `completion`)
+while the aggregate dashboard view is still coming.
 
 Each menu item can also be selected by its number, either as `guide NUMBER` or by entering the
 bare number as its own command right after the menu is shown (e.g. `1` selects "Getting
-started"). Menu items that span more than one topic keyword (e.g. "2. Add, edit and delete
-activities") resolve to their single most representative topic. Item `10` ("Return") is not a
-topic; it just acknowledges the selection and returns to the command prompt.
+started"). Menu items that span more than one command topic use a dedicated overview topic
+instead of picking just one: item `2` ("Add, edit and delete activities") is the `activities`
+topic, and item `3` ("List, find and view activities") is the `browse` topic; each overview points
+onward to the individual command's own topic (`add`, `edit`, `delete`, `list`, `find`, `view`) for
+full detail. Item `10` ("Return") is not a topic; it just acknowledges the selection and returns
+to the command prompt.
 
 ## 10. Exit: `bye`
 
@@ -682,7 +713,7 @@ bye
 
 add n/DESCRIPTION c/CATEGORY date/DATE type/FIXED from/START to/END energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]
 add n/DESCRIPTION c/CATEGORY date/DATE type/FLEXIBLE earliest/TIME latest/TIME dur/MINUTES energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]
-list [view/concise|detail] [status/all|completed|incomplete] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
+list [today|tomorrow|this week] [view/concise|detail] [status/all|completed|incomplete] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
 view ID
 find [k/KEYWORD ...] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
 order view
@@ -692,6 +723,7 @@ delete ID
 mark ID
 unmark ID
 next
+reset all
 
 topic add c/CATEGORY n/TOPIC
 topic list [c/CATEGORY]

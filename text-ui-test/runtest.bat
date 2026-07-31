@@ -12,8 +12,12 @@ for /f "tokens=*" %%a in (
     set jarloc=%%a
 )
 
-java -jar %jarloc% < ..\..\text-ui-test\input.txt > ..\..\text-ui-test\ACTUAL.TXT
-
 cd ..\..\text-ui-test
+
+rem data\ is regenerated on every run -- remove it first so the test is deterministic and
+rem repeatable from a clean checkout instead of depending on leftover state.
+if exist data rmdir /s /q data
+
+java -jar ..\build\libs\%jarloc% < input.txt > ACTUAL.TXT
 
 FC ACTUAL.TXT EXPECTED.TXT >NUL && ECHO Test passed! || Echo Test failed!

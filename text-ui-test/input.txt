@@ -1,7 +1,320 @@
-add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3
+guide
+guide getting-started
+guide add
+guide edit
+guide find
+guide topic
+guide facility
+guide storage
+guide dashboard
+guide timetable
+guide recommend
+guide route
+guide export
+guide bogus-topic-xyz
+GUIDE
+Guide ADD
+
+banana
+adds n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
+LiSt
+view
+view abc
+view -1
+view 0
+view 1 extra
+delete
+delete abc
+mark
+mark abc
+unmark
+unmark abc
+edit
+edit abc
+order view
+order
+order bogus
+order set
+order set bogus
+topic
+topic bogus
+facility
+facility bogus
+connection
+connection bogus
+next
+find
+
+topic list
+topic add c/ACADEMIC n/CG3207
+topic add c/ACADEMIC n/CS2113
+topic add c/CCA n/Basketball Club
+topic add c/WORK_INTERNSHIP n/Internship
+topic add c/OTHERS n/Personal
+topic add c/ACADEMIC n/cg3207
+topic add c/ACADEMIC n/
+topic add c/BOGUS n/Test
+topic add n/Test
+topic add c/ACADEMIC
+topic list
+topic list c/ACADEMIC
+topic list c/CCA
+topic list c/WORK_INTERNSHIP
+topic list c/OTHERS
+topic list c/BOGUS
+
+add n/CG3207 Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/CG3207 note/Bring laptop and charger
+add n/Finish assignment 1 c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/5 sensory/5 topic/CS2113
+add n/Basketball practice c/CCA date/2026-08-15 type/FIXED from/18:00 to/20:00 energy/3 sensory/2 topic/Basketball Club note/Bring water, ID card & $5 for snacks (optional)
+add n/Prepare intern report c/WORK_INTERNSHIP date/2026-08-16 type/FLEXIBLE earliest/09:00 latest/17:00 dur/120 energy/2 sensory/1 topic/Internship
+add n/Dentist appointment c/OTHERS date/2026-08-16 type/FIXED from/14:00 to/15:00 energy/4 sensory/4
+add n/CS2113 Tutorial c/ACADEMIC date/2026-08-17 type/FIXED from/10:00 to/11:00 energy/1 sensory/5 note/Discuss project milestones
+add n/Gym session c/CCA date/2026-08-17 type/FLEXIBLE earliest/07:00 latest/09:00 dur/60 energy/5 sensory/1
+add n/This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation c/OTHERS date/2026-08-18 type/FIXED from/08:00 to/09:00 energy/3 sensory/3
+add n/Review CS2113 T11 notes (Team-based project) - AY26/27 S1! c/ACADEMIC date/2026-08-18 type/FIXED from/11:00 to/12:00 energy/2 sensory/2
+
+add c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
+add n/Test date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
+add n/Test c/ACADEMIC type/FIXED from/09:00 to/10:00 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 from/09:00 to/10:00 energy/2 sensory/2
+add n/Test c/BOGUS date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
+add n/Test c/ACADEMIC date/15-08-2026 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/BOGUS from/09:00 to/10:00 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/0 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/6 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/0
+add n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/6
+add n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/09:00 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/10:00 to/09:00 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/12:00 dur/0 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/12:00 dur/-30 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/12:00 dur/abc energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 dur/500 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/10:00 dur/30 energy/2 sensory/2
+add n/Test c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/10:00 dur/30 energy/2 sensory/2
 list
-view 1
-view 999
-delete 1
+
+add n/Exact-fit task c/ACADEMIC date/2026-08-19 type/FLEXIBLE earliest/10:00 latest/11:00 dur/60 energy/2 sensory/2
+add n/Exact-fit task c/ACADEMIC date/2026-08-19 type/FLEXIBLE earliest/10:00 latest/11:00 dur/60 energy/2 sensory/2
+add n/Exact-fit task c/ACADEMIC date/2026-08-19 type/FLEXIBLE earliest/10:00 latest/11:00 dur/45 energy/2 sensory/2
+
+add n/Overlap base c/ACADEMIC date/2026-08-20 type/FIXED from/10:00 to/12:00 energy/2 sensory/2
+add n/Different desc c/ACADEMIC date/2026-08-20 type/FIXED from/10:00 to/12:00 energy/3 sensory/3
+add n/Partial overlap A c/ACADEMIC date/2026-08-20 type/FIXED from/09:00 to/11:00 energy/2 sensory/2
+add n/Partial overlap B c/ACADEMIC date/2026-08-20 type/FIXED from/11:00 to/13:00 energy/2 sensory/2
+add n/Contained c/ACADEMIC date/2026-08-20 type/FIXED from/10:30 to/11:30 energy/2 sensory/2
+add n/Containing c/ACADEMIC date/2026-08-20 type/FIXED from/09:00 to/13:00 energy/2 sensory/2
+add n/Touches end c/ACADEMIC date/2026-08-20 type/FIXED from/12:00 to/13:00 energy/2 sensory/2
+add n/Touches start c/ACADEMIC date/2026-08-20 type/FIXED from/08:00 to/10:00 energy/2 sensory/2
+add n/Different date same time c/ACADEMIC date/2026-08-21 type/FIXED from/10:00 to/12:00 energy/2 sensory/2
+add n/Flexible same window c/ACADEMIC date/2026-08-20 type/FLEXIBLE earliest/10:00 latest/12:00 dur/60 energy/2 sensory/2
+list c/ACADEMIC date/2026-08-20
+
+list
+list view/detail
+list view/concise
+list status/all
+list status/incomplete
+list status/completed
+list c/ACADEMIC
+list c/CCA
+list c/WORK_INTERNSHIP
+list c/OTHERS
+list c/BOGUS
+list topic/CG3207
+list topic/CS2113
+list topic/NonexistentTopic
+list date/2026-08-15
+list date/2026-08-20
+list date/2099-01-01
+list c/ACADEMIC topic/CG3207
+list c/ACADEMIC topic/CG3207 date/2026-08-16
+list order/time
+list order/chronological
+list order/input
+list order/bogus
+order view
+order set time
+order view
+list
+order set input
+order view
+list
+order set chronological
+order view
+order set BOGUS
+order view
+
+find k/CG3207
+find k/laptop
+find k/assign
+find k/basketball
+find k/Internship
+find k/Finish assignment
+find k/nonexistentkeyword12345
+find k/CG3207 c/ACADEMIC
+find c/OTHERS
+find topic/Basketball Club
+find k/finish assignment order/time
+
+edit 1 energy/2
+edit 1 energy/2
+edit 2 n/Finish assignment 1 REVISED dur/120
 y
-bye
+edit 3 energy/4
+n
+edit 3 energy/4
+N
+edit 3 energy/4
+whatever
+edit 999 energy/3
+edit 1 bogus/value
+edit 1 energy/99
+edit 1 n/New name n/Another name
+y
+edit 1 type/FLEXIBLE earliest/09:00 latest/11:00 dur/60
+y
+edit 1 type/FIXED
+edit 1 type/FIXED from/09:00 to/11:00
+y
+edit 13 from/10:30 to/11:30
+y
+edit 6 n/New name energy/3 sensory/99
+view 1
+view 6
+view 13
+
+delete 999
+delete 5
+n
+delete 5
+N
+delete 5
+whatever
+delete 5
+y
+view 5
+delete 5
+list
+
+mark 999
+mark 6
+mark 6
+unmark 6
+unmark 6
+mark 6
+list status/completed
+list status/incomplete
+mark 1
+mark 2
+mark 3
+mark 4
+mark 7
+mark 8
+mark 9
+mark 10
+mark 11
+mark 12
+mark 13
+mark 14
+mark 15
+mark 16
+list status/incomplete
+
+next
+add n/Far future fixed c/ACADEMIC date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/3 sensory/3
+next
+add n/Sooner future fixed c/ACADEMIC date/2098-06-01 type/FIXED from/09:00 to/10:00 energy/3 sensory/3
+next
+add n/Far future flexible c/ACADEMIC date/2099-06-01 type/FLEXIBLE earliest/09:00 latest/17:00 dur/60 energy/2 sensory/2
+next
+mark 18
+next
+mark 17
+next
+add n/Far past overdue c/ACADEMIC date/2000-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1
+next
+add n/Far past overdue flexible c/CCA date/2000-01-01 type/FLEXIBLE earliest/09:00 latest/10:00 dur/30 energy/1 sensory/1
+next
+mark 20
+mark 21
+next
+
+topic rename c/ACADEMIC old/CG3207 new/CS3207
+n
+topic rename c/ACADEMIC old/CG3207 new/CS3207
+N
+topic rename c/ACADEMIC old/CG3207 new/CS3207
+whatever
+topic rename c/ACADEMIC old/CG3207 new/CS3207
+Y
+topic list c/ACADEMIC
+view 1
+topic rename c/ACADEMIC old/CS3207 new/CS3207
+y
+topic rename c/ACADEMIC old/CS3207 new/CS2113
+y
+topic rename c/ACADEMIC old/NonexistentTopic new/Whatever
+y
+topic rename c/ACADEMIC old/CS3207 new/
+topic list c/ACADEMIC
+topic delete c/CCA n/Basketball Club
+y
+edit 3 topic/
+y
+view 3
+topic delete c/CCA n/Basketball Club
+n
+topic delete c/CCA n/Basketball Club
+y
+topic list c/CCA
+topic delete c/CCA n/Basketball Club
+y
+topic delete c/OTHERS n/Personal
+y
+topic delete c/BOGUS n/Test
+topic delete c/ACADEMIC n/
+
+facility list
+facility view AS1
+facility view as1
+facility view CLB
+facility view NonexistentFacility
+facility view
+facility find type/LIFT
+facility find type/LIFT status/NO
+facility find type/LIFT status/UNKNOWN
+facility find type/ACCESSIBLE_WASHROOM
+facility find type/STEP_FREE_ENTRANCE
+facility find type/REST_POINT
+facility find type/RAMP
+facility find type/BOGUS
+facility find status/YES
+facility find type/lift
+
+connection list
+connection view 1
+connection view 2
+connection view 7
+connection view 999
+connection view
+connection view abc
+connection find from/AS6
+connection find to/AS6
+connection find from/AS6 to/AS1
+connection find type/RAMP
+connection find status/YES
+connection find status/NO
+connection find status/UNKNOWN
+connection find shelter/YES
+connection find shelter/NO
+connection find shelter/UNKNOWN
+connection find type/PATH shelter/YES
+connection find from/NonexistentFacility
+connection find type/BOGUS
+connection find status/BOGUS
+connection find shelter/BOGUS
+connection find
+
+bye ignored trailing text
+list

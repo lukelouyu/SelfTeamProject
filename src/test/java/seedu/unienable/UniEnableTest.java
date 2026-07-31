@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -146,6 +147,38 @@ class UniEnableTest {
         assertTrue(output.contains("Delete topic \"CS2113\" under ACADEMIC? (y/n)"));
         assertTrue(output.contains("Cancelled. No changes were made."));
         assertTrue(!output.contains("Topic CS2113 has been deleted."));
+    }
+
+    @Test
+    public void run_malformedActivitiesFile_surfacesPartialLoadWarningAndKeepsValidRecords() throws Exception {
+        // End-to-end coverage: the "[Warning] Partial data loaded" path was previously only
+        // tested at the *Storage.load() unit level, never verified to actually reach the user
+        // through the real startup sequence in UniEnable.run().
+        Files.writeString(tempDir.resolve("activities.txt"),
+                "FIXED|1|Valid lecture|ACADEMIC|2026-08-15|09:00|11:00|4|3|INCOMPLETE||\n"
+                        + "FIXED|2|Bad energy|ACADEMIC|2026-08-15|09:00|11:00|99|3|INCOMPLETE||\n");
+
+        String output = runWithInput("list\nbye\n");
+
+        assertTrue(output.contains("[Warning] Partial data loaded: activities.txt"));
+        assertTrue(output.contains("Line 2 was skipped"));
+        assertTrue(output.contains("Valid lecture"));
+        assertTrue(!output.contains("Bad energy"));
+    }
+
+    @Test
+    public void run_malformedFacilitiesFile_surfacesPartialLoadWarningAndKeepsValidRecords() throws Exception {
+        Files.writeString(tempDir.resolve("facilities.txt"),
+                "FACILITY|F01|COM3|Engineering building\n"
+                        + "FEATURE|F01|LIFT|YES|Level 1 lobby\n"
+                        + "FEATURE|F01|BOGUS_TYPE|YES|Bad feature\n");
+        Files.writeString(tempDir.resolve("connections.txt"), "");
+
+        String output = runWithInput("facility view COM3\nbye\n");
+
+        assertTrue(output.contains("[Warning] Partial data loaded: facilities.txt"));
+        assertTrue(output.contains("Line 3 was skipped"));
+        assertTrue(output.contains("LIFT"));
     }
 
     @Test

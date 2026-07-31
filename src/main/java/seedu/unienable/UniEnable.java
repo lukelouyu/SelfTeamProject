@@ -37,6 +37,11 @@ import seedu.unienable.ui.Ui;
 public class UniEnable {
     private static final Path DATA_DIRECTORY = Paths.get("data");
 
+    /**
+     * Application entry point. Runs against the real "data" folder and standard input.
+     *
+     * @param args unused
+     */
     public static void main(String[] args) {
         run(DATA_DIRECTORY, System.in);
     }

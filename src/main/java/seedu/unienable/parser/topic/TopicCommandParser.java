@@ -26,6 +26,7 @@ public class TopicCommandParser {
             throws MissingInputException, InvalidActivityException {
         ActivityCategory category = parseCategory(requireField(args, "c/", "n/", "category"));
         String name = requireField(args, "n/", null, "topic name");
+        validateNoDelimiter(name, "topic name");
         return new TopicAddCommand(topicManager, category, name);
     }
 
@@ -60,6 +61,7 @@ public class TopicCommandParser {
         ActivityCategory category = parseCategory(requireField(args, "c/", "old/", "category"));
         String oldName = requireField(args, "old/", "new/", "old topic name");
         String newName = requireField(args, "new/", null, "new topic name");
+        validateNoDelimiter(newName, "new topic name");
         return new TopicRenameCommand(topicManager, category, oldName, newName);
     }
 
@@ -94,6 +96,22 @@ public class TopicCommandParser {
             return ActivityCategory.valueOf(text.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new InvalidActivityException("category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.");
+        }
+    }
+
+    /**
+     * Rejects a value that contains the storage delimiter '|', since topics.txt cannot escape it
+     * (see TopicStorage). Catching this here, before the topic is created, avoids the
+     * alternative: the topic is accepted and reported as added, then permanently fails to
+     * persist because Storage.save() rejects the same value on every later save.
+     *
+     * @param value the already-extracted field value
+     * @param fieldName the field name to use in the error message
+     * @throws InvalidActivityException if value contains '|'
+     */
+    private void validateNoDelimiter(String value, String fieldName) throws InvalidActivityException {
+        if (value.contains("|")) {
+            throw new InvalidActivityException(fieldName + " must not contain the '|' character.");
         }
     }
 }

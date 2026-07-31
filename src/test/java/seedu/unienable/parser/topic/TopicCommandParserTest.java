@@ -49,6 +49,16 @@ class TopicCommandParserTest {
     }
 
     @Test
+    public void parseAdd_nameContainsDelimiter_throwsInvalidActivityException() {
+        // Regression test: topics.txt uses '|' as its delimiter and cannot escape it, so a name
+        // containing '|' was previously accepted here, reported as created, and then permanently
+        // failed to persist on every later save instead of being rejected up front.
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, "c/ACADEMIC n/CG3207|CS3207"));
+    }
+
+    @Test
     public void parseList_noFilter_listsEveryCategory() throws Exception {
         TopicManager manager = new TopicManager(new ActivityManager());
         manager.add(ActivityCategory.ACADEMIC, "CG3207");
@@ -99,6 +109,15 @@ class TopicCommandParserTest {
 
         assertThrows(InvalidActivityException.class,
                 () -> parser.parseRename(manager, "c/BOGUS old/CG3207 new/CS3207"));
+    }
+
+    @Test
+    public void parseRename_newNameContainsDelimiter_throwsInvalidActivityException() throws Exception {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        assertThrows(InvalidActivityException.class,
+                () -> parser.parseRename(manager, "c/ACADEMIC old/CG3207 new/CS3207|CS2113"));
     }
 
     @Test

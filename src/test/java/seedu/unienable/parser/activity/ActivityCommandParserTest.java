@@ -137,6 +137,35 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_descriptionContainsDelimiter_throwsInvalidActivityException() {
+        // Regression test: activities.txt uses '|' as its delimiter and cannot escape it, so a
+        // description containing '|' was previously accepted here, reported as added, and then
+        // permanently failed to persist on every later save instead of being rejected up front.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+                "n/Bad|Desc c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_topicContainsDelimiter_throwsInvalidActivityException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+                "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3 "
+                        + "topic/Bad|Topic"));
+    }
+
+    @Test
+    public void parseAdd_noteContainsDelimiter_throwsInvalidActivityException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager,
+                "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3 "
+                        + "note/Bad|Note"));
+    }
+
+    @Test
     public void parseAdd_markerSuppliedTwice_firstOccurrenceValueAbsorbsTheSecond() throws Exception {
         // Pinning test, not a bug fix: add's fields must appear in the documented order, so
         // "n/A n/B c/..." is already outside the documented grammar. Because extraction is purely
@@ -678,6 +707,38 @@ class ActivityCommandParserTest {
         parser.parseEdit(manager, "1 note/   ").execute();
 
         assertNull(manager.getById(1).getNote());
+    }
+
+    @Test
+    public void parseEdit_descriptionContainsDelimiter_throwsInvalidActivityException() throws Exception {
+        // Regression test: same root cause as parseAdd's equivalent test, exercised through
+        // edit's any-order field map instead.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 n/Bad|Desc"));
+    }
+
+    @Test
+    public void parseEdit_topicContainsDelimiter_throwsInvalidActivityException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 topic/Bad|Topic"));
+    }
+
+    @Test
+    public void parseEdit_noteContainsDelimiter_throwsInvalidActivityException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, "1 note/Bad|Note"));
     }
 
     @Test

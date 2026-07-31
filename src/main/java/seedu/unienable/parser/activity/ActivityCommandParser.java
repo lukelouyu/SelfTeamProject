@@ -68,6 +68,7 @@ public class ActivityCommandParser {
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException {
         String description = requireField(args, "n/", "c/", "description");
+        validateNoDelimiter(description, "description");
         ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category"));
         LocalDate date = DateTimeParser.parseDate(requireField(args, "date/", "type/", "date"));
         String type = firstToken(requireField(args, "type/", null, "type"));
@@ -122,6 +123,12 @@ public class ActivityCommandParser {
             topic = blankToNull(FieldParser.extractField(args, "topic/", topicEndMarker));
         }
         String note = blankToNull(FieldParser.extractField(args, "note/", null));
+        if (topic != null) {
+            validateNoDelimiter(topic, "topic");
+        }
+        if (note != null) {
+            validateNoDelimiter(note, "note");
+        }
         return new CommonTail(energy, sensory, topic, note);
     }
 
@@ -386,6 +393,22 @@ public class ActivityCommandParser {
         return value == null || value.isEmpty() ? null : value;
     }
 
+    /**
+     * Rejects a value that contains the storage delimiter '|', since activities.txt cannot
+     * escape it (see ActivityStorage). Catching this here, before the activity is built, avoids
+     * the alternative: the activity is accepted and reported as added, then permanently fails to
+     * persist because Storage.save() rejects the same value on every later save.
+     *
+     * @param value the already-extracted field value
+     * @param fieldName the field name to use in the error message
+     * @throws InvalidActivityException if value contains '|'
+     */
+    private void validateNoDelimiter(String value, String fieldName) throws InvalidActivityException {
+        if (value.contains("|")) {
+            throw new InvalidActivityException(fieldName + " must not contain the '|' character.");
+        }
+    }
+
     private String firstToken(String text) {
         return text.trim().split("\\s+", 2)[0];
     }
@@ -476,6 +499,14 @@ public class ActivityCommandParser {
                 ? RatingParser.parseSensoryRating(fields.get("sensory/")) : old.getSensoryRating();
         String topic = fields.containsKey("topic/") ? blankToNull(fields.get("topic/")) : old.getTopic();
         String note = fields.containsKey("note/") ? blankToNull(fields.get("note/")) : old.getNote();
+
+        validateNoDelimiter(description, "description");
+        if (topic != null) {
+            validateNoDelimiter(topic, "topic");
+        }
+        if (note != null) {
+            validateNoDelimiter(note, "note");
+        }
 
         ScheduleType oldType = old.getScheduleType();
         ScheduleType newType = fields.containsKey("type/") ? parseScheduleType(fields.get("type/")) : oldType;

@@ -129,6 +129,20 @@ class TopicManagerTest {
     }
 
     @Test
+    public void rename_toNameExistingInDifferentCategory_succeeds() throws Exception {
+        // Topic uniqueness is scoped per category, so renaming into a name that already exists
+        // under a *different* category must succeed rather than being blocked as a duplicate.
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+        manager.add(ActivityCategory.CCA, "Project X");
+
+        manager.rename(ActivityCategory.ACADEMIC, "CG3207", "Project X");
+
+        assertTrue(manager.exists(ActivityCategory.ACADEMIC, "Project X"));
+        assertTrue(manager.exists(ActivityCategory.CCA, "Project X"));
+    }
+
+    @Test
     public void rename_toExistingDifferentTopic_throwsDuplicateActivityException() throws Exception {
         TopicManager manager = new TopicManager(new ActivityManager());
         manager.add(ActivityCategory.ACADEMIC, "CG3207");
@@ -160,6 +174,18 @@ class TopicManagerTest {
                 () -> topicManager.delete(ActivityCategory.ACADEMIC, "CG3207"));
         assertEquals("Topic CG3207 is used by 2 activities.", exception.getMessage());
         assertTrue(topicManager.exists(ActivityCategory.ACADEMIC, "CG3207"));
+    }
+
+    @Test
+    public void delete_topicWithSameNameInDifferentCategory_doesNotAffectOtherCategory() throws Exception {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "Project X");
+        manager.add(ActivityCategory.CCA, "Project X");
+
+        manager.delete(ActivityCategory.ACADEMIC, "Project X");
+
+        assertFalse(manager.exists(ActivityCategory.ACADEMIC, "Project X"));
+        assertTrue(manager.exists(ActivityCategory.CCA, "Project X"));
     }
 
     @Test

@@ -113,11 +113,11 @@ public class ApplicationRunner {
             connectionManager = new ConnectionManager(connectionLoad.getRecords());
             activityManager.setDefaultOrder(settingsLoad.getRecords().get(0));
 
-            showLoadWarnings("activities.txt", activityLoad);
-            showLoadWarnings("topics.txt", topicLoad);
-            showLoadWarnings("facilities.txt", facilityLoad);
-            showLoadWarnings("connections.txt", connectionLoad);
-            showLoadWarnings("settings.txt", settingsLoad);
+            ui.showLoadWarnings("activities.txt", activityLoad.getWarnings());
+            ui.showLoadWarnings("topics.txt", topicLoad.getWarnings());
+            ui.showLoadWarnings("facilities.txt", facilityLoad.getWarnings());
+            ui.showLoadWarnings("connections.txt", connectionLoad.getWarnings());
+            ui.showLoadWarnings("settings.txt", settingsLoad.getWarnings());
             return true;
         } catch (UniEnableException e) {
             showStartupError(e);
@@ -132,17 +132,6 @@ public class ApplicationRunner {
      */
     private void showStartupError(UniEnableException exception) {
         ui.showFramed("[Error] " + exception.getErrorCategory() + ": " + exception.getMessage());
-    }
-
-    private void showLoadWarnings(String fileName, LoadResult<?> loadResult) {
-        if (!loadResult.hasWarnings()) {
-            return;
-        }
-        StringBuilder message = new StringBuilder("[Warning] Partial data loaded: ").append(fileName);
-        for (String warning : loadResult.getWarnings()) {
-            message.append('\n').append(warning);
-        }
-        ui.showFramed(message.toString());
     }
 
     /** Reads one line of input at a time until "bye" or the input stream ends. Blank lines are ignored. */

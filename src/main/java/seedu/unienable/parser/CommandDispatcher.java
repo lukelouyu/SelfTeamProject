@@ -89,7 +89,7 @@ public class CommandDispatcher {
         case "unmark":
             return activityCommandParser.parseUnmark(activityManager, args);
         case "next":
-            return activityCommandParser.parseNext(activityManager, now);
+            return activityCommandParser.parseNext(activityManager, now, args);
         case "order":
             return activityCommandParser.parseOrder(activityManager, args);
         case "topic":
@@ -101,6 +101,7 @@ public class CommandDispatcher {
         case "guide":
             return new GuideCommand(args.isEmpty() ? null : args);
         case "bye":
+            requireNoArguments("bye", args);
             return new ExitCommand();
         case "1": case "2": case "3": case "4": case "5":
         case "6": case "7": case "8": case "9": case "10":
@@ -136,7 +137,7 @@ public class CommandDispatcher {
         String[] parts = splitSubCommand(args);
         switch (parts[0]) {
         case "list":
-            return facilityCommandParser.parseList(facilityManager);
+            return facilityCommandParser.parseList(facilityManager, parts[1]);
         case "view":
             return facilityCommandParser.parseView(facilityManager, parts[1]);
         case "find":
@@ -152,7 +153,7 @@ public class CommandDispatcher {
         String[] parts = splitSubCommand(args);
         switch (parts[0]) {
         case "list":
-            return connectionCommandParser.parseList(connectionManager);
+            return connectionCommandParser.parseList(connectionManager, parts[1]);
         case "view":
             return connectionCommandParser.parseView(connectionManager, parts[1]);
         case "find":
@@ -175,5 +176,19 @@ public class CommandDispatcher {
         String trimmed = args.trim();
         String[] parts = trimmed.split("\\s+", 2);
         return new String[] { parts[0].toLowerCase(Locale.ROOT), parts.length > 1 ? parts[1] : "" };
+    }
+
+    /**
+     * Rejects any non-blank text for a command documented as taking no arguments at all, so a
+     * typo'd trailing word (e.g. "bye now") does not silently execute as if it were never typed.
+     *
+     * @param commandName the command name to use in the error message
+     * @param args the text after the command word
+     * @throws InvalidCommandException if args is not blank
+     */
+    private void requireNoArguments(String commandName, String args) throws InvalidCommandException {
+        if (!args.trim().isEmpty()) {
+            throw new InvalidCommandException("\"" + commandName + "\" does not take any arguments.");
+        }
     }
 }

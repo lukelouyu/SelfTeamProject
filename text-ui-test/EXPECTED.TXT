@@ -2334,6 +2334,52 @@ ____________________________________________________________
 [Error] Missing input: at least one filter is required.
 ____________________________________________________________
 ____________________________________________________________
+[Error] Invalid input: "bye" does not take any arguments.
+____________________________________________________________
+____________________________________________________________
+Here are 20 matching activities:
+[20][X][F] 2000-01-01 09:00 -> 10:00 | Far past overdue
+             ACADEMIC | E1 | S1
+[21][X][L] 2000-01-01 09:00 -> 10:00 | Far past overdue flexible
+             CCA | 30 min | E1 | S1
+[1][X][F] 2026-08-15 09:00 -> 11:00 | New name n/Another name
+             ACADEMIC / CS3207 | E1 | S1
+[2][X][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1 REVISED
+             ACADEMIC / CS2113 | 120 min | E5 | S5
+[3][X][F] 2026-08-15 18:00 -> 20:00 | Basketball practice
+             CCA | E3 | S2
+[4][X][L] 2026-08-16 09:00 -> 17:00 | Prepare intern report
+             WORK_INTERNSHIP / Internship | 120 min | E2 | S1
+[7][X][L] 2026-08-17 07:00 -> 09:00 | Gym session
+             CCA | 60 min | E5 | S1
+[6][X][F] 2026-08-17 10:00 -> 11:00 | CS2113 Tutorial
+             ACADEMIC | E1 | S5
+[8][X][F] 2026-08-18 08:00 -> 09:00 | This is a deliberately very long activity description used to check that the application accepts and correctly stores and displays lengthy free text fields without truncation, crashing, or any formatting problems whatsoever during normal operation
+             OTHERS | E3 | S3
+[9][X][F] 2026-08-18 11:00 -> 12:00 | Review CS2113 T11 notes (Team-based project) - AY26/27 S1!
+             ACADEMIC | E2 | S2
+[10][X][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
+             ACADEMIC | 60 min | E2 | S2
+[11][X][L] 2026-08-19 10:00 -> 11:00 | Exact-fit task
+             ACADEMIC | 45 min | E2 | S2
+[14][X][F] 2026-08-20 08:00 -> 10:00 | Touches start
+             ACADEMIC | E2 | S2
+[12][X][F] 2026-08-20 10:00 -> 12:00 | Overlap base
+             ACADEMIC | E2 | S2
+[16][X][L] 2026-08-20 10:00 -> 12:00 | Flexible same window
+             ACADEMIC | 60 min | E2 | S2
+[13][X][F] 2026-08-20 12:00 -> 13:00 | Touches end
+             ACADEMIC | E2 | S2
+[15][X][F] 2026-08-21 10:00 -> 12:00 | Different date same time
+             ACADEMIC | E2 | S2
+[18][X][F] 2098-06-01 09:00 -> 10:00 | Sooner future fixed
+             ACADEMIC | E3 | S3
+[17][X][F] 2099-01-01 09:00 -> 10:00 | Far future fixed
+             ACADEMIC | E3 | S3
+[19][ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
+             ACADEMIC | 60 min | E2 | S2
+____________________________________________________________
+____________________________________________________________
 Your data has been saved.
 Bye! Take care and see you again.
 ____________________________________________________________

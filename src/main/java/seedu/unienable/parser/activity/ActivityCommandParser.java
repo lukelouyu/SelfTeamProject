@@ -215,7 +215,7 @@ public class ActivityCommandParser {
             throws InvalidActivityException, InvalidCommandException, InvalidDateTimeException {
         Map<String, String> fields = extractPresentFields(args, LIST_MARKERS);
 
-        boolean detail = "detail".equalsIgnoreCase(fields.get("view/"));
+        boolean detail = parseViewMode(fields.get("view/"));
         CompletionStatus status = parseStatus(fields.get("status/"));
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
@@ -223,6 +223,26 @@ public class ActivityCommandParser {
         ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
 
         return new ListCommand(activityManager, new ActivityFilter(status, category, topic, date), order, detail);
+    }
+
+    /**
+     * Parses list's optional view/ marker into a detail/concise flag. Unlike status/ (which
+     * accepts null to mean "all"), a present-but-unrecognised view/ value is rejected rather than
+     * silently falling back to concise, so a typo like "view/nonsense" is not mistaken for a
+     * request that simply happens to match the concise default.
+     *
+     * @param text the raw view/ value, or null if not supplied
+     * @return true for "detail", false if not supplied or "concise"
+     * @throws InvalidCommandException if text is supplied and is neither "concise" nor "detail"
+     */
+    private boolean parseViewMode(String text) throws InvalidCommandException {
+        if (text == null || "concise".equalsIgnoreCase(text)) {
+            return false;
+        }
+        if ("detail".equalsIgnoreCase(text)) {
+            return true;
+        }
+        throw new InvalidCommandException("view must be concise or detail.");
     }
 
     private CompletionStatus parseStatus(String text) throws InvalidCommandException {
@@ -303,9 +323,13 @@ public class ActivityCommandParser {
      *
      * @param activityManager the manager the resulting command will read from
      * @param now the current date and time
+     * @param args the text after the "next" command word, expected to be empty
      * @return the parsed NextCommand
+     * @throws InvalidCommandException if args is not empty
      */
-    public NextCommand parseNext(ActivityManager activityManager, LocalDateTime now) {
+    public NextCommand parseNext(ActivityManager activityManager, LocalDateTime now, String args)
+            throws InvalidCommandException {
+        requireNoArguments("next", args);
         return new NextCommand(activityManager, now);
     }
 
@@ -328,6 +352,7 @@ public class ActivityCommandParser {
         String[] parts = trimmed.split("\\s+", 2);
         String subCommand = parts[0];
         if ("view".equalsIgnoreCase(subCommand)) {
+            requireNoArguments("order view", parts.length > 1 ? parts[1] : "");
             return new OrderViewCommand(activityManager);
         }
         if ("set".equalsIgnoreCase(subCommand)) {
@@ -443,6 +468,21 @@ public class ActivityCommandParser {
         if (topic != null && !topicManager.exists(category, topic)) {
             throw new InvalidIndexException("Topic \"" + topic + "\" does not exist under " + category
                     + ". Create it first with \"topic add\", supply a different topic/, or clear it with topic/.");
+        }
+    }
+
+    /**
+     * Rejects any non-blank text for a command documented as taking no arguments at all, so a
+     * typo'd trailing word (e.g. "next tomorrow") does not silently execute as if it were never
+     * typed.
+     *
+     * @param commandName the command name to use in the error message
+     * @param args the text after the command word
+     * @throws InvalidCommandException if args is not blank
+     */
+    private void requireNoArguments(String commandName, String args) throws InvalidCommandException {
+        if (!args.trim().isEmpty()) {
+            throw new InvalidCommandException("\"" + commandName + "\" does not take any arguments.");
         }
     }
 

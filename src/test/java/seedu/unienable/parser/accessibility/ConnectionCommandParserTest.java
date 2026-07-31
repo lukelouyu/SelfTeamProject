@@ -25,12 +25,21 @@ class ConnectionCommandParserTest {
     }
 
     @Test
-    public void parseList_takesNoArguments_listsEveryConnection() {
+    public void parseList_takesNoArguments_listsEveryConnection() throws Exception {
         ConnectionManager manager = new ConnectionManager(List.of(newConnection(12, "COM3", "COM1")));
 
-        CommandResult result = parser.parseList(manager).execute();
+        CommandResult result = parser.parseList(manager, "").execute();
 
         assertTrue(result.getFeedback().contains("COM3 <-> COM1"));
+    }
+
+    @Test
+    public void parseList_trailingArguments_throwsInvalidCommandException() {
+        // Regression test: "connection list" is documented as taking no arguments, but trailing
+        // text was previously silently ignored rather than rejected.
+        ConnectionManager manager = new ConnectionManager(List.of());
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "ignored-text"));
     }
 
     @Test

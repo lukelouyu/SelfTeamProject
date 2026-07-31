@@ -18,9 +18,15 @@ public class FacilityCommandParser {
      * Builds a FacilityListCommand. "facility list" takes no arguments.
      *
      * @param facilityManager the manager the resulting command will read from
+     * @param args the text after the "facility list" command words, expected to be empty
      * @return the parsed FacilityListCommand
+     * @throws InvalidCommandException if args is not empty
      */
-    public FacilityListCommand parseList(FacilityManager facilityManager) {
+    public FacilityListCommand parseList(FacilityManager facilityManager, String args)
+            throws InvalidCommandException {
+        if (!args.trim().isEmpty()) {
+            throw new InvalidCommandException("\"facility list\" does not take any arguments.");
+        }
         return new FacilityListCommand(facilityManager);
     }
 

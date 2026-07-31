@@ -334,3 +334,4 @@ connection find
 
 bye ignored trailing text
 list
+bye

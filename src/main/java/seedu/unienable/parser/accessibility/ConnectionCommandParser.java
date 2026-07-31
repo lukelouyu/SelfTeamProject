@@ -26,9 +26,15 @@ public class ConnectionCommandParser {
      * Builds a ConnectionListCommand. "connection list" takes no arguments.
      *
      * @param connectionManager the manager the resulting command will read from
+     * @param args the text after the "connection list" command words, expected to be empty
      * @return the parsed ConnectionListCommand
+     * @throws InvalidCommandException if args is not empty
      */
-    public ConnectionListCommand parseList(ConnectionManager connectionManager) {
+    public ConnectionListCommand parseList(ConnectionManager connectionManager, String args)
+            throws InvalidCommandException {
+        if (!args.trim().isEmpty()) {
+            throw new InvalidCommandException("\"connection list\" does not take any arguments.");
+        }
         return new ConnectionListCommand(connectionManager);
     }
 

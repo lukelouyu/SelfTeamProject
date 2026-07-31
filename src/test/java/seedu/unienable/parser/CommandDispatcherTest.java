@@ -217,6 +217,13 @@ class CommandDispatcherTest {
     }
 
     @Test
+    public void dispatch_byeWithTrailingArguments_throwsInvalidCommandException() {
+        // Regression test: "bye" is documented as taking no arguments, but trailing text was
+        // previously silently ignored and the application still exited.
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("bye ignored text", NOW));
+    }
+
+    @Test
     public void dispatch_commandWordIsCaseInsensitive() throws Exception {
         assertTrue(dispatcher.dispatch("BYE", NOW) instanceof ExitCommand);
     }

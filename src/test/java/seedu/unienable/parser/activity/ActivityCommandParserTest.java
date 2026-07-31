@@ -513,6 +513,16 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseList_unrecognisedViewValue_throwsInvalidCommandException() {
+        // Regression test: view/ compared its value only against "detail" (via equalsIgnoreCase)
+        // and silently treated everything else as concise, so a typo like "view/nonsense" was
+        // never rejected.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "view/nonsense"));
+    }
+
+    @Test
     public void parseList_categoryAndTopicFilter_combineWithAnd() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
@@ -722,9 +732,26 @@ class ActivityCommandParserTest {
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
         LocalDateTime now = LocalDateTime.of(2026, 8, 15, 10, 0);
 
-        CommandResult result = parser.parseNext(manager, now).execute();
+        CommandResult result = parser.parseNext(manager, now, "").execute();
 
         assertTrue(result.getFeedback().contains("CG3207 lecture"));
+    }
+
+    @Test
+    public void parseNext_trailingArguments_throwsInvalidCommandException() {
+        // Regression test: "next" is documented as taking no arguments, but any trailing text was
+        // previously silently ignored rather than rejected.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseNext(manager, LocalDateTime.of(2026, 8, 15, 10, 0), "extra-argument"));
+    }
+
+    @Test
+    public void parseOrder_viewWithTrailingArguments_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseOrder(manager, "view extra"));
     }
 
     @Test

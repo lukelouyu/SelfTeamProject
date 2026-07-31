@@ -70,6 +70,8 @@ accessibility information, or medical advice.
 - Binary confirmation prompts accept only `y` or `n` (uppercase `Y`/`N` also accepted); anything
   else is treated as `n` (cancel).
 - Stable activity IDs never change when another activity is deleted.
+- Commands documented as taking no arguments (`next`, `bye`, `order view`, `facility list`,
+  `connection list`) reject any trailing text rather than silently ignoring it.
 
 ## 5. Command Overview
 
@@ -172,7 +174,8 @@ list [view/concise|detail]
 
 Every field is optional and may appear in any order. With no fields, `list` shows every activity
 in the saved default order. Header wording is `"Here are N matching activity/activities:"`
-regardless of whether filters were supplied.
+regardless of whether filters were supplied. If `view/` is supplied, its value must be exactly
+`concise` or `detail`; any other value is rejected rather than silently falling back to concise.
 
 Concise entries show: ID, completion `[ ]`/`[X]`, type `[F]`/`[L]`, date/time, description,
 category (and topic if set), and `E`/`S` energy/sensory ratings.

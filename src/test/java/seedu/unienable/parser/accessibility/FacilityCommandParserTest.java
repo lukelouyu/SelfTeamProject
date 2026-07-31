@@ -19,12 +19,21 @@ class FacilityCommandParserTest {
     private final FacilityCommandParser parser = new FacilityCommandParser();
 
     @Test
-    public void parseList_takesNoArguments_listsEveryFacility() {
+    public void parseList_takesNoArguments_listsEveryFacility() throws Exception {
         FacilityManager manager = new FacilityManager(List.of(new Facility("F05", "COM3", null, List.of())));
 
-        CommandResult result = parser.parseList(manager).execute();
+        CommandResult result = parser.parseList(manager, "").execute();
 
         assertTrue(result.getFeedback().contains("COM3"));
+    }
+
+    @Test
+    public void parseList_trailingArguments_throwsInvalidCommandException() {
+        // Regression test: "facility list" is documented as taking no arguments, but trailing
+        // text was previously silently ignored rather than rejected.
+        FacilityManager manager = new FacilityManager(List.of());
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "ignored-text"));
     }
 
     @Test

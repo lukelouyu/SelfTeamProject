@@ -14,6 +14,12 @@ public class ConnectionViewCommand extends Command {
     private final ConnectionManager connectionManager;
     private final int id;
 
+    /**
+     * Creates a ConnectionViewCommand.
+     *
+     * @param connectionManager the manager to look up the connection in
+     * @param id the stable ID of the connection to view
+     */
     public ConnectionViewCommand(ConnectionManager connectionManager, int id) {
         this.connectionManager = connectionManager;
         this.id = id;

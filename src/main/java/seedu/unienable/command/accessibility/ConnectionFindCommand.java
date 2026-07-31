@@ -25,6 +25,16 @@ public class ConnectionFindCommand extends Command {
     private final AccessibilityStatus status;
     private final ShelterStatus shelter;
 
+    /**
+     * Creates a ConnectionFindCommand. Any filter left null is not applied.
+     *
+     * @param connectionManager the manager to search
+     * @param from required endpoint facility name, matched against either end of the connection, or null
+     * @param to required other endpoint facility name, matched against either end of the connection, or null
+     * @param type required traversal type, or null
+     * @param status required accessibility status, or null
+     * @param shelter required shelter status, or null
+     */
     public ConnectionFindCommand(ConnectionManager connectionManager, String from, String to, TraversalType type,
             AccessibilityStatus status, ShelterStatus shelter) {
         this.connectionManager = connectionManager;

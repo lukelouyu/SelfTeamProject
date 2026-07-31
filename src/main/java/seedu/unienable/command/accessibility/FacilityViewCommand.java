@@ -15,6 +15,12 @@ public class FacilityViewCommand extends Command {
     private final FacilityManager facilityManager;
     private final String name;
 
+    /**
+     * Creates a FacilityViewCommand.
+     *
+     * @param facilityManager the manager to look up the facility in
+     * @param name the facility name to view
+     */
     public FacilityViewCommand(FacilityManager facilityManager, String name) {
         this.facilityManager = facilityManager;
         this.name = name;

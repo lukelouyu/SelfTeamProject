@@ -12,6 +12,11 @@ import seedu.unienable.logic.FacilityManager;
 public class FacilityListCommand extends Command {
     private final FacilityManager facilityManager;
 
+    /**
+     * Creates a FacilityListCommand.
+     *
+     * @param facilityManager the manager to list facilities from
+     */
     public FacilityListCommand(FacilityManager facilityManager) {
         this.facilityManager = facilityManager;
     }

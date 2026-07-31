@@ -12,6 +12,11 @@ import seedu.unienable.logic.ConnectionManager;
 public class ConnectionListCommand extends Command {
     private final ConnectionManager connectionManager;
 
+    /**
+     * Creates a ConnectionListCommand.
+     *
+     * @param connectionManager the manager to list connections from
+     */
     public ConnectionListCommand(ConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
     }

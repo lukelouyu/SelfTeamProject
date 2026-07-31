@@ -16,6 +16,13 @@ public class FacilityFindCommand extends Command {
     private final FacilityFeature.Type type;
     private final AccessibilityStatus status;
 
+    /**
+     * Creates a FacilityFindCommand.
+     *
+     * @param facilityManager the manager to search
+     * @param type the feature type to filter on
+     * @param status the required status for that feature (defaults to YES when unspecified by the parser)
+     */
     public FacilityFindCommand(FacilityManager facilityManager, FacilityFeature.Type type,
             AccessibilityStatus status) {
         this.facilityManager = facilityManager;

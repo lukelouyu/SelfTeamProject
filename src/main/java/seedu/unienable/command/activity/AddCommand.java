@@ -32,8 +32,9 @@ public class AddCommand extends Command {
     }
 
     private String formatConfirmation() {
+        int count = activityManager.size();
         return "Got it. Activity [" + activity.getId() + "] has been added:\n" + formatSummary()
-                + "\n\nYou now have " + activityManager.size() + " activities.";
+                + "\n\nYou now have " + count + (count == 1 ? " activity." : " activities.");
     }
 
     private String formatSummary() {

@@ -33,7 +33,8 @@ public class DeleteCommand extends Command {
     @Override
     public CommandResult execute() throws InvalidIndexException {
         activityManager.delete(id);
+        int count = activityManager.size();
         return new CommandResult("Activity [" + id + "] has been deleted.\nYou now have "
-                + activityManager.size() + " activities.");
+                + count + (count == 1 ? " activity." : " activities."));
     }
 }

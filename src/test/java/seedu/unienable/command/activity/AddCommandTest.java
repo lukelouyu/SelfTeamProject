@@ -34,7 +34,7 @@ class AddCommandTest {
         assertTrue(feedback.contains("Got it. Activity [1] has been added:"));
         assertTrue(feedback.contains("[ ][F] 2026-08-15 09:00 -> 11:00 | CG3207 lecture"));
         assertTrue(feedback.contains("ACADEMIC / CG3207 | Energy 4/5 | Sensory 3/5"));
-        assertTrue(feedback.contains("You now have 1 activities."));
+        assertTrue(feedback.contains("You now have 1 activity."));
     }
 
     @Test

@@ -132,6 +132,41 @@ public class GuideCommand extends Command {
         topics.put("edit", "Edit an activity\n"
                 + "Format: edit ID PREFIX/NEW_VALUE [PREFIX/NEW_VALUE ...]\n"
                 + "The application validates all changes before asking for y/n.");
+        topics.put("delete", "Delete an activity\n"
+                + "Format: delete ID\n"
+                + "Shows the selected activity and asks for y/n before removing it.\n"
+                + "\n"
+                + "Example:\n"
+                + "  delete 3");
+        topics.put("mark", "Mark an activity as completed\n"
+                + "Format: mark ID\n"
+                + "Related commands: unmark\n"
+                + "\n"
+                + "Example:\n"
+                + "  mark 3");
+        topics.put("unmark", "Change an activity back to incomplete\n"
+                + "Format: unmark ID\n"
+                + "Related commands: mark\n"
+                + "\n"
+                + "Example:\n"
+                + "  unmark 3");
+        topics.put("next", "Find your next relevant activity\n"
+                + "Format: next\n"
+                + "Shows an incomplete fixed activity currently in progress if there is\n"
+                + "one, otherwise the nearest upcoming incomplete fixed activity,\n"
+                + "otherwise the incomplete flexible activity whose window ends soonest.\n"
+                + "\n"
+                + "Example:\n"
+                + "  next");
+        topics.put("order", "Choose your default activity order\n"
+                + "Format: order view, or order set input|time|chronological\n"
+                + "Use the one-shot order/ORDER filter on list/find to override the\n"
+                + "saved default for a single command.\n"
+                + "\n"
+                + "Examples:\n"
+                + "  order view\n"
+                + "  order set time\n"
+                + "  list order/chronological");
         topics.put("find", "Find activities\n"
                 + "Format: find [k/KEYWORD ...] [FILTERS]\n"
                 + "Multiple keywords and filters use AND.\n"
@@ -210,8 +245,8 @@ public class GuideCommand extends Command {
                 + "Each export creates a timestamped historical record."
                 + COMING_SOON_NOTE);
         topics.put("storage", "Data files and storage\n"
-                + "Application data is stored under data/. CSV history is under\n"
-                + "exports/. Do not edit data files while the application runs.");
+                + "Application data (activities, topics, and your saved default order)\n"
+                + "is stored under data/. Do not edit data files while the application runs.");
         return topics;
     }
 }

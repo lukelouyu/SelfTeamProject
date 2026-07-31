@@ -42,38 +42,47 @@ public class Connection {
         this.notes = notes;
     }
 
+    /** Returns the stable connection ID. */
     public int getId() {
         return id;
     }
 
+    /** Returns one endpoint facility name. */
     public String getFrom() {
         return from;
     }
 
+    /** Returns the other endpoint facility name. */
     public String getTo() {
         return to;
     }
 
+    /** Returns the connection's distance in metres. */
     public int getDistanceInMetres() {
         return distanceInMetres;
     }
 
+    /** Returns whether the connection is confirmed accessible, confirmed inaccessible, or unknown. */
     public AccessibilityStatus getAccessibility() {
         return accessibility;
     }
 
+    /** Returns how the connection is physically travelled. */
     public TraversalType getType() {
         return type;
     }
 
+    /** Returns whether the connection is confirmed sheltered, confirmed unsheltered, or unknown. */
     public ShelterStatus getShelter() {
         return shelter;
     }
 
+    /** Returns the recorded barrier, or null if none. */
     public String getKnownBarrier() {
         return knownBarrier;
     }
 
+    /** Returns optional context notes, or null if none. */
     public String getNotes() {
         return notes;
     }

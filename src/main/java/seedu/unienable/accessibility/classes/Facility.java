@@ -25,18 +25,22 @@ public class Facility {
         this.features = Collections.unmodifiableList(features);
     }
 
+    /** Returns the stable facility ID, e.g. "F01". */
     public String getId() {
         return id;
     }
 
+    /** Returns the facility name, e.g. "COM3". */
     public String getName() {
         return name;
     }
 
+    /** Returns the optional facility description, or null if none. */
     public String getDescription() {
         return description;
     }
 
+    /** Returns the facility's recorded accessibility features, as an unmodifiable list. */
     public List<FacilityFeature> getFeatures() {
         return features;
     }

@@ -21,14 +21,17 @@ public class FacilityFeature {
         this.notes = notes;
     }
 
+    /** Returns the feature type. */
     public Type getType() {
         return type;
     }
 
+    /** Returns whether the feature is confirmed present, confirmed absent, or unknown. */
     public AccessibilityStatus getStatus() {
         return status;
     }
 
+    /** Returns optional location or context notes, or null if none. */
     public String getNotes() {
         return notes;
     }

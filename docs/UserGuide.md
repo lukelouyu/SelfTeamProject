@@ -575,9 +575,15 @@ data/
 `facilities.txt` and `connections.txt` are copied from the bundled sample dataset on first run if
 they don't already exist — an existing file (including one you've edited manually) is never
 overwritten. `settings.txt` stores your saved default activity order (see `order set` in Section
-6); it is created automatically the first time you change the order, and a missing or malformed
-file safely falls back to the documented `chronological` default. The application saves
-activities, topics, and settings after every successfully executed command.
+6); a missing or malformed file safely falls back to the documented `chronological` default.
+
+The application only saves activities, topics, and settings after a command that actually changes
+them (`add`, `edit`, `delete`, `mark`, `unmark`, `order set`, and the `topic` commands) — read-only
+commands such as `list`, `find`, `view`, and `next` never write to disk. `settings.txt` is
+therefore created the first time you run any such data-changing command, not only when you first
+use `order set`. If a save ever fails (for example, a read-only or locked file), the application
+reports the storage error instead of a false success message, and `bye` will say so plainly rather
+than claiming your data was saved.
 
 ## 12. Error Handling
 

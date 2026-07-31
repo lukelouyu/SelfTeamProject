@@ -94,6 +94,61 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_deleteAtEndOfInput_cancelsAndKeepsActivityOnDisk() throws Exception {
+        // Regression coverage: HANDOVER.md claimed this EOF-during-confirmation path already had
+        // a test, but no such test existed anywhere in the suite for any of the four
+        // confirmation-requiring commands. The input stream ends right after "delete 1" with no
+        // y/n line and no "bye"; confirm() must default to "n" via scanner.hasNextLine() rather
+        // than throwing NoSuchElementException, and the run loop must then exit cleanly.
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "delete 1\n");
+
+        assertTrue(output.contains("Delete this activity? (y/n)"));
+        assertTrue(output.contains("Cancelled. No changes were made."));
+
+        Storage storage = new Storage(tempDir);
+        assertEquals(1, storage.loadActivities().getRecords().size());
+    }
+
+    @Test
+    public void run_editAtEndOfInput_cancelsAndLeavesActivityUnchangedOnDisk() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "edit 1 energy/5\n");
+
+        assertTrue(output.contains("Save changes? (y/n)"));
+        assertTrue(output.contains("Cancelled. No changes were made."));
+
+        Storage storage = new Storage(tempDir);
+        assertEquals(4, storage.loadActivities().getRecords().get(0).getEnergyRating().getValue());
+    }
+
+    @Test
+    public void run_topicRenameAtEndOfInput_cancelsAndLeavesTopicUnchanged() {
+        String output = runWithInput(
+                "topic add c/ACADEMIC n/CS2113\n"
+                        + "topic rename c/ACADEMIC old/CS2113 new/CS3207\n");
+
+        assertTrue(output.contains("Save changes? (y/n)"));
+        assertTrue(output.contains("Cancelled. No changes were made."));
+        assertTrue(!output.contains("Topic renamed from CS2113 to CS3207."));
+    }
+
+    @Test
+    public void run_topicDeleteAtEndOfInput_cancelsAndLeavesTopicInPlace() {
+        String output = runWithInput(
+                "topic add c/ACADEMIC n/CS2113\n"
+                        + "topic delete c/ACADEMIC n/CS2113\n");
+
+        assertTrue(output.contains("Delete topic \"CS2113\" under ACADEMIC? (y/n)"));
+        assertTrue(output.contains("Cancelled. No changes were made."));
+        assertTrue(!output.contains("Topic CS2113 has been deleted."));
+    }
+
+    @Test
     public void run_unknownCommand_showsErrorAndKeepsProcessingSubsequentCommands() {
         String output = runWithInput("banana\nbye\n");
 

@@ -307,6 +307,10 @@ Examples:
   facility find type/LIFT
   facility find type/LIFT status/NO
 
+If you have edited facilities.txt yourself and want to check it is still in a
+format UniEnable can read, run facility validate. It only reports problems -
+line by line, with no application restart needed - and never changes the file.
+
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
@@ -319,6 +323,11 @@ Examples:
   connection list
   connection view 1
   connection find from/AS6
+
+If you have edited connections.txt yourself, run connection validate to check
+it is still in a format UniEnable can read - including that every connection's
+endpoints still match a known facility. It only reports problems and never
+changes the file.
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
@@ -437,6 +446,10 @@ Examples:
   facility find type/LIFT
   facility find type/LIFT status/NO
 
+If you have edited facilities.txt yourself and want to check it is still in a
+format UniEnable can read, run facility validate. It only reports problems -
+line by line, with no application restart needed - and never changes the file.
+
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
@@ -449,6 +462,11 @@ Examples:
   connection list
   connection view 1
   connection find from/AS6
+
+If you have edited connections.txt yourself, run connection validate to check
+it is still in a format UniEnable can read - including that every connection's
+endpoints still match a known facility. It only reports problems and never
+changes the file.
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________

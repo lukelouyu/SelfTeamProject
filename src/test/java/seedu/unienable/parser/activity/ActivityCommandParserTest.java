@@ -348,6 +348,52 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_multipleRejectedAddsOfDifferentKinds_doNotConsumeIdsBeforeNextValidAdd()
+            throws Exception {
+        // Regression test for INVESTIGATION-01 (v1.0 manual release test, 2026-08-01): an earlier
+        // manual session observed a non-contiguous ID gap, but a clean rerun could not reproduce
+        // it and concluded ordinary rejected adds do not consume IDs - recorded as an
+        // investigation item, not a confirmed defect, and the report explicitly says not to
+        // change ID allocation based on the unreproduced observation alone. This locks in the
+        // clean rerun's actual finding across every rejection kind it called out: a parser-level
+        // rejection (malformed date), and two manager-level rejections (an overlap conflict and
+        // an exact duplicate).
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        parser.parseAdd(manager, topicManager, TODAY,
+                "n/Base class c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2").execute();
+        assertEquals(2, manager.getNextId());
+
+        // Parser-level rejection: thrown before AddCommand is even constructed.
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
+                "n/Bad date c/ACADEMIC date/15-08-2026 type/FIXED from/11:00 to/12:00 "
+                        + "energy/2 sensory/2"));
+        assertEquals(2, manager.getNextId());
+
+        // Manager-level rejection: thrown from ActivityManager.add() during execute().
+        assertThrows(DuplicateActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
+                "n/Overlapping class c/ACADEMIC date/2026-08-15 type/FIXED from/09:30 to/10:30 "
+                        + "energy/2 sensory/2").execute());
+        assertEquals(2, manager.getNextId());
+
+        // Also manager-level: an exact duplicate of the base class.
+        assertThrows(DuplicateActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
+                "n/Base class c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2").execute());
+        assertEquals(2, manager.getNextId());
+
+        parser.parseAdd(manager, topicManager, TODAY,
+                "n/Class after rejections c/ACADEMIC date/2026-08-16 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2").execute();
+
+        assertEquals(2, manager.size());
+        assertEquals("Class after rejections", manager.getById(2).getDescription());
+        assertEquals(3, manager.getNextId());
+    }
+
+    @Test
     public void parseAdd_invalidType_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);

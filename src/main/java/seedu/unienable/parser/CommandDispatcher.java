@@ -22,6 +22,7 @@ import seedu.unienable.parser.accessibility.ConnectionCommandParser;
 import seedu.unienable.parser.accessibility.FacilityCommandParser;
 import seedu.unienable.parser.common.Parser;
 import seedu.unienable.parser.topic.TopicCommandParser;
+import seedu.unienable.storage.Storage;
 
 /** Routes one full line of user input to the right parser, returning the Command it produces. */
 public class CommandDispatcher {
@@ -29,6 +30,7 @@ public class CommandDispatcher {
     private final TopicManager topicManager;
     private final FacilityManager facilityManager;
     private final ConnectionManager connectionManager;
+    private final Storage storage;
 
     private final ActivityCommandParser activityCommandParser = new ActivityCommandParser();
     private final TopicCommandParser topicCommandParser = new TopicCommandParser();
@@ -42,13 +44,16 @@ public class CommandDispatcher {
      * @param topicManager the manager topic commands act on
      * @param facilityManager the manager facility commands read from
      * @param connectionManager the manager connection commands read from
+     * @param storage the storage coordinator "facility validate"/"connection validate" re-read
+     *     the raw data files through
      */
     public CommandDispatcher(ActivityManager activityManager, TopicManager topicManager,
-            FacilityManager facilityManager, ConnectionManager connectionManager) {
+            FacilityManager facilityManager, ConnectionManager connectionManager, Storage storage) {
         this.activityManager = activityManager;
         this.topicManager = topicManager;
         this.facilityManager = facilityManager;
         this.connectionManager = connectionManager;
+        this.storage = storage;
     }
 
     /**
@@ -165,6 +170,8 @@ public class CommandDispatcher {
             return facilityCommandParser.parseView(facilityManager, parts[1]);
         case "find":
             return facilityCommandParser.parseFind(facilityManager, parts[1]);
+        case "validate":
+            return facilityCommandParser.parseValidate(storage, parts[1]);
         default:
             throw new InvalidCommandException("Unknown facility command \"" + parts[0] + "\". Enter guide "
                     + "facility for help.");
@@ -181,6 +188,8 @@ public class CommandDispatcher {
             return connectionCommandParser.parseView(connectionManager, parts[1]);
         case "find":
             return connectionCommandParser.parseFind(connectionManager, parts[1]);
+        case "validate":
+            return connectionCommandParser.parseValidate(storage, parts[1]);
         default:
             throw new InvalidCommandException("Unknown connection command \"" + parts[0] + "\". Enter guide "
                     + "for help.");

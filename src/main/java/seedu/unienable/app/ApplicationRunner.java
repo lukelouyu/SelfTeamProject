@@ -92,7 +92,8 @@ public class ApplicationRunner {
             return;
         }
 
-        dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager, connectionManager);
+        dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager, connectionManager,
+                storage);
         runCommandLoop();
     }
 

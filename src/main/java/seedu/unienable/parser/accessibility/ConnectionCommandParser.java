@@ -12,11 +12,13 @@ import seedu.unienable.accessibility.enums.ShelterStatus;
 import seedu.unienable.accessibility.enums.TraversalType;
 import seedu.unienable.command.accessibility.ConnectionFindCommand;
 import seedu.unienable.command.accessibility.ConnectionListCommand;
+import seedu.unienable.command.accessibility.ConnectionValidateCommand;
 import seedu.unienable.command.accessibility.ConnectionViewCommand;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.parser.common.FieldParser;
+import seedu.unienable.storage.Storage;
 
 /** Parses connection-related commands (connection list, connection view, connection find) into Command objects. */
 public class ConnectionCommandParser {
@@ -87,6 +89,22 @@ public class ConnectionCommandParser {
         AccessibilityStatus status = fields.containsKey("status/") ? parseStatus(fields.get("status/")) : null;
         ShelterStatus shelter = fields.containsKey("shelter/") ? parseShelter(fields.get("shelter/")) : null;
         return new ConnectionFindCommand(connectionManager, from, to, type, status, shelter);
+    }
+
+    /**
+     * Builds a ConnectionValidateCommand. "connection validate" takes no arguments.
+     *
+     * @param storage the storage coordinator the resulting command will re-read
+     *     facilities.txt/connections.txt through
+     * @param args the text after the "connection validate" command words, expected to be empty
+     * @return the parsed ConnectionValidateCommand
+     * @throws InvalidCommandException if args is not empty
+     */
+    public ConnectionValidateCommand parseValidate(Storage storage, String args) throws InvalidCommandException {
+        if (!args.trim().isEmpty()) {
+            throw new InvalidCommandException("\"connection validate\" does not take any arguments.");
+        }
+        return new ConnectionValidateCommand(storage);
     }
 
     private TraversalType parseType(String text) throws InvalidCommandException {

@@ -131,6 +131,10 @@ Examples:
   facility find type/LIFT
   facility find type/LIFT status/NO
 
+If you have edited facilities.txt yourself and want to check it is still in a
+format UniEnable can read, run facility validate. It only reports problems -
+line by line, with no application restart needed - and never changes the file.
+
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
@@ -143,6 +147,11 @@ Examples:
   connection list
   connection view 1
   connection find from/AS6
+
+If you have edited connections.txt yourself, run connection validate to check
+it is still in a format UniEnable can read - including that every connection's
+endpoints still match a known facility. It only reports problems and never
+changes the file.
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
@@ -2050,6 +2059,12 @@ Facilities where LIFT is YES:
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
+facilities.txt: no issues found.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: "facility validate" does not take any arguments.
+____________________________________________________________
+____________________________________________________________
 Known two-way connections:
 [1] CLB <-> AS6 | 70 m | ACCESSIBLE YES | PATH
     Shelter: YES
@@ -2267,6 +2282,12 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 [Error] Missing input: at least one filter is required.
+____________________________________________________________
+____________________________________________________________
+connections.txt: no issues found.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: "connection validate" does not take any arguments.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: "bye" does not take any arguments.

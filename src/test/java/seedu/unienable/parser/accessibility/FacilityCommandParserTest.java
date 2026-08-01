@@ -4,9 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.command.accessibility.AccessibilityDisclaimer;
@@ -14,8 +17,12 @@ import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.FacilityManager;
+import seedu.unienable.storage.Storage;
 
 class FacilityCommandParserTest {
+    @TempDir
+    Path tempDir;
+
     private final FacilityCommandParser parser = new FacilityCommandParser();
 
     @Test
@@ -101,5 +108,22 @@ class FacilityCommandParserTest {
 
         assertThrows(InvalidCommandException.class,
                 () -> parser.parseFind(manager, "ignored/yes type/LIFT"));
+    }
+
+    @Test
+    public void parseValidate_takesNoArguments_returnsFacilityValidateCommand() throws Exception {
+        Files.write(tempDir.resolve("facilities.txt"), List.of("FACILITY|F01|AS1|Block 1"));
+        Storage storage = new Storage(tempDir);
+
+        CommandResult result = parser.parseValidate(storage, "").execute();
+
+        assertEquals("facilities.txt: no issues found.", result.getFeedback());
+    }
+
+    @Test
+    public void parseValidate_trailingArguments_throwsInvalidCommandException() {
+        Storage storage = new Storage(tempDir);
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseValidate(storage, "ignored-text"));
     }
 }

@@ -6,11 +6,13 @@ import seedu.unienable.accessibility.classes.FacilityFeature;
 import seedu.unienable.accessibility.enums.AccessibilityStatus;
 import seedu.unienable.command.accessibility.FacilityFindCommand;
 import seedu.unienable.command.accessibility.FacilityListCommand;
+import seedu.unienable.command.accessibility.FacilityValidateCommand;
 import seedu.unienable.command.accessibility.FacilityViewCommand;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.parser.common.FieldParser;
+import seedu.unienable.storage.Storage;
 
 /** Parses facility-related commands (facility list, facility view, facility find) into Command objects. */
 public class FacilityCommandParser {
@@ -70,6 +72,21 @@ public class FacilityCommandParser {
                 ? parseStatus(FieldParser.extractField(args, "status/", null))
                 : AccessibilityStatus.YES;
         return new FacilityFindCommand(facilityManager, type, status);
+    }
+
+    /**
+     * Builds a FacilityValidateCommand. "facility validate" takes no arguments.
+     *
+     * @param storage the storage coordinator the resulting command will re-read facilities.txt through
+     * @param args the text after the "facility validate" command words, expected to be empty
+     * @return the parsed FacilityValidateCommand
+     * @throws InvalidCommandException if args is not empty
+     */
+    public FacilityValidateCommand parseValidate(Storage storage, String args) throws InvalidCommandException {
+        if (!args.trim().isEmpty()) {
+            throw new InvalidCommandException("\"facility validate\" does not take any arguments.");
+        }
+        return new FacilityValidateCommand(storage);
     }
 
     private FacilityFeature.Type parseType(String text) throws InvalidCommandException {

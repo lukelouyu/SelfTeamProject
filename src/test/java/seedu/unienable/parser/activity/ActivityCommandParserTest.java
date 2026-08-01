@@ -281,6 +281,73 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_missingDateMarker_throwsMissingInputExceptionNamingDateNotCategory() {
+        // Regression test for BUG-04 (v1.0 manual release test, 2026-08-01, reproduction A): the
+        // supplied category (ACADEMIC) is perfectly valid; date/ is the field that's actually
+        // missing. Before the fix, c/'s extraction had no end marker to stop at, so it greedily
+        // absorbed everything up to the end of input and was misreported as an invalid category.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing date c/ACADEMIC type/FIXED from/09:00 to/10:00 energy/3 sensory/3"));
+        assertEquals("date is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_missingToMarker_throwsMissingInputExceptionNamingToNotFrom() {
+        // Regression test for BUG-04, reproduction B: the supplied from/09:00 is perfectly valid;
+        // to/ is the field that's actually missing.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing end time c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 "
+                                + "energy/3 sensory/3"));
+        assertEquals("to is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_missingEnergyMarkerAfterTo_throwsMissingInputExceptionNamingEnergy() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing energy c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 to/10:00 sensory/3"));
+        assertEquals("energy is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_missingLatestMarker_throwsMissingInputExceptionNamingLatestNotEarliest() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing latest c/ACADEMIC date/2026-08-03 type/FLEXIBLE earliest/09:00 dur/30 "
+                                + "energy/3 sensory/3"));
+        assertEquals("latest is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_missingCMarkerEntirely_stillCorrectlyReportsCategoryMissing() {
+        // Sanity check that the fix doesn't regress the already-correct case: when c/ is absent
+        // entirely (not just its own end marker), the independent c/-lookup downstream already
+        // finds nothing and reports "category is required." regardless of what n/'s value absorbs.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing category date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                                + "energy/3 sensory/3"));
+        assertEquals("category is required.", exception.getMessage());
+    }
+
+    @Test
     public void parseAdd_invalidType_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
@@ -704,16 +771,20 @@ class ActivityCommandParserTest {
     }
 
     @Test
-    public void parseAdd_flexibleMissingDurationEntirely_throwsInvalidDateTimeException() {
-        // dur/ is dropped entirely, so latest/'s end marker ("dur/") is never found and its
-        // extraction greedily captures the trailing "energy/5 sensory/2" text, which then fails
-        // time parsing before a dedicated "dur is required" check is ever reached.
+    public void parseAdd_flexibleMissingDurationEntirely_throwsMissingInputExceptionNamingDur() {
+        // Regression test for BUG-04 (v1.0 manual release test, 2026-08-01, reproduction C): dur/
+        // is dropped entirely. Before the fix, latest/'s end marker ("dur/") was never found, so
+        // its extraction greedily captured the trailing "energy/5 sensory/2" text, which then
+        // failed time parsing and misreported "latest" as invalid - even though the supplied
+        // latest/18:00 value was perfectly valid and the real problem was the missing dur/.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
-                "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
-                        + "energy/5 sensory/2"));
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
+                                + "energy/5 sensory/2"));
+        assertEquals("dur is required.", exception.getMessage());
     }
 
     @Test

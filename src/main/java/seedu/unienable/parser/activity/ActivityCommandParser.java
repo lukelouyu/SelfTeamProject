@@ -80,10 +80,10 @@ public class ActivityCommandParser {
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
         rejectUnrecognisedLeadingText(args, EDIT_MARKERS);
-        String description = requireField(args, "n/", "c/", "description");
+        String description = requireField(args, "n/", "c/", "description", "category");
         validateNoDelimiter(description, "description");
-        ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category"));
-        LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date"),
+        ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category", "date"));
+        LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date", "type"),
                 now.toLocalDate());
         String typeEndMarker = firstPresentMarker(args, "type/", "from/", "earliest/");
         String type = requireField(args, "type/", typeEndMarker, "type");
@@ -103,8 +103,9 @@ public class ActivityCommandParser {
     private FixedActivity parseFixed(String args, int id, String description, ActivityCategory category,
             LocalDate date, LocalDateTime now, TopicManager topicManager)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
-        LocalTime start = DateTimeParser.parseNotBeforeNow(requireField(args, "from/", "to/", "from"), date, now);
-        LocalTime end = DateTimeParser.parseTime(requireField(args, "to/", "energy/", "to"));
+        LocalTime start = DateTimeParser.parseNotBeforeNow(
+                requireField(args, "from/", "to/", "from", "to"), date, now);
+        LocalTime end = DateTimeParser.parseTime(requireField(args, "to/", "energy/", "to", "energy"));
         if (!end.isAfter(start)) {
             throw new InvalidActivityException("end time must be later than start time.");
         }
@@ -118,12 +119,12 @@ public class ActivityCommandParser {
             LocalDate date, LocalDateTime now, TopicManager topicManager)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
         LocalTime earliestStart = DateTimeParser.parseNotBeforeNow(
-                requireField(args, "earliest/", "latest/", "earliest"), date, now);
-        LocalTime latestEnd = DateTimeParser.parseTime(requireField(args, "latest/", "dur/", "latest"));
+                requireField(args, "earliest/", "latest/", "earliest", "latest"), date, now);
+        LocalTime latestEnd = DateTimeParser.parseTime(requireField(args, "latest/", "dur/", "latest", "dur"));
         if (!latestEnd.isAfter(earliestStart)) {
             throw new InvalidActivityException("latest end time must be after earliest start time.");
         }
-        int durationMinutes = parsePositiveInt(requireField(args, "dur/", "energy/", "dur"), "dur");
+        int durationMinutes = parsePositiveInt(requireField(args, "dur/", "energy/", "dur", "energy"), "dur");
         validateDurationFitsWindow(earliestStart, latestEnd, durationMinutes);
         CommonTail tail = parseCommonTail(args, "energy/");
         validateTopicExists(topicManager, category, tail.topic);
@@ -133,7 +134,8 @@ public class ActivityCommandParser {
 
     private CommonTail parseCommonTail(String args, String energyMarker)
             throws MissingInputException, InvalidActivityException {
-        EnergyRating energy = RatingParser.parseEnergyRating(requireField(args, energyMarker, "sensory/", "energy"));
+        EnergyRating energy = RatingParser.parseEnergyRating(
+                requireField(args, energyMarker, "sensory/", "energy", "sensory"));
 
         String sensoryEndMarker = firstPresentMarker(args, "sensory/", "topic/", "note/");
         SensoryRating sensory = RatingParser.parseSensoryRating(
@@ -487,6 +489,35 @@ public class ActivityCommandParser {
             throw new MissingInputException(fieldName + " is required.");
         }
         return value;
+    }
+
+    /**
+     * Like {@link #requireField(String, String, String, String)}, but for a start marker whose
+     * end marker is itself always a required field at a statically-known position in the
+     * grammar (as opposed to a marker whose end boundary can legitimately vary or be absent,
+     * e.g. an optional trailing field). Verifies endMarker is actually present before extracting
+     * startMarker's value.
+     *
+     * <p>Without this, a genuinely missing endMarker lets startMarker's extraction silently
+     * swallow the rest of the command text - {@link FieldParser#extractField} reads to the end of
+     * input whenever its end marker isn't found - producing a misleading validation failure on
+     * startMarker's now-oversized value instead of correctly reporting that endMarker itself is
+     * missing (BUG-04, v1.0 manual release test, 2026-08-01).
+     *
+     * @param args the full argument text
+     * @param startMarker the marker just before the value
+     * @param endMarker the marker required to end the value
+     * @param fieldName startMarker's field name, used if startMarker itself is missing
+     * @param endMarkerFieldName endMarker's field name, used if endMarker is missing
+     * @return the trimmed value between startMarker and endMarker
+     * @throws MissingInputException if endMarker is absent, or startMarker is absent/blank
+     */
+    private String requireField(String args, String startMarker, String endMarker, String fieldName,
+            String endMarkerFieldName) throws MissingInputException {
+        if (FieldParser.indexOfMarker(args, endMarker, 0) == -1) {
+            throw new MissingInputException(endMarkerFieldName + " is required.");
+        }
+        return requireField(args, startMarker, endMarker, fieldName);
     }
 
     private ActivityCategory parseCategory(String text) throws InvalidActivityException {

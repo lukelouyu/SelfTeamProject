@@ -699,10 +699,10 @@ ____________________________________________________________
 [Error] Missing input: category is required.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.
+[Error] Missing input: date is required.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: date must be in yyyy-MM-dd format.
+[Error] Missing input: type is required.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.

@@ -68,7 +68,7 @@ class ApplicationRunnerTest {
     }
 
     @Test
-    public void resetAll_deleteAll_saveFails_rollsBackAndReportsNoFalseSuccess() throws Exception {
+    public void resetAllDeleteAll_saveFails_rollsBackAndReportsNoFalseSuccess() throws Exception {
         String input = String.join("\n",
                 "add n/Task one c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
                 "add n/Task two c/OTHERS date/2099-01-02 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",

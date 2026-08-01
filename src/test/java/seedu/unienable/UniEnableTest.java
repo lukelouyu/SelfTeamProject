@@ -471,6 +471,26 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_malformedTopicsFile_surfacesPartialLoadWarningAndKeepsValidRecords() throws Exception {
+        // Regression test for RC02 (v1.0 RC retest, 2026-08-01): a blank name, a case-insensitive
+        // duplicate, and an overlong record previously all loaded without any warning.
+        Files.writeString(tempDir.resolve("topics.txt"),
+                "TOPIC|ACADEMIC|\n"
+                        + "TOPIC|ACADEMIC|CS2113\n"
+                        + "TOPIC|ACADEMIC|cs2113\n"
+                        + "TOPIC|OTHERS|Real name|silently ignored column\n");
+
+        String output = runWithInput("topic list\nbye\n");
+
+        assertTrue(output.contains("[Warning] Partial data loaded: topics.txt"));
+        assertTrue(output.contains("Line 1 was skipped"));
+        assertTrue(output.contains("Line 3 was skipped"));
+        assertTrue(output.contains("Line 4 was skipped"));
+        assertTrue(output.contains("CS2113"));
+        assertTrue(!output.contains("Real name"));
+    }
+
+    @Test
     public void run_malformedFacilitiesFile_surfacesPartialLoadWarningAndKeepsValidRecords() throws Exception {
         Files.writeString(tempDir.resolve("facilities.txt"),
                 "FACILITY|F01|COM3|Engineering building\n"

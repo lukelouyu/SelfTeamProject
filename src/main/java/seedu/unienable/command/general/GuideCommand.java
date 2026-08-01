@@ -30,7 +30,7 @@ public class GuideCommand extends Command {
      */
     private static final String[] MENU_NUMBER_TOPICS = {
         "getting-started", "activities", "browse", "topic", "dashboard",
-        "recommend", "facility", "export", "storage",
+        "recommend", "accessibility", "export", "storage",
     };
 
     private static final String MAIN_MENU = "Application Guide\n\n"
@@ -324,23 +324,35 @@ public class GuideCommand extends Command {
                 + "Use recommend PERIOD [PREFERENCE_OVERRIDES].\n"
                 + "Review the plan before choosing whether to adopt it."
                 + COMING_SOON_NOTE);
-        topics.put("facility", "Accessible facilities\n"
-                + "Use facility list, facility view, or facility find (and connection list/view/find\n"
-                + "for the route graph between facilities). This data is read-only.\n"
+        topics.put("accessibility", "Accessible facilities and routes\n"
+                + "facility   - view and search the facility reference. See: guide facility\n"
+                + "connection - view and search the connection graph. See: guide connection\n"
                 + "\n"
-                + "Example - list and view a facility:\n"
+                + "Quick examples:\n"
+                + "  facility view AS1\n"
+                + "  connection find from/AS6\n"
+                + "\n"
+                + AccessibilityDisclaimer.TEXT);
+        topics.put("facility", "Accessible facilities\n"
+                + "View and search the local read-only accessibility facility reference.\n"
+                + "Related commands: connection (see guide connection for the route graph\n"
+                + "between facilities)\n"
+                + "\n"
+                + "Examples:\n"
                 + "  facility list\n"
                 + "  facility view AS1\n"
-                + "\n"
-                + "Example - find facilities with a feature:\n"
                 + "  facility find type/LIFT\n"
                 + "  facility find type/LIFT status/NO\n"
                 + "\n"
-                + "Example - list and view a connection:\n"
+                + AccessibilityDisclaimer.TEXT);
+        topics.put("connection", "Accessible connections\n"
+                + "View and search the local read-only connection graph between facilities.\n"
+                + "Related commands: facility (see guide facility for individual facility\n"
+                + "lookups)\n"
+                + "\n"
+                + "Examples:\n"
                 + "  connection list\n"
                 + "  connection view 1\n"
-                + "\n"
-                + "Example - find connections from a facility:\n"
                 + "  connection find from/AS6\n"
                 + "\n"
                 + AccessibilityDisclaimer.TEXT);

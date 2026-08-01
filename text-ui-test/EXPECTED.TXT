@@ -121,22 +121,27 @@ A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
 Accessible facilities
-Use facility list, facility view, or facility find (and connection list/view/find
-for the route graph between facilities). This data is read-only.
+View and search the local read-only accessibility facility reference.
+Related commands: connection (see guide connection for the route graph
+between facilities)
 
-Example - list and view a facility:
+Examples:
   facility list
   facility view AS1
-
-Example - find facilities with a feature:
   facility find type/LIFT
   facility find type/LIFT status/NO
 
-Example - list and view a connection:
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Accessible connections
+View and search the local read-only connection graph between facilities.
+Related commands: facility (see guide facility for individual facility
+lookups)
+
+Examples:
   connection list
   connection view 1
-
-Example - find connections from a facility:
   connection find from/AS6
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
@@ -279,23 +284,12 @@ Example - delete an unused topic:
 A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
-Accessible facilities
-Use facility list, facility view, or facility find (and connection list/view/find
-for the route graph between facilities). This data is read-only.
+Accessible facilities and routes
+facility   - view and search the facility reference. See: guide facility
+connection - view and search the connection graph. See: guide connection
 
-Example - list and view a facility:
-  facility list
+Quick examples:
   facility view AS1
-
-Example - find facilities with a feature:
-  facility find type/LIFT
-  facility find type/LIFT status/NO
-
-Example - list and view a connection:
-  connection list
-  connection view 1
-
-Example - find connections from a facility:
   connection find from/AS6
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
@@ -398,23 +392,12 @@ Review the plan before choosing whether to adopt it.
 (Coming soon in a future release.)
 ____________________________________________________________
 ____________________________________________________________
-Accessible facilities
-Use facility list, facility view, or facility find (and connection list/view/find
-for the route graph between facilities). This data is read-only.
+Accessible facilities and routes
+facility   - view and search the facility reference. See: guide facility
+connection - view and search the connection graph. See: guide connection
 
-Example - list and view a facility:
-  facility list
+Quick examples:
   facility view AS1
-
-Example - find facilities with a feature:
-  facility find type/LIFT
-  facility find type/LIFT status/NO
-
-Example - list and view a connection:
-  connection list
-  connection view 1
-
-Example - find connections from a facility:
   connection find from/AS6
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.

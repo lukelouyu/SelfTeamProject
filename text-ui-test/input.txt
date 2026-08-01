@@ -5,6 +5,7 @@ guide edit
 guide find
 guide topic
 guide facility
+guide connection
 guide storage
 guide dashboard
 guide timetable

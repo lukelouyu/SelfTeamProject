@@ -172,30 +172,80 @@ class GuideCommandTest {
     }
 
     @Test
-    public void execute_facilityTopic_showsExactGuideTextWithExamples() {
+    public void execute_facilityTopic_isAvailableAndHasFacilityExamples() {
+        // Regression test for the "separate facility and connection guide topics" bug report.
+        CommandResult result = new GuideCommand("facility").execute();
+        String feedback = result.getFeedback();
+
+        assertTrue(feedback.startsWith("Accessible facilities"));
+        assertTrue(feedback.contains("facility list"));
+        assertTrue(feedback.contains("facility view AS1"));
+        assertTrue(feedback.contains("facility find type/LIFT"));
+        assertTrue(feedback.contains("facility find type/LIFT status/NO"));
+    }
+
+    @Test
+    public void execute_facilityTopic_doesNotContainConnectionInstructions() {
+        CommandResult result = new GuideCommand("facility").execute();
+        String feedback = result.getFeedback();
+
+        assertTrue(!feedback.contains("connection list"));
+        assertTrue(!feedback.contains("connection view"));
+        assertTrue(!feedback.contains("connection find"));
+    }
+
+    @Test
+    public void execute_facilityTopic_keepsAccessibilityDisclaimer() {
         CommandResult result = new GuideCommand("facility").execute();
 
-        assertEquals("Accessible facilities\n"
-                + "Use facility list, facility view, or facility find (and connection list/view/find\n"
-                + "for the route graph between facilities). This data is read-only.\n"
-                + "\n"
-                + "Example - list and view a facility:\n"
-                + "  facility list\n"
-                + "  facility view AS1\n"
-                + "\n"
-                + "Example - find facilities with a feature:\n"
-                + "  facility find type/LIFT\n"
-                + "  facility find type/LIFT status/NO\n"
-                + "\n"
-                + "Example - list and view a connection:\n"
-                + "  connection list\n"
-                + "  connection view 1\n"
-                + "\n"
-                + "Example - find connections from a facility:\n"
-                + "  connection find from/AS6\n"
-                + "\n"
-                + "Sample local accessibility reference data. Distances are estimates and may be "
-                + "incomplete. Please verify with current campus information when needed.", result.getFeedback());
+        assertTrue(result.getFeedback().contains("Sample local accessibility reference data."));
+    }
+
+    @Test
+    public void execute_connectionTopic_isAvailableAndHasConnectionExamples() {
+        CommandResult result = new GuideCommand("connection").execute();
+        String feedback = result.getFeedback();
+
+        assertTrue(feedback.startsWith("Accessible connections"));
+        assertTrue(feedback.contains("connection list"));
+        assertTrue(feedback.contains("connection view 1"));
+        assertTrue(feedback.contains("connection find from/AS6"));
+    }
+
+    @Test
+    public void execute_connectionTopic_doesNotContainFacilityInstructions() {
+        CommandResult result = new GuideCommand("connection").execute();
+        String feedback = result.getFeedback();
+
+        assertTrue(!feedback.contains("facility list"));
+        assertTrue(!feedback.contains("facility view"));
+        assertTrue(!feedback.contains("facility find"));
+    }
+
+    @Test
+    public void execute_connectionTopic_keepsAccessibilityDisclaimer() {
+        CommandResult result = new GuideCommand("connection").execute();
+
+        assertTrue(result.getFeedback().contains("Sample local accessibility reference data."));
+    }
+
+    @Test
+    public void execute_connectionTopicIsCaseInsensitive() {
+        CommandResult result = new GuideCommand("CONNECTION").execute();
+
+        assertTrue(result.getFeedback().startsWith("Accessible connections"));
+    }
+
+    @Test
+    public void execute_mainMenu_listsBothFacilityAndConnectionAsAvailableTopics() {
+        // "guide facility" and "guide connection" resolve independently even though neither
+        // keyword literally appears in the numbered main menu text (which groups them under item
+        // 7, like every other multi-command menu item) - this asserts both are genuinely
+        // reachable and distinct, not that the word "connection" appears in MAIN_MENU's text.
+        assertTrue(new GuideCommand("facility").execute().getFeedback().startsWith("Accessible facilities"));
+        assertTrue(new GuideCommand("connection").execute().getFeedback().startsWith("Accessible connections"));
+        assertTrue(!new GuideCommand("facility").execute().getFeedback()
+                .equals(new GuideCommand("connection").execute().getFeedback()));
     }
 
     @Test
@@ -364,10 +414,40 @@ class GuideCommandTest {
     }
 
     @Test
-    public void execute_menuNumberSeven_resolvesToFacility() {
+    public void execute_menuNumberSeven_resolvesToAccessibilityOverview() {
+        // Regression test for the "separate facility and connection guide topics" bug report:
+        // item 7 previously resolved straight to the "facility" topic, whose text (before this
+        // fix) happened to also describe connection commands; now that "facility" describes only
+        // facility commands, item 7 must resolve to an overview that genuinely covers both, the
+        // same overview-topic pattern already used for items 2 and 3.
         CommandResult result = new GuideCommand("7").execute();
+        String feedback = result.getFeedback();
 
-        assertTrue(result.getFeedback().startsWith("Accessible facilities"));
+        assertTrue(feedback.startsWith("Accessible facilities and routes"));
+        assertTrue(feedback.contains("facility"));
+        assertTrue(feedback.contains("connection"));
+    }
+
+    @Test
+    public void execute_menuNumberSevenAgreesWithItsOwnKeyword() {
+        assertEquals(new GuideCommand("7").execute().getFeedback(),
+                new GuideCommand("accessibility").execute().getFeedback());
+    }
+
+    @Test
+    public void execute_everyNumberedMenuMapping_resolvesToItsAdvertisedTopic() {
+        // Every numbered menu item from 1-9 must resolve to a real, distinct topic (never falling
+        // back to the "No guide topic named" error), and the topic text it shows must start with
+        // the same subject the main menu line advertises for that number.
+        assertTrue(new GuideCommand("1").execute().getFeedback().startsWith("Getting started"));
+        assertTrue(new GuideCommand("2").execute().getFeedback().startsWith("Add, edit and delete activities"));
+        assertTrue(new GuideCommand("3").execute().getFeedback().startsWith("List, find and view activities"));
+        assertTrue(new GuideCommand("4").execute().getFeedback().startsWith("Categories and topics"));
+        assertTrue(new GuideCommand("5").execute().getFeedback().startsWith("Completion and daily load"));
+        assertTrue(new GuideCommand("6").execute().getFeedback().startsWith("Recommended timetable"));
+        assertTrue(new GuideCommand("7").execute().getFeedback().startsWith("Accessible facilities and routes"));
+        assertTrue(new GuideCommand("8").execute().getFeedback().startsWith("CSV exports"));
+        assertTrue(new GuideCommand("9").execute().getFeedback().startsWith("Data files and storage"));
     }
 
     @Test

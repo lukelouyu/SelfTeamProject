@@ -170,9 +170,14 @@ public class Storage {
      * Saves activities, topics, and the default activity order together, so a multi-file mutation
      * (e.g. "reset all", which touches all three) cannot leave activities.txt, topics.txt, and
      * settings.txt disagreeing with each other on disk. Each file is first written to a sibling
-     * temporary file; only once every write has succeeded are the temporary files moved into
-     * place. If any write fails, no original file is touched and the temporary files are removed,
-     * so a partial failure leaves every file exactly as it was before this call.
+     * temporary file; only once every write has succeeded does committing begin. Before any file
+     * is replaced, every destination that currently exists is backed up. If any commit fails
+     * (including partway through - e.g. activities.txt commits successfully but topics.txt
+     * cannot, because it turned out to be a directory rather than a plain file), every destination
+     * is restored to its exact pre-call state: an existing destination is restored from its
+     * backup, and a destination that did not exist before this call is deleted if the commit
+     * sequence had already created it. A plain pre-existing-but-unwritable destination is still
+     * rejected upfront via {@link #checkWritable}, before any backup or commit happens at all.
      *
      * @param activities the activities to save
      * @param topics the topics to save
@@ -194,14 +199,35 @@ public class Storage {
             checkWritable(topicsFile);
             checkWritable(settingsFile);
 
+            commitAllWithRollback(activitiesTmp, topicsTmp, settingsTmp);
+        } finally {
+            deleteQuietly(activitiesTmp);
+            deleteQuietly(topicsTmp);
+            deleteQuietly(settingsTmp);
+        }
+    }
+
+    private void commitAllWithRollback(Path activitiesTmp, Path topicsTmp, Path settingsTmp)
+            throws StorageException {
+        boolean activitiesExisted = Files.exists(activitiesFile);
+        boolean topicsExisted = Files.exists(topicsFile);
+        boolean settingsExisted = Files.exists(settingsFile);
+        Path activitiesBak = backupIfExists(activitiesFile, activitiesExisted);
+        Path topicsBak = backupIfExists(topicsFile, topicsExisted);
+        Path settingsBak = backupIfExists(settingsFile, settingsExisted);
+        try {
             commit(activitiesTmp, activitiesFile);
             commit(topicsTmp, topicsFile);
             commit(settingsTmp, settingsFile);
         } catch (StorageException e) {
-            deleteQuietly(activitiesTmp);
-            deleteQuietly(topicsTmp);
-            deleteQuietly(settingsTmp);
+            restore(activitiesFile, activitiesBak, activitiesExisted);
+            restore(topicsFile, topicsBak, topicsExisted);
+            restore(settingsFile, settingsBak, settingsExisted);
             throw e;
+        } finally {
+            deleteQuietly(activitiesBak);
+            deleteQuietly(topicsBak);
+            deleteQuietly(settingsBak);
         }
     }
 
@@ -217,11 +243,15 @@ public class Storage {
         return file.resolveSibling(file.getFileName() + ".tmp");
     }
 
+    private Path backupSiblingOf(Path file) {
+        return file.resolveSibling(file.getFileName() + ".bak");
+    }
+
     /**
      * Rejects committing to a destination that exists but is not writable, checked for every
-     * destination before any of them is moved into place. Without this upfront check, a
-     * permission failure discovered partway through the commit sequence (e.g. topics.txt is
-     * read-only) would leave an earlier file (e.g. activities.txt) already overwritten while a
+     * destination before any of them is backed up or moved into place. Without this upfront
+     * check, a permission failure discovered partway through the commit sequence (e.g. topics.txt
+     * is read-only) would leave an earlier file (e.g. activities.txt) already overwritten while a
      * later one is not - exactly the memory/disk divergence this method exists to prevent.
      *
      * @param destination the file about to be committed to
@@ -230,6 +260,54 @@ public class Storage {
     private void checkWritable(Path destination) throws StorageException {
         if (Files.exists(destination) && !Files.isWritable(destination)) {
             throw new StorageException("could not write " + destination + " (not writable)");
+        }
+    }
+
+    /**
+     * Copies destination to a sibling backup file if destination currently exists, so its exact
+     * pre-commit content can be restored later if a later destination's commit fails.
+     *
+     * @param destination the file about to be committed to
+     * @param existed whether destination existed before this save call
+     * @return the backup path, or null if destination did not exist (nothing to back up)
+     * @throws StorageException if destination exists but cannot be backed up
+     */
+    private Path backupIfExists(Path destination, boolean existed) throws StorageException {
+        if (!existed) {
+            return null;
+        }
+        Path backup = backupSiblingOf(destination);
+        try {
+            Files.copy(destination, backup, StandardCopyOption.REPLACE_EXISTING);
+            return backup;
+        } catch (IOException e) {
+            throw new StorageException("could not back up " + destination, e);
+        }
+    }
+
+    /**
+     * Restores destination to its exact pre-commit state: copies its content back from backup if
+     * it existed before this save call, or deletes it if it did not exist before (undoing a
+     * commit that created it fresh). A no-op if destination's own commit never ran or never
+     * changed anything, since restoring identical content (or deleting a file that was never
+     * created) has no visible effect.
+     *
+     * @param destination the file to restore
+     * @param backup the backup made by {@link #backupIfExists}, or null if destination did not
+     *     exist before this save call
+     * @param existed whether destination existed before this save call
+     */
+    private void restore(Path destination, Path backup, boolean existed) {
+        try {
+            if (existed) {
+                Files.copy(backup, destination, StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                Files.deleteIfExists(destination);
+            }
+        } catch (IOException e) {
+            // Best-effort: if the destination itself is now unwritable/inaccessible (the same
+            // underlying condition that likely caused the original commit failure), there is no
+            // further recovery this method can perform.
         }
     }
 
@@ -242,11 +320,14 @@ public class Storage {
     }
 
     private void deleteQuietly(Path file) {
+        if (file == null) {
+            return;
+        }
         try {
             Files.deleteIfExists(file);
         } catch (IOException e) {
             // Best-effort cleanup only; the original files were never touched, so a leftover
-            // temporary file does not put the application in an inconsistent state.
+            // temporary or backup file does not put the application in an inconsistent state.
         }
     }
 

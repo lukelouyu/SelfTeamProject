@@ -35,6 +35,10 @@ application {
 shadowJar {
     archiveBaseName.set("unienable")
     archiveClassifier.set("")
+    // academic-calendar.txt is duplicated into src/main/resources so it's available as a
+    // source-tree artifact, but it must still stay out of the built jar (see the comment on
+    // releaseZip below) - only the copy under data/ is ever read at runtime.
+    exclude 'academic-calendar.txt'
 }
 
 checkstyle {

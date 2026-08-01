@@ -41,11 +41,36 @@ Prerequisites: JDK 17 (use the exact version), update Intellij to the most recen
 * Run `./gradlew shadowJar` to build the standalone executable JAR at `build/libs/unienable.jar`.
 * If you are new to Gradle, refer to the [Gradle Tutorial at se-education.org/guides](https://se-education.org/guides/tutorials/gradle.html).
 
+## Distribution (release ZIP)
+
+`recur` needs an external, human-editable `data/academic-calendar.txt` that must live outside the
+JAR so a future academic year can be added by editing a text file, not by recompiling. Because of
+that, **the distributable is a ZIP, not a bare JAR.** Run:
+
+```bash
+./gradlew releaseZip
+```
+
+This produces `build/distributions/unienable.zip`, containing:
+
+```text
+unienable.zip
+├── unienable.jar
+└── data/
+    └── academic-calendar.txt
+```
+
+To run it: unzip anywhere, `cd` into the extracted folder, and run `java -jar unienable.jar` from
+there (so the app's own `data/` directory resolves next to the calendar file already provided).
+`academic-calendar.txt` is never read, created, or modified by the JAR itself except by `recur`
+loading it — see the [User Guide](docs/UserGuide.md#11-data-storage) for the file format and how
+to extend it to a new academic year.
+
 ## Testing
 
 ### I/O redirection tests
 
-* To run _I/O redirection_ tests (aka _Text UI tests_), navigate to `text-ui-test` and run the `runtest(.bat/.sh)` script. It scripts most v1.0 commands, boundary cases, and error paths end-to-end against a freshly built JAR, including `reset all`, `facility validate`, and `connection validate`. It deliberately does **not** cover `list today`/`list tomorrow`/`list this week`, since their result depends on the current date; those are covered by JUnit tests with an injected fixed `now` instead (see `ActivityCommandParserTest`).
+* To run _I/O redirection_ tests (aka _Text UI tests_), navigate to `text-ui-test` and run the `runtest(.bat/.sh)` script. It scripts most v1.0 and v2.0-so-far commands, boundary cases, and error paths end-to-end against a freshly built JAR, including `recur`, the three-option `reset all`, `facility validate`, and `connection validate`. The script copies a small synthetic `academic-calendar-test.txt` fixture into `data/academic-calendar.txt` before each run, so `recur` results stay deterministic instead of depending on the real, date-bound calendar. It deliberately does **not** cover `list today`/`list tomorrow`/`list this week`, since their result depends on the current date; those are covered by JUnit tests with an injected fixed `now` instead (see `ActivityCommandParserTest`).
 
 ### JUnit tests
 

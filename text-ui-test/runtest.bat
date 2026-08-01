@@ -15,8 +15,12 @@ for /f "tokens=*" %%a in (
 cd ..\..\text-ui-test
 
 rem data\ is regenerated on every run -- remove it first so the test is deterministic and
-rem repeatable from a clean checkout instead of depending on leftover state.
+rem repeatable from a clean checkout instead of depending on leftover state. academic-calendar.txt
+rem is never auto-created by the app, so a deterministic synthetic fixture is copied in here
+rem instead of depending on the real, date-bound data\academic-calendar.txt.
 if exist data rmdir /s /q data
+mkdir data
+copy /y academic-calendar-test.txt data\academic-calendar.txt >NUL
 
 java -jar ..\build\libs\%jarloc% < input.txt > ACTUAL.TXT
 

@@ -12,6 +12,8 @@ guide timetable
 guide recommend
 guide route
 guide export
+guide reset
+guide recur
 guide bogus-topic-xyz
 GUIDE
 Guide ADD
@@ -341,11 +343,47 @@ connection validate extra
 bye ignored trailing text
 list
 
+add n/CS9999 Lecture c/ACADEMIC date/2027-01-25 type/FIXED from/09:00 to/11:00 energy/2 sensory/2
+add n/CS9999 Consultation c/ACADEMIC date/2027-01-26 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
+recur
+recur 20
+recur 20 week
+recur 0 week 3
+recur 20 week 0
+recur 20 week 5 to 3
+recur 20 week 3,7
+recur 20 week abc
+recur 20 week 7;9;11
+recur 20 week 3;99
+recur 9999 week 3
+recur 21 week 3
+recur 20 week 3;7;9;11
+n
+recur 20 week 3;7;9;11
+y
+recur 20 week 3;7;9;11
+view 22
+mark 22
+view 20
+list date/2027-03-01
+delete 23
+list date/2027-03-15
+add n/CS9998 Tutorial c/ACADEMIC date/2027-01-26 type/FIXED from/12:00 to/13:00 energy/2 sensory/2
+add n/Blocking event c/WORK_INTERNSHIP date/2027-03-16 type/FIXED from/12:30 to/13:30 energy/2 sensory/2
+recur 25 week 3;7;9
+list date/2027-03-02
+recur 25 week 3;7
+y
+add n/CS9997 Lab c/ACADEMIC date/2027-01-27 type/FIXED from/14:00 to/16:00 energy/2 sensory/2
+recur 28 week 3;7;9
+y
+recur 28 week 3;7;9
+
 reset
 reset extra
 reset all extra
 reset all
-y
+1
 list
 topic list
 order view

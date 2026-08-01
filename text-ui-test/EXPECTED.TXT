@@ -161,6 +161,11 @@ ____________________________________________________________
 Data files and storage
 Application data (activities, topics, and your saved default order)
 is stored under data/. Do not edit data files while the application runs.
+
+data/academic-calendar.txt is different: it is a reference file you or
+your school maintains yourself, only read by recur (see guide recur),
+loaded once per run the first time you use recur, and never created,
+repaired, or changed by UniEnable itself - including by reset all.
 ____________________________________________________________
 ____________________________________________________________
 Completion and daily load
@@ -194,6 +199,68 @@ CSV exports
 Use export activities, export schedule, export all, or export.
 Each export creates a timestamped historical record.
 (Coming soon in a future release.)
+____________________________________________________________
+____________________________________________________________
+Reset all user data
+Format: reset all
+Shows a preview (how many activities, class schedules, and topics
+exist) and a menu with three explicit choices - nothing is deleted
+until you pick one. This cannot be undone.
+Facility, connection, and academic-calendar reference data is
+always kept, whichever choice you pick.
+
+Choices:
+  [1] Delete all user data - every activity and topic is cleared,
+      the saved default order resets to chronological, and the
+      next activity ID restarts at [1].
+  [2] Delete other activities but keep class schedules - keeps
+      every fixed lecture/tutorial/lab/section-teaching activity
+      (the same activities recur can build on - see guide recur)
+      with its original ID, note, and completion status, deletes
+      everything else, and keeps only the topics still used by a
+      kept activity.
+  [3] Do not delete anything - cancels with no change.
+
+Example:
+  reset all
+  2
+
+Entering anything other than 1, 2, or 3 (including a blank line)
+cancels safely with no change.
+____________________________________________________________
+____________________________________________________________
+Create recurring class sessions
+Format: recur TASK_ID week WEEK_SPEC
+WEEK_SPEC is one or more week numbers or inclusive ranges, separated
+by semicolons, for example "1 to 6; 7 to 13" or "3;7;9;11". Week
+numbers refer to the external data/academic-calendar.txt file, not a
+fixed maximum - ask whoever maintains that file if a week you expect
+is missing.
+
+Only a FIXED activity in the ACADEMIC category whose description
+contains lecture, lec, tutorial, tut, lab, laboratory, section
+teaching, sectional teaching, or sec is eligible (see guide reset
+for the same rule used by reset's "keep class schedules" choice).
+
+Example:
+  add n/CG3207 Lecture c/ACADEMIC date/2026-08-14 type/FIXED from/16:00 to/18:00 energy/2 sensory/2
+  recur 1 week 1 to 6; 7 to 13
+
+Each new session becomes its own independent activity with its own
+ID - mark, unmark, edit, and delete only ever affect the one
+occurrence you target, not the others. The original activity's own
+week is always included automatically; you do not need to list it.
+
+Before creating anything, a preview lists every date to be created
+and every date skipped (already the source week, an identical
+session that already exists, or a date with no classes in the
+calendar file) and asks Continue? (y/n). Only y creates the
+sessions; if a target date would overlap another fixed activity,
+the whole command is rejected instead of creating a partial batch.
+Running the same recur command again creates nothing new.
+
+If data/academic-calendar.txt is missing or cannot be read, recur
+reports the problem and every other command keeps working normally.
 ____________________________________________________________
 ____________________________________________________________
 No guide topic named "bogus-topic-xyz". Enter guide to see the list of topics.
@@ -257,6 +324,7 @@ Add, edit and delete activities
 add    - create a FIXED or FLEXIBLE activity. See: guide add
 edit   - change one or more fields of an existing activity. See: guide edit
 delete - remove an activity by its stable ID. See: guide delete
+recur  - turn one FIXED class session into a whole semester of independent sessions. See: guide recur
 
 Quick examples:
   add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1
@@ -335,6 +403,11 @@ ____________________________________________________________
 Data files and storage
 Application data (activities, topics, and your saved default order)
 is stored under data/. Do not edit data files while the application runs.
+
+data/academic-calendar.txt is different: it is a reference file you or
+your school maintains yourself, only read by recur (see guide recur),
+loaded once per run the first time you use recur, and never created,
+repaired, or changed by UniEnable itself - including by reset all.
 ____________________________________________________________
 ____________________________________________________________
 Returning to the command prompt.
@@ -381,6 +454,7 @@ Add, edit and delete activities
 add    - create a FIXED or FLEXIBLE activity. See: guide add
 edit   - change one or more fields of an existing activity. See: guide edit
 delete - remove an activity by its stable ID. See: guide delete
+recur  - turn one FIXED class session into a whole semester of independent sessions. See: guide recur
 
 Quick examples:
   add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1
@@ -480,6 +554,11 @@ ____________________________________________________________
 Data files and storage
 Application data (activities, topics, and your saved default order)
 is stored under data/. Do not edit data files while the application runs.
+
+data/academic-calendar.txt is different: it is a reference file you or
+your school maintains yourself, only read by recur (see guide recur),
+loaded once per run the first time you use recur, and never created,
+repaired, or changed by UniEnable itself - including by reset all.
 ____________________________________________________________
 ____________________________________________________________
 Returning to the command prompt.
@@ -1859,7 +1938,7 @@ Your next relevant activity is:
 Overdue incomplete activities: 0
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: date has passed. Please enter a date from 2026-08-01 onwards.
+[Error] Invalid input: date has passed. Please enter a date from 2026-08-02 onwards.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.
@@ -2397,6 +2476,233 @@ Here are 18 matching activities:
              ACADEMIC | 60 min | E2 | S2
 ____________________________________________________________
 ____________________________________________________________
+Got it. Activity [20] has been added:
+[ ][F] 2027-01-25 09:00 -> 11:00 | CS9999 Lecture
+       ACADEMIC | Energy 2/5 | Sensory 2/5
+
+You now have 19 activities.
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [21] has been added:
+[ ][F] 2027-01-26 09:00 -> 10:00 | CS9999 Consultation
+       ACADEMIC | Energy 2/5 | Sensory 2/5
+
+You now have 20 activities.
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: recur requires TASK_ID, week, and WEEK_SPEC.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: recur format is: recur TASK_ID week WEEK_SPEC.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: recur format is: recur TASK_ID week WEEK_SPEC.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: activity ID must be a positive whole number.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: week number must be a positive whole number.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: week range must run from a smaller week number to a larger one.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: week specification must use numbers or inclusive ranges separated by semicolons, for example 1 to 6; 7 to 13.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: week specification must use numbers or inclusive ranges separated by semicolons, for example 1 to 6; 7 to 13.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: week specification must include source Week 3.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Week 99 is not defined for TEST-AY SEM2 in academic-calendar.txt.
+____________________________________________________________
+____________________________________________________________
+[Error] Not found: Activity [9999] does not exist.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: recur requires a fixed ACADEMIC lecture, tutorial, lab, or section-teaching activity.
+____________________________________________________________
+____________________________________________________________
+Create recurring sessions from activity [20]?
+
+Source       : CS9999 Lecture
+Calendar     : TEST-AY SEM2
+Day and time : MONDAY, 09:00 -> 11:00
+Weeks        : 3, 7, 9, 11
+
+To create:
+Week 7 | 2027-03-01 | Activity [22]
+Week 9 | 2027-03-15 | Activity [23]
+Week 11 | 2027-03-29 | Activity [24]
+
+Skipped:
+Week 3 | 2027-01-25 | source activity [20]
+
+3 new activities will be created.
+Continue? (y/n)
+____________________________________________________________
+____________________________________________________________
+Cancelled. No changes were made.
+____________________________________________________________
+____________________________________________________________
+Create recurring sessions from activity [20]?
+
+Source       : CS9999 Lecture
+Calendar     : TEST-AY SEM2
+Day and time : MONDAY, 09:00 -> 11:00
+Weeks        : 3, 7, 9, 11
+
+To create:
+Week 7 | 2027-03-01 | Activity [22]
+Week 9 | 2027-03-15 | Activity [23]
+Week 11 | 2027-03-29 | Activity [24]
+
+Skipped:
+Week 3 | 2027-01-25 | source activity [20]
+
+3 new activities will be created.
+Continue? (y/n)
+____________________________________________________________
+____________________________________________________________
+Created 3 recurring sessions from activity [20]:
+Week 7 | 2027-03-01 | Activity [22]
+Week 9 | 2027-03-15 | Activity [23]
+Week 11 | 2027-03-29 | Activity [24]
+____________________________________________________________
+____________________________________________________________
+No new recurring sessions to create.
+
+Skipped:
+Week 3 | 2027-01-25 | source activity [20]
+Week 7 | 2027-03-01 | already exists as activity [22]
+Week 9 | 2027-03-15 | already exists as activity [23]
+Week 11 | 2027-03-29 | already exists as activity [24]
+____________________________________________________________
+____________________________________________________________
+Activity [22]
+Description : CS9999 Lecture
+Status      : Incomplete
+Type        : FIXED
+Date        : 2027-03-01
+Start       : 09:00
+End         : 11:00
+Category    : ACADEMIC
+Energy      : 2/5
+Sensory     : 2/5
+____________________________________________________________
+____________________________________________________________
+Nice! Activity [22] is now complete:
+[X][F] CS9999 Lecture
+____________________________________________________________
+____________________________________________________________
+Activity [20]
+Description : CS9999 Lecture
+Status      : Incomplete
+Type        : FIXED
+Date        : 2027-01-25
+Start       : 09:00
+End         : 11:00
+Category    : ACADEMIC
+Energy      : 2/5
+Sensory     : 2/5
+____________________________________________________________
+____________________________________________________________
+Here are 1 matching activity:
+[22][X][F] 2027-03-01 09:00 -> 11:00 | CS9999 Lecture
+             ACADEMIC | E2 | S2
+____________________________________________________________
+____________________________________________________________
+You selected activity [23]:
+[23][ ][F] 2027-03-15 09:00 -> 11:00 | CS9999 Lecture
+             ACADEMIC | E2 | S2
+
+Delete this activity? (y/n)
+____________________________________________________________
+____________________________________________________________
+Cancelled. No changes were made.
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [25] has been added:
+[ ][F] 2027-01-26 12:00 -> 13:00 | CS9998 Tutorial
+       ACADEMIC | Energy 2/5 | Sensory 2/5
+
+You now have 24 activities.
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [26] has been added:
+[ ][F] 2027-03-16 12:30 -> 13:30 | Blocking event
+       WORK_INTERNSHIP | Energy 2/5 | Sensory 2/5
+
+You now have 25 activities.
+____________________________________________________________
+____________________________________________________________
+[Error] Conflict: This timing overlaps activity [26], Blocking event (12:30 -> 13:30).
+____________________________________________________________
+____________________________________________________________
+No activities found.
+____________________________________________________________
+____________________________________________________________
+Create recurring sessions from activity [25]?
+
+Source       : CS9998 Tutorial
+Calendar     : TEST-AY SEM2
+Day and time : TUESDAY, 12:00 -> 13:00
+Weeks        : 3, 7
+
+To create:
+Week 7 | 2027-03-02 | Activity [27]
+
+Skipped:
+Week 3 | 2027-01-26 | source activity [25]
+
+1 new activity will be created.
+Continue? (y/n)
+____________________________________________________________
+____________________________________________________________
+Created 1 recurring session from activity [25]:
+Week 7 | 2027-03-02 | Activity [27]
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [28] has been added:
+[ ][F] 2027-01-27 14:00 -> 16:00 | CS9997 Lab
+       ACADEMIC | Energy 2/5 | Sensory 2/5
+
+You now have 27 activities.
+____________________________________________________________
+____________________________________________________________
+Create recurring sessions from activity [28]?
+
+Source       : CS9997 Lab
+Calendar     : TEST-AY SEM2
+Day and time : WEDNESDAY, 14:00 -> 16:00
+Weeks        : 3, 7, 9
+
+To create:
+Week 7 | 2027-03-03 | Activity [29]
+
+Skipped:
+Week 3 | 2027-01-27 | source activity [28]
+Week 9 | 2027-03-17 | Test Well-Being Day - no classes
+
+1 new activity will be created.
+Continue? (y/n)
+____________________________________________________________
+____________________________________________________________
+Created 1 recurring session from activity [28]:
+Week 7 | 2027-03-03 | Activity [29]
+____________________________________________________________
+____________________________________________________________
+No new recurring sessions to create.
+
+Skipped:
+Week 3 | 2027-01-27 | source activity [28]
+Week 7 | 2027-03-03 | already exists as activity [29]
+Week 9 | 2027-03-17 | Test Well-Being Day - no classes
+____________________________________________________________
+____________________________________________________________
 [Error] Missing input: reset requires "all".
 ____________________________________________________________
 ____________________________________________________________
@@ -2406,15 +2712,19 @@ ____________________________________________________________
 [Error] Invalid input: reset only accepts "all".
 ____________________________________________________________
 ____________________________________________________________
-Reset all user data?
+Reset user data
 
-Activities to delete: 18
-Topics to delete   : 3
-Default order      : reset to chronological
+Activities      : 28
+Class schedules : 9
+Other activities: 19
+Topics          : 3
 
-Facility and connection reference data will be kept.
-This action cannot be undone.
-Continue? (y/n)
+[1] Delete all user data
+[2] Delete other activities but keep class schedules
+[3] Do not delete anything
+
+Facility, connection, and academic-calendar reference data will be kept.
+Enter 1, 2, or 3:
 ____________________________________________________________
 ____________________________________________________________
 All user data has been reset.

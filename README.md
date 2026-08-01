@@ -45,7 +45,7 @@ Prerequisites: JDK 17 (use the exact version), update Intellij to the most recen
 
 ### I/O redirection tests
 
-* To run _I/O redirection_ tests (aka _Text UI tests_), navigate to `text-ui-test` and run the `runtest(.bat/.sh)` script. It scripts most v1.0 commands, boundary cases, and error paths end-to-end against a freshly built JAR, including `reset all`. It deliberately does **not** cover `list today`/`list tomorrow`/`list this week`, since their result depends on the current date; those are covered by JUnit tests with an injected fixed `now` instead (see `ActivityCommandParserTest`).
+* To run _I/O redirection_ tests (aka _Text UI tests_), navigate to `text-ui-test` and run the `runtest(.bat/.sh)` script. It scripts most v1.0 commands, boundary cases, and error paths end-to-end against a freshly built JAR, including `reset all`, `facility validate`, and `connection validate`. It deliberately does **not** cover `list today`/`list tomorrow`/`list this week`, since their result depends on the current date; those are covered by JUnit tests with an injected fixed `now` instead (see `ActivityCommandParserTest`).
 
 ### JUnit tests
 

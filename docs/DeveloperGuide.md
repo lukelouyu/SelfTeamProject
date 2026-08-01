@@ -56,9 +56,9 @@ Each box above is a package-level component:
 | `UniEnable` | The application's sole public entry point (`main`, and the `run(Path, InputStream)` test seam that end-to-end tests call directly). Delegates immediately to `app.ApplicationRunner`; holds no other logic, since Gradle and the Shadow JAR need this exact class name as the main class. |
 | `app` | `ApplicationRunner` coordinates one full run: configuring startup (suppressing JDK logging, showing the welcome message), loading and populating stored data, running the read-execute-print command loop, and persisting activities/topics/settings after every executed command. `CommandConfirmationHandler` owns the y/n confirmation step for the four commands that need one (see below), including EOF-as-cancel handling. Both hold their dependencies (UI, scanner, storage, managers, dispatcher) as fields rather than passing them through parameter lists. |
 | `ui` | All console output framing (`Ui`) and activity-to-text formatting (`MessageFormatter`). `Ui` also formats the partial-load-warning block (`showLoadWarnings`); `ApplicationRunner` decides *when* to call it, but not what the warning text looks like. No parsing or business logic. |
-| `parser` | Turns one command line into a `Command` object. `CommandDispatcher` routes by command word to a domain-specific parser (`ActivityCommandParser`, `TopicCommandParser`, `FacilityCommandParser`, `ConnectionCommandParser`), which all share small utilities in `parser.common` (`FieldParser`, `DateTimeParser`, `RatingParser`). |
-| `command` | One class per user action (`AddCommand`, `EditCommand`, `FacilityFindCommand`, ...), each holding just the data it needs and an `execute()` method. Commands never parse raw text themselves. |
-| `logic` | In-memory managers: `ActivityManager` (CRUD, duplicate/overlap validation, sorting, "next relevant activity"), `TopicManager` (topic CRUD scoped per category, cascading rename/delete-guard), `FacilityManager`/`ConnectionManager` (read-only lookups over the loaded accessibility dataset), plus `ActivityFilter` (a small value object bundling list/find's filter criteria). |
+| `parser` | Turns one command line into a `Command` object. `CommandDispatcher` routes by command word to a domain-specific parser (`ActivityCommandParser`, `TopicCommandParser`, `FacilityCommandParser`, `ConnectionCommandParser`), which all share small utilities in `parser.common` (`FieldParser`, `DateTimeParser`, `RatingParser`, and `ArgumentTokenizer`/`ArgumentMarker` - see below). |
+| `command` | One class per user action (`AddCommand`, `EditCommand`, `FacilityFindCommand`, ...), each holding just the data it needs and an `execute()` method. Commands never parse raw text themselves. A command that needs a confirmation step implements `Confirmable` (see Design considerations). |
+| `logic` | In-memory managers: `ActivityManager` (CRUD, duplicate/overlap validation, sorting, "next relevant activity"), `TopicManager` (topic CRUD scoped per category, cascading rename/delete-guard), `FacilityManager`/`ConnectionManager` (read-only lookups over the loaded accessibility dataset), plus `ActivityFilter` (a small value object bundling list/find's filter criteria). `logic.graph` (see Design considerations) is a preparatory addition, not used by any v1.0 command. |
 | `model` | Mutable domain objects for user data: `Activity` (abstract base), `FixedActivity`/`FlexibleActivity`, `Topic`, `EnergyRating`/`SensoryRating` (validated 1-5 value objects), and enums (`ActivityCategory`, `ActivityOrder`, `CompletionStatus`, `ScheduleType`). |
 | `accessibility` | Immutable domain objects for the read-only reference dataset: `Facility`, `FacilityFeature`, `Connection`, and their enums (`AccessibilityStatus`, `ShelterStatus`, `TraversalType`). Immutable because, unlike activities, this data is never edited in-app. |
 | `storage` | Loads/saves the pipe-delimited text files: `ActivityStorage`, `TopicStorage`, `SettingsStorage` (read-write), `FacilityStorage`, `ConnectionStorage` (read-only, from `data/facilities.txt`/`data/connections.txt`), all wrapped by the top-level `Storage` facade. `LoadResult<T>` pairs successfully loaded records with per-line warnings for malformed ones; `SettingsStorage` falls back to the documented default order with a warning rather than failing to start. |
@@ -89,6 +89,11 @@ sequenceDiagram
     Parser-->>Dispatcher: EditCommand(1, newActivity)
     Dispatcher-->>Runner: EditCommand
     Runner->>Confirm: confirmIfNeeded(command)
+    Confirm->>Cmd: getConfirmation()
+    Cmd->>Manager: getById(1)
+    Manager-->>Cmd: old Activity
+    Note over Cmd: builds diff via MessageFormatter;<br/>returns Confirmation.ask(diff + prompt)
+    Cmd-->>Confirm: Confirmation
     Confirm->>User: show diff, "Save changes? (y/n)"
     User->>Confirm: "y"
     Confirm-->>Runner: true
@@ -108,16 +113,23 @@ atomic: a rejected request always leaves prior state completely unchanged.
 
 ### Design considerations
 
-- **No AB3-style `Prefix`/`ArgumentTokenizer` framework.** Field extraction uses a small stateless
-  `FieldParser` (`extractField`/`indexOfMarker`) rather than AB3's more general prefix/tokenizer
-  classes. This keeps each command's parser self-contained and easy to follow, at the cost of a
-  few sharp edges that a more general framework would rule out by construction — for example,
-  markers that are trailing substrings of each other (`c/` inside `topic/`) needed an explicit
-  boundary rule in `indexOfMarker`, and every marker in active use is cross-checked for collisions
-  in `FieldParserTest.indexOfMarker_noKnownMarkerIsMistakenlyMatchedInsideAnother`. This tradeoff
-  was made deliberately and re-confirmed after several of those sharp edges surfaced as real bugs
-  during hardening (see the User Guide's or repo history for specifics); a bigger parsing
-  framework remains a possible future direction if the marker vocabulary keeps growing.
+- **v1.0 parsing stays on `FieldParser`; a declarative `ArgumentTokenizer` exists alongside it,
+  not in place of it.** Every v1.0 command parser still calls the small stateless `FieldParser`
+  (`extractField`/`indexOfMarker`) directly, exactly as before — this bullet's original tradeoff
+  (self-contained, easy-to-follow parsers, at the cost of sharp edges like markers that are
+  trailing substrings of each other, e.g. `c/` inside `topic/`, needing an explicit boundary rule
+  cross-checked in `FieldParserTest.indexOfMarker_noKnownMarkerIsMistakenlyMatchedInsideAnother`)
+  still holds for all of v1.0. Technical-debt hardening added `parser.common.ArgumentTokenizer` +
+  `ArgumentMarker` as a **declarative alternative** for v2.0 commands with more complex grammars
+  (`recommend`, `route`): a per-command marker registry (each marker declared `required`/
+  `optional`) tokenized in one pass, reusing `FieldParser`'s own boundary rule so matching stays
+  consistent, plus three things `FieldParser` callers previously had to hand-implement themselves:
+  required-field checking, fail-fast rejection of an undeclared marker-shaped token anywhere in
+  the input (not just leading text), and basic double-quote support so a value may contain spaces
+  or another marker's prefix text (e.g. `n/"CG3207 lecture"`, `note/"see c/o front desk"`).
+  `ArgumentTokenizerTest` proves field-by-field equivalence with `FieldParser.extractField` for
+  representative v1.0 argument strings. No existing parser calls it yet — adopting it for a given
+  v1.0 command is a deliberate future migration, not a side effect of it existing.
 - **Blank optional fields are treated as absent, not as stored empty strings.** Free-text optional
   fields (`topic/`, `note/`, and `find`'s `k/`) run through a `blankToNull`-style normalisation so
   that `topic/   ` (whitespace only) behaves identically to omitting `topic/` entirely — both for
@@ -143,15 +155,22 @@ atomic: a rejected request always leaves prior state completely unchanged.
   otherwise allow: referencing a topic that was never created, and an edit that changes category
   silently stranding the activity's existing topic outside the category it is registered under.
   The check runs during parsing, so a rejected request never reaches `confirmIfNeeded()`.
-- **Confirmation prompts are a growing `instanceof` chain.**
-  `CommandConfirmationHandler.confirmIfNeeded()` checks the command's runtime type to decide
-  whether to show a diff and ask "(y/n)" before executing: `DeleteCommand`, `EditCommand`,
-  `TopicRenameCommand`, `TopicDeleteCommand`, in that order. This is simple and readable at four
-  branches, but is flagged here as a design decision to revisit (e.g. a small `Confirmable`
-  interface) if v2.0's `recommend` "adopt this recommendation?" step makes the chain much longer.
-  Kept as an `instanceof` chain deliberately during the app-layer extraction that gave this logic
-  its own class: introducing a command hierarchy at the same time would have mixed two unrelated
-  changes into one refactor.
+- **Confirmation is generic via a `Confirmable` interface, not a per-command `instanceof` chain.**
+  `CommandConfirmationHandler.confirmIfNeeded()` previously named `DeleteCommand`, `EditCommand`,
+  `TopicRenameCommand`, `TopicDeleteCommand`, and `ResetCommand` individually in an `instanceof`
+  chain — readable at four or five branches, but every new confirmable command (v2.0's
+  `recommend` "adopt this recommendation?" step, or `RecurCommand`'s confirmation) would have
+  meant editing this class again, violating OCP. Technical-debt hardening replaced this with
+  `command.Confirmable` (an interface with one method, `getConfirmation()`) and
+  `command.Confirmation` (an immutable three-outcome value: `proceed()` — execute with no prompt,
+  e.g. `reset all` with nothing to reset; `cancel(message)` — cancel with no prompt and a custom
+  message, e.g. edit with no changed fields; or `ask(prompt)` — show the prompt and read y/n). The
+  handler now only checks `instanceof Confirmable` generically; each of the five existing
+  commands implements `getConfirmation()` itself, reusing the manager reference it already holds
+  to build its own preview — no prompt text, ordering, or EOF/y/n behaviour changed for any
+  existing command. `CommandConfirmationHandlerTest` proves this with a locally-defined test
+  command that has no relationship to any real command class, demonstrating that a brand-new
+  confirmable command works without the handler ever changing.
 - **Every confirmation-requiring command validates before prompting, via a side-effect-free
   preflight check.** `delete`/`edit` validate that the target activity exists before showing the
   y/n prompt (`ActivityManager.getById()`, called from the parser); `edit` additionally preflights
@@ -170,6 +189,34 @@ atomic: a rejected request always leaves prior state completely unchanged.
   `Connection` are read-only reference data loaded once at startup from external text files;
   activities never reference them. This keeps the "activities don't store locations, routes are a
   separate lookup" requirement structurally enforced rather than just documented.
+- **`logic.graph.AccessibilityGraph` is a read-only, non-breaking prep layer for v2.0's `route`
+  command.** `FacilityManager` and `ConnectionManager` stay completely independent in v1.0, by
+  design (previous bullet) — but v2.0 needs Dijkstra-based shortest-path lookups over both
+  together, and building that from scratch when v2.0 lands would risk duplicating data or
+  destabilising the v1.0 loading path. `AccessibilityGraph` is built once, at the point something
+  chooses to construct it, from an already-loaded `FacilityManager`/`ConnectionManager` (nodes =
+  facilities, edges = two-way, distance-weighted connections); `getShortestPath(from, to)` runs a
+  standard lazy-deletion Dijkstra (valid since every stored connection distance is a positive
+  whole number, enforced at load time by `ConnectionStorage`) and returns the ordered facility
+  names plus total distance, or `null` if no path exists. **Not referenced by any v1.0 command,
+  `CommandDispatcher`, or `ApplicationRunner`** — v2.0's `route` command will be the first caller.
+  `AccessibilityGraphTest` verifies both a small synthetic graph and the real bundled NUS FASS
+  dataset, with two paths checked by hand against the dataset's own connection notes.
+- **`facility validate`/`connection validate` re-run existing load-time checks on demand, and
+  change nothing.** `facilities.txt`/`connections.txt` are human-editable, but the only integrity
+  check used to run once at startup as an easy-to-miss warning; fixing a mistake meant noticing
+  the warning, then restarting to see if the fix worked. Both new commands just call
+  `Storage.loadFacilities()`/`loadConnections()` again on demand and report the returned
+  `LoadResult`'s warnings (or "no issues found") — the exact same validation `FacilityStorage`/
+  `ConnectionStorage` already perform, not a second implementation of it. Deliberately read-only:
+  neither command writes to disk or replaces the already-loaded `FacilityManager`/
+  `ConnectionManager`, matching the "validation only, no silent repair" requirement for
+  accessibility-critical data. `CommandDispatcher` now holds a `Storage` reference (previously
+  only `ApplicationRunner` did) so these commands can re-read the raw files without duplicating
+  `Storage`'s path-resolution logic — the only wiring change this required outside the two new
+  command classes and their parser methods. `facility reset-default` (this item's explicitly
+  optional stretch goal, restoring the bundled defaults with confirmation) was not implemented in
+  this pass.
 
 ## Product scope
 
@@ -288,7 +335,10 @@ bash text-ui-test/runtest.sh
    read-only — there is no command that edits it. To test the malformed-data-file path, stop the
    application, edit `data/facilities.txt` or `data/connections.txt` to add an invalid line (e.g.
    an unknown feature type), and restart: the app should report a `[Warning] Partial data loaded`
-   message naming the file and line, then continue with the rest of the data loaded normally.
+   message naming the file and line, then continue with the rest of the data loaded normally. Then
+   run `facility validate`/`connection validate` **without restarting** — they should report the
+   exact same issue(s) on demand, without modifying either file (check with `git diff` or a hash
+   of the file before/after).
 6. **Persistence.** After making changes, exit with `bye` and restart the JAR; confirm activities,
    topics, and completion state survived.
 7. **The built-in guide.** Run `guide` and try both a menu number (`guide 2` or bare `2` right

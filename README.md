@@ -6,9 +6,6 @@ internship, or entry-level work routines. It combines fixed/flexible activity pl
 energy-demand and sensory-load ratings, category and topic organisation, a deterministic "next
 relevant activity" lookup, and read-only local facility/accessible-route reference information.
 
-This is a simulated CS2113 team project (tP) built solo. See [About Us](docs/AboutUs.md) for
-details.
-
 Useful links:
 * [User Guide](docs/UserGuide.md)
 * [Developer Guide](docs/DeveloperGuide.md)

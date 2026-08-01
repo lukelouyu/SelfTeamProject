@@ -86,7 +86,7 @@ public class ApplicationRunner {
         storage = new Storage(dataDirectory);
         activityManager = new ActivityManager();
         topicManager = new TopicManager(activityManager);
-        confirmationHandler = new CommandConfirmationHandler(ui, scanner, activityManager);
+        confirmationHandler = new CommandConfirmationHandler(ui, scanner);
 
         if (!initialise()) {
             return;

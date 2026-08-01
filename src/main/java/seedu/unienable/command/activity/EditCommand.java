@@ -2,18 +2,21 @@ package seedu.unienable.command.activity;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.Confirmable;
+import seedu.unienable.command.Confirmation;
 
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.ui.MessageFormatter;
 
 /**
  * Replaces an activity with a fully-rebuilt version reflecting the requested field changes. The
  * replacement is expected to already carry the same ID and the original completion status, so
  * this command only needs to hand it to ActivityManager.replace() for atomic validation and swap.
  */
-public class EditCommand extends Command {
+public class EditCommand extends Command implements Confirmable {
     private final ActivityManager activityManager;
     private final int id;
     private final Activity newActivity;
@@ -39,6 +42,16 @@ public class EditCommand extends Command {
     /** Returns the proposed replacement activity, for the UI loop's preview. */
     public Activity getNewActivity() {
         return newActivity;
+    }
+
+    @Override
+    public Confirmation getConfirmation() throws InvalidIndexException {
+        Activity oldActivity = activityManager.getById(id);
+        String diff = MessageFormatter.formatChanges(oldActivity, newActivity);
+        if (diff.isEmpty()) {
+            return Confirmation.cancel("No changes to activity [" + id + "].");
+        }
+        return Confirmation.ask(diff + "\nSave changes? (y/n)");
     }
 
     @Override

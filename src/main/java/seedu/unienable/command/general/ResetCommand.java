@@ -2,6 +2,8 @@ package seedu.unienable.command.general;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.Confirmable;
+import seedu.unienable.command.Confirmation;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.enums.ActivityOrder;
@@ -13,7 +15,7 @@ import seedu.unienable.model.enums.ActivityOrder;
  * UI-loop concern handled before this command is executed; execute() performs the reset
  * immediately.
  */
-public class ResetCommand extends Command {
+public class ResetCommand extends Command implements Confirmable {
     private final ActivityManager activityManager;
     private final TopicManager topicManager;
 
@@ -52,6 +54,21 @@ public class ResetCommand extends Command {
                 || getTopicCount() > 0
                 || activityManager.getDefaultOrder() != ActivityOrder.CHRONOLOGICAL
                 || activityManager.getNextId() != 1;
+    }
+
+    @Override
+    public Confirmation getConfirmation() {
+        if (!hasAnythingToReset()) {
+            return Confirmation.proceed();
+        }
+        String preview = "Reset all user data?\n\n"
+                + "Activities to delete: " + getActivityCount() + "\n"
+                + "Topics to delete   : " + getTopicCount() + "\n"
+                + "Default order      : reset to chronological\n\n"
+                + "Facility and connection reference data will be kept.\n"
+                + "This action cannot be undone.\n"
+                + "Continue? (y/n)";
+        return Confirmation.ask(preview);
     }
 
     @Override

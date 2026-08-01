@@ -4,12 +4,14 @@ import seedu.unienable.command.CommandResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.unienable.command.Confirmation;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ActivityManager;
@@ -70,5 +72,17 @@ class TopicRenameCommandTest {
         assertEquals(ActivityCategory.ACADEMIC, command.getCategory());
         assertEquals("CG3207", command.getOldName());
         assertEquals("CS3207", command.getNewName());
+    }
+
+    @Test
+    public void getConfirmation_asksWithBeforeAfterDiff() {
+        TopicManager topicManager = new TopicManager(new ActivityManager());
+
+        Confirmation confirmation = new TopicRenameCommand(topicManager, ActivityCategory.ACADEMIC,
+                "CG3207", "CS3207").getConfirmation();
+
+        assertTrue(confirmation.isAsk());
+        assertEquals("Before: topic = CG3207\nAfter : topic = CS3207\nSave changes? (y/n)",
+                confirmation.getMessage());
     }
 }

@@ -5,12 +5,14 @@ import seedu.unienable.command.CommandResult;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.unienable.command.Confirmation;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ActivityManager;
@@ -63,5 +65,16 @@ class TopicDeleteCommandTest {
 
         assertEquals(ActivityCategory.CCA, command.getCategory());
         assertEquals("Computing Club", command.getName());
+    }
+
+    @Test
+    public void getConfirmation_asksWithTopicAndCategory() {
+        TopicManager topicManager = new TopicManager(new ActivityManager());
+
+        Confirmation confirmation = new TopicDeleteCommand(topicManager, ActivityCategory.ACADEMIC, "CG3207")
+                .getConfirmation();
+
+        assertTrue(confirmation.isAsk());
+        assertEquals("Delete topic \"CG3207\" under ACADEMIC? (y/n)", confirmation.getMessage());
     }
 }

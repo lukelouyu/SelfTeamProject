@@ -11,6 +11,7 @@ import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.unienable.command.Confirmation;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.model.classes.EnergyRating;
@@ -62,5 +63,26 @@ class DeleteCommandTest {
         DeleteCommand command = new DeleteCommand(new ActivityManager(), 7);
 
         assertEquals(7, command.getId());
+    }
+
+    @Test
+    public void getConfirmation_existingId_asksWithFormattedActivityPreview() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Internship briefing", ActivityCategory.WORK_INTERNSHIP,
+                LocalDate.of(2026, 8, 16), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null));
+
+        Confirmation confirmation = new DeleteCommand(manager, 1).getConfirmation();
+
+        assertTrue(confirmation.isAsk());
+        assertTrue(confirmation.getMessage().contains("You selected activity [1]:"));
+        assertTrue(confirmation.getMessage().contains("Delete this activity? (y/n)"));
+    }
+
+    @Test
+    public void getConfirmation_unknownId_throwsInvalidIndexException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidIndexException.class, () -> new DeleteCommand(manager, 999).getConfirmation());
     }
 }

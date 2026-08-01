@@ -2,6 +2,8 @@ package seedu.unienable.command.topic;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.Confirmable;
+import seedu.unienable.command.Confirmation;
 
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
@@ -13,7 +15,7 @@ import seedu.unienable.model.enums.ActivityCategory;
  * (y/n)") is a UI-loop concern handled before this command is executed; execute() performs the
  * deletion immediately.
  */
-public class TopicDeleteCommand extends Command {
+public class TopicDeleteCommand extends Command implements Confirmable {
     private final TopicManager topicManager;
     private final ActivityCategory category;
     private final String name;
@@ -39,6 +41,11 @@ public class TopicDeleteCommand extends Command {
     /** Returns the name of the topic this command will delete, for the UI loop's preview. */
     public String getName() {
         return name;
+    }
+
+    @Override
+    public Confirmation getConfirmation() {
+        return Confirmation.ask("Delete topic \"" + name + "\" under " + category + "? (y/n)");
     }
 
     @Override

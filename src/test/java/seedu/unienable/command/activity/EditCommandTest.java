@@ -11,6 +11,7 @@ import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.unienable.command.Confirmation;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ActivityManager;
@@ -72,5 +73,40 @@ class EditCommandTest {
         EditCommand command = new EditCommand(new ActivityManager(), 5, replacement);
 
         assertEquals(replacement, command.getNewActivity());
+    }
+
+    @Test
+    public void getConfirmation_changedFields_asksWithDiff() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Old", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        FixedActivity replacement = newFixedActivity(1, "New", LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+        Confirmation confirmation = new EditCommand(manager, 1, replacement).getConfirmation();
+
+        assertTrue(confirmation.isAsk());
+        assertTrue(confirmation.getMessage().contains("Save changes? (y/n)"));
+    }
+
+    @Test
+    public void getConfirmation_noFieldsChanged_returnsCancelWithNoChangesMessage() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        FixedActivity original = newFixedActivity(manager.getNextId(), "Same", LocalTime.of(9, 0),
+                LocalTime.of(10, 0));
+        manager.add(original);
+        FixedActivity identicalReplacement = newFixedActivity(1, "Same", LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+        Confirmation confirmation = new EditCommand(manager, 1, identicalReplacement).getConfirmation();
+
+        assertTrue(confirmation.isCancel());
+        assertEquals("No changes to activity [1].", confirmation.getMessage());
+    }
+
+    @Test
+    public void getConfirmation_unknownId_throwsInvalidIndexException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        FixedActivity replacement = newFixedActivity(999, "Ghost", LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+        assertThrows(InvalidIndexException.class, () -> new EditCommand(manager, 999, replacement)
+                .getConfirmation());
     }
 }

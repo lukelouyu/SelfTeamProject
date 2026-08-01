@@ -34,8 +34,11 @@ import seedu.unienable.model.enums.ScheduleType;
 class ActivityCommandParserTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 15, 10, 0);
     // Deliberately far earlier than every date literal used in this file's existing tests, so
-    // adding the new not-before-today check to parseAdd/parseEdit doesn't require touching them.
-    private static final LocalDate TODAY = LocalDate.of(2020, 1, 1);
+    // adding the new not-before-today/not-before-now checks to parseAdd/parseEdit doesn't require
+    // touching them. Midnight of that date, not just the date, since parseAdd/parseEdit now also
+    // reject a same-day start time at or before "now" - midnight is always earlier than the
+    // daytime from/earliest values these existing tests use.
+    private static final LocalDateTime TODAY = LocalDate.of(2020, 1, 1).atStartOfDay();
 
     private final ActivityCommandParser parser = new ActivityCommandParser();
 
@@ -336,7 +339,7 @@ class ActivityCommandParserTest {
         // "reject before AddCommand is built" discipline as every other add validation failure.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
         int idBefore = manager.getNextId();
 
         InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
@@ -353,7 +356,7 @@ class ActivityCommandParserTest {
     public void parseAdd_today_isAccepted() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
 
         parser.parseAdd(manager, topicManager, today,
                 "n/Exam c/ACADEMIC date/2026-08-01 type/FIXED from/09:00 to/10:00 energy/3 sensory/3").execute();
@@ -365,7 +368,7 @@ class ActivityCommandParserTest {
     public void parseAdd_futureDate_isAccepted() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
 
         parser.parseAdd(manager, topicManager, today,
                 "n/Exam c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 to/10:00 energy/3 sensory/3").execute();
@@ -377,7 +380,7 @@ class ActivityCommandParserTest {
     public void parseAdd_futureLeapDate_isAccepted() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
 
         parser.parseAdd(manager, topicManager, today,
                 "n/Leap day event c/ACADEMIC date/2028-02-29 type/FIXED from/09:00 to/10:00 "
@@ -393,7 +396,7 @@ class ActivityCommandParserTest {
         // CommandConfirmationHandler never sees this edit at all.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
@@ -412,7 +415,7 @@ class ActivityCommandParserTest {
         // activity) must not be blocked by it.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
         manager.add(new FixedActivity(manager.getNextId(), "Overdue lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 7, 1), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
@@ -427,7 +430,7 @@ class ActivityCommandParserTest {
     public void parseEdit_todayOrFutureDate_isAccepted() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
@@ -435,6 +438,202 @@ class ActivityCommandParserTest {
         parser.parseEdit(manager, topicManager, today, "1 date/2026-08-01").execute();
 
         assertEquals(LocalDate.of(2026, 8, 1), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseAdd_todayEndTimeAlreadyPassed_throwsInvalidDateTimeException() {
+        // BUG-02 (v1.0 manual release test, 2026-08-01): an activity scheduled for today must be
+        // rejected once its scheduled time has fully passed, not just when the date itself is
+        // before today.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 15, 40);
+        int idBefore = manager.getNextId();
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseAdd(manager, topicManager, now,
+                        "n/Today date c/ACADEMIC date/2026-08-01 type/FIXED from/09:00 to/10:00 "
+                                + "energy/3 sensory/3"));
+
+        assertTrue(exception.getMessage().contains("start time has passed"));
+        assertEquals(idBefore, manager.getNextId());
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseAdd_todayEndTimeExactlyNow_throwsInvalidDateTimeException() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 15, 40);
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, now,
+                "n/Today date c/ACADEMIC date/2026-08-01 type/FIXED from/15:00 to/15:40 "
+                        + "energy/3 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_todayStartsInFuture_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 15, 40);
+
+        parser.parseAdd(manager, topicManager, now,
+                "n/Today date c/ACADEMIC date/2026-08-01 type/FIXED from/16:00 to/17:00 "
+                        + "energy/3 sensory/3").execute();
+
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void parseAdd_futureDateWithEarlyTime_isAccepted() throws Exception {
+        // A time value that would be "already passed" on today's date must still be accepted
+        // when the activity's own date is genuinely in the future.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 15, 40);
+
+        parser.parseAdd(manager, topicManager, now,
+                "n/Tomorrow early c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 to/10:00 "
+                        + "energy/3 sensory/3").execute();
+
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void parseAdd_todayStartTimeBeforeNow_throwsInvalidDateTimeExceptionWithoutConsumingId() {
+        // BUG-03: a start time at or before now must be rejected even when the end time has not
+        // itself passed.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        int idBefore = manager.getNextId();
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseAdd(manager, topicManager, now,
+                        "n/Already started c/ACADEMIC date/2026-08-01 type/FIXED from/15:59 to/18:00 "
+                                + "energy/3 sensory/3"));
+
+        assertEquals("activity start time has passed. Please enter a start time after 16:00.",
+                exception.getMessage());
+        assertEquals(idBefore, manager.getNextId());
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseAdd_todayStartTimeExactlyNow_throwsInvalidDateTimeException() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, now,
+                "n/Starts now c/ACADEMIC date/2026-08-01 type/FIXED from/16:00 to/17:00 "
+                        + "energy/3 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_todayStartTimeJustAfterNow_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        parser.parseAdd(manager, topicManager, now,
+                "n/Starts soon c/ACADEMIC date/2026-08-01 type/FIXED from/16:01 to/17:00 "
+                        + "energy/3 sensory/3").execute();
+
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void parseAdd_flexibleTodayEarliestAtOrBeforeNow_throwsInvalidDateTimeException() {
+        // The same start-time rule applies to a flexible activity's earliest/ field.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, now,
+                "n/Flexible today c/ACADEMIC date/2026-08-01 type/FLEXIBLE earliest/15:00 latest/18:00 "
+                        + "dur/60 energy/3 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_flexibleTodayEarliestAfterNow_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        parser.parseAdd(manager, topicManager, now,
+                "n/Flexible today c/ACADEMIC date/2026-08-01 type/FLEXIBLE earliest/16:30 latest/18:00 "
+                        + "dur/60 energy/3 sensory/3").execute();
+
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void parseEdit_movingActivityToAlreadyPassedTimeToday_rejectedBeforeAnyMutation() throws Exception {
+        // Reproduction B from BUG-03: editing date/ and from/ together into an already-passed
+        // slot must be rejected before any confirmation preview is even reachable, and must not
+        // change the stored activity.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        manager.add(new FixedActivity(manager.getNextId(), "Future slot", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 2), LocalTime.of(17, 0), LocalTime.of(18, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseEdit(manager, topicManager, now, "1 date/2026-08-01 from/11:30 to/12:00"));
+
+        assertEquals("activity start time has passed. Please enter a start time after 16:00.",
+                exception.getMessage());
+        assertEquals(LocalDate.of(2026, 8, 2), manager.getById(1).getDate());
+        assertEquals(LocalTime.of(17, 0), ((FixedActivity) manager.getById(1)).getStartTime());
+    }
+
+    @Test
+    public void parseEdit_movingActivityToFutureTimeToday_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        manager.add(new FixedActivity(manager.getNextId(), "Future slot", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 2), LocalTime.of(17, 0), LocalTime.of(18, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        parser.parseEdit(manager, topicManager, now, "1 date/2026-08-01 from/16:30 to/17:30").execute();
+
+        assertEquals(LocalDate.of(2026, 8, 1), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseEdit_activelySupplyingFromOnActivityAlreadyDatedToday_reappliesTheCheck() throws Exception {
+        // Even when date/ isn't touched, actively supplying from/ on an activity already dated
+        // today must still be checked against now.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        manager.add(new FixedActivity(manager.getNextId(), "Today activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 1), LocalTime.of(17, 0), LocalTime.of(18, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseEdit(manager, topicManager, now, "1 from/15:00 to/18:00"));
+    }
+
+    @Test
+    public void parseEdit_untouchedFromOnAlreadyPassedTodayActivity_stillSucceeds() throws Exception {
+        // The start-time-not-passed check only applies when date/ or the start marker is
+        // actively supplied - editing an unrelated field on an activity that has simply become
+        // overdue during the session must not be blocked by it.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        manager.add(new FixedActivity(manager.getNextId(), "Already passed today", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        parser.parseEdit(manager, topicManager, now, "1 energy/5").execute();
+
+        assertEquals(5, manager.getById(1).getEnergyRating().getValue());
+        assertEquals(LocalTime.of(9, 0), ((FixedActivity) manager.getById(1)).getStartTime());
     }
 
     @Test

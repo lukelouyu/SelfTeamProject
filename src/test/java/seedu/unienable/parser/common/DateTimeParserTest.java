@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
@@ -159,5 +160,56 @@ class DateTimeParserTest {
     @Test
     public void parseTime_lastMinuteOfDay_returnsLocalTime() throws InvalidDateTimeException {
         assertEquals(LocalTime.of(23, 59), DateTimeParser.parseTime("23:59"));
+    }
+
+    @Test
+    public void requireNotPastIfToday_futureDate_ignoresTimeEntirely() throws InvalidDateTimeException {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        DateTimeParser.requireNotPastIfToday(LocalTime.of(9, 0), LocalDate.of(2026, 8, 2), now);
+    }
+
+    @Test
+    public void requireNotPastIfToday_todayTimeAfterNow_isAccepted() throws InvalidDateTimeException {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        DateTimeParser.requireNotPastIfToday(LocalTime.of(16, 1), LocalDate.of(2026, 8, 1), now);
+    }
+
+    @Test
+    public void requireNotPastIfToday_todayTimeExactlyNow_throwsWithStartTimeMessage() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> DateTimeParser.requireNotPastIfToday(LocalTime.of(16, 0), LocalDate.of(2026, 8, 1), now));
+        assertEquals("activity start time has passed. Please enter a start time after 16:00.",
+                exception.getMessage());
+    }
+
+    @Test
+    public void requireNotPastIfToday_todayTimeBeforeNow_throwsWithStartTimeMessage() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> DateTimeParser.requireNotPastIfToday(LocalTime.of(15, 59), LocalDate.of(2026, 8, 1), now));
+        assertEquals("activity start time has passed. Please enter a start time after 16:00.",
+                exception.getMessage());
+    }
+
+    @Test
+    public void parseNotBeforeNow_validTimeAfterNow_returnsLocalTime() throws InvalidDateTimeException {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        assertEquals(LocalTime.of(16, 1),
+                DateTimeParser.parseNotBeforeNow("16:01", LocalDate.of(2026, 8, 1), now));
+    }
+
+    @Test
+    public void parseNotBeforeNow_malformedTime_reportsFormatNotPast() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> DateTimeParser.parseNotBeforeNow("4:30pm", LocalDate.of(2026, 8, 1), now));
+        assertEquals("time must be in 24-hour HH:mm format.", exception.getMessage());
     }
 }

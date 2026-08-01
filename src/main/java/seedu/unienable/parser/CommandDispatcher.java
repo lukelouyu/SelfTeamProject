@@ -74,7 +74,7 @@ public class CommandDispatcher {
 
         switch (commandWord) {
         case "add":
-            return activityCommandParser.parseAdd(activityManager, topicManager, now.toLocalDate(), args);
+            return activityCommandParser.parseAdd(activityManager, topicManager, now, args);
         case "list":
             return activityCommandParser.parseList(activityManager, now, args);
         case "view":
@@ -82,7 +82,7 @@ public class CommandDispatcher {
         case "find":
             return activityCommandParser.parseFind(activityManager, args);
         case "edit":
-            return activityCommandParser.parseEdit(activityManager, topicManager, now.toLocalDate(), args);
+            return activityCommandParser.parseEdit(activityManager, topicManager, now, args);
         case "delete":
             return activityCommandParser.parseDelete(activityManager, args);
         case "mark":

@@ -59,7 +59,7 @@ class CommandDispatcherTest {
     @Test
     public void dispatch_add_returnsAddCommand() throws Exception {
         Command command = dispatcher.dispatch("add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED "
-                + "from/09:00 to/11:00 energy/4 sensory/3", NOW);
+                + "from/11:00 to/12:00 energy/4 sensory/3", NOW);
 
         assertTrue(command instanceof AddCommand);
     }

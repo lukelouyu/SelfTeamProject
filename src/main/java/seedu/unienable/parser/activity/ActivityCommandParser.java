@@ -64,17 +64,18 @@ public class ActivityCommandParser {
      * @param activityManager the manager the resulting command will add to
      * @param topicManager the manager used to validate that a supplied topic/ already exists
      *     under the activity's category
-     * @param today the current local date, used to reject a date/ earlier than today
+     * @param now the current date and time, used to reject a date/ earlier than today and, for
+     *     today, a start time at or before now
      * @param args the text after the "add" command word
      * @return the parsed AddCommand
      * @throws MissingInputException if a required field is missing
      * @throws InvalidActivityException if a field value fails validation
-     * @throws InvalidDateTimeException if the date is malformed, does not exist, is before
-     *     today, or a time value is invalid
+     * @throws InvalidDateTimeException if the date is malformed, does not exist, or is before
+     *     today; or a time value is invalid, or (for today) the start time is at or before now
      * @throws InvalidCommandException if type is neither FIXED nor FLEXIBLE
      * @throws InvalidIndexException if topic/ does not exist under the category
      */
-    public AddCommand parseAdd(ActivityManager activityManager, TopicManager topicManager, LocalDate today,
+    public AddCommand parseAdd(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
             String args)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
@@ -82,26 +83,27 @@ public class ActivityCommandParser {
         String description = requireField(args, "n/", "c/", "description");
         validateNoDelimiter(description, "description");
         ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category"));
-        LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date"), today);
+        LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date"),
+                now.toLocalDate());
         String typeEndMarker = firstPresentMarker(args, "type/", "from/", "earliest/");
         String type = requireField(args, "type/", typeEndMarker, "type");
 
         int id = activityManager.getNextId();
         if ("FIXED".equalsIgnoreCase(type)) {
             return new AddCommand(activityManager,
-                    parseFixed(args, id, description, category, date, topicManager));
+                    parseFixed(args, id, description, category, date, now, topicManager));
         }
         if ("FLEXIBLE".equalsIgnoreCase(type)) {
             return new AddCommand(activityManager,
-                    parseFlexible(args, id, description, category, date, topicManager));
+                    parseFlexible(args, id, description, category, date, now, topicManager));
         }
         throw new InvalidCommandException("type must be FIXED or FLEXIBLE.");
     }
 
     private FixedActivity parseFixed(String args, int id, String description, ActivityCategory category,
-            LocalDate date, TopicManager topicManager)
+            LocalDate date, LocalDateTime now, TopicManager topicManager)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
-        LocalTime start = DateTimeParser.parseTime(requireField(args, "from/", "to/", "from"));
+        LocalTime start = DateTimeParser.parseNotBeforeNow(requireField(args, "from/", "to/", "from"), date, now);
         LocalTime end = DateTimeParser.parseTime(requireField(args, "to/", "energy/", "to"));
         if (!end.isAfter(start)) {
             throw new InvalidActivityException("end time must be later than start time.");
@@ -113,9 +115,10 @@ public class ActivityCommandParser {
     }
 
     private FlexibleActivity parseFlexible(String args, int id, String description, ActivityCategory category,
-            LocalDate date, TopicManager topicManager)
+            LocalDate date, LocalDateTime now, TopicManager topicManager)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
-        LocalTime earliestStart = DateTimeParser.parseTime(requireField(args, "earliest/", "latest/", "earliest"));
+        LocalTime earliestStart = DateTimeParser.parseNotBeforeNow(
+                requireField(args, "earliest/", "latest/", "earliest"), date, now);
         LocalTime latestEnd = DateTimeParser.parseTime(requireField(args, "latest/", "dur/", "latest"));
         if (!latestEnd.isAfter(earliestStart)) {
             throw new InvalidActivityException("latest end time must be after earliest start time.");
@@ -661,7 +664,9 @@ public class ActivityCommandParser {
      * @param activityManager the manager holding the activity being edited
      * @param topicManager the manager used to validate that the activity's resulting topic
      *     (carried over or newly supplied) exists under its resulting category
-     * @param today the current local date, used to reject a supplied date/ earlier than today
+     * @param now the current date and time, used to reject a supplied date/ earlier than today
+     *     and, when date/ or the start-time marker is actively supplied and resolves to today, a
+     *     start time at or before now
      * @param args the text after the "edit" command word, starting with the activity ID
      * @return the parsed EditCommand
      * @throws MissingInputException if no ID, no fields, or a required new-type timing field is
@@ -672,11 +677,12 @@ public class ActivityCommandParser {
      *     exist under the resulting category
      * @throws InvalidActivityException if a field value fails validation
      * @throws InvalidDateTimeException if a supplied date is malformed, does not exist, or is
-     *     before today, or a time value is invalid
+     *     before today; or a time value is invalid, or (when date/ or the start-time marker is
+     *     actively supplied) the resulting start time is at or before now on today's date
      * @throws DuplicateActivityException if the resulting activity exactly duplicates another,
      *     or (for a FixedActivity) overlaps another fixed activity on the same date
      */
-    public EditCommand parseEdit(ActivityManager activityManager, TopicManager topicManager, LocalDate today,
+    public EditCommand parseEdit(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
             String args)
             throws MissingInputException, InvalidCommandException, InvalidIndexException, InvalidActivityException,
             InvalidDateTimeException, DuplicateActivityException {
@@ -694,7 +700,7 @@ public class ActivityCommandParser {
         String description = fields.getOrDefault("n/", old.getDescription());
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : old.getCategory();
         LocalDate date = fields.containsKey("date/")
-                ? DateTimeParser.parseNotBeforeDate(fields.get("date/"), today) : old.getDate();
+                ? DateTimeParser.parseNotBeforeDate(fields.get("date/"), now.toLocalDate()) : old.getDate();
         EnergyRating energy = fields.containsKey("energy/")
                 ? RatingParser.parseEnergyRating(fields.get("energy/")) : old.getEnergyRating();
         SensoryRating sensory = fields.containsKey("sensory/")
@@ -716,9 +722,10 @@ public class ActivityCommandParser {
         boolean typeChanged = newType != oldType;
 
         Activity newActivity = newType == ScheduleType.FIXED
-                ? buildFixed(id, description, category, date, energy, sensory, topic, note, fields, old, typeChanged)
+                ? buildFixed(id, description, category, date, energy, sensory, topic, note, fields, old, typeChanged,
+                        now)
                 : buildFlexible(id, description, category, date, energy, sensory, topic, note, fields, old,
-                        typeChanged);
+                        typeChanged, now);
         activityManager.checkNoConflicts(newActivity, id);
 
         if (old.isComplete()) {
@@ -729,7 +736,7 @@ public class ActivityCommandParser {
 
     private FixedActivity buildFixed(int id, String description, ActivityCategory category, LocalDate date,
             EnergyRating energy, SensoryRating sensory, String topic, String note, Map<String, String> fields,
-            Activity old, boolean typeChanged)
+            Activity old, boolean typeChanged, LocalDateTime now)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
         LocalTime start = resolveRequiredTime(fields, "from/", typeChanged,
                 typeChanged ? null : ((FixedActivity) old).getStartTime());
@@ -738,12 +745,15 @@ public class ActivityCommandParser {
         if (!end.isAfter(start)) {
             throw new InvalidActivityException("end time must be later than start time.");
         }
+        if (fields.containsKey("date/") || fields.containsKey("from/")) {
+            DateTimeParser.requireNotPastIfToday(start, date, now);
+        }
         return new FixedActivity(id, description, category, date, start, end, energy, sensory, topic, note);
     }
 
     private FlexibleActivity buildFlexible(int id, String description, ActivityCategory category, LocalDate date,
             EnergyRating energy, SensoryRating sensory, String topic, String note, Map<String, String> fields,
-            Activity old, boolean typeChanged)
+            Activity old, boolean typeChanged, LocalDateTime now)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
         LocalTime earliestStart = resolveRequiredTime(fields, "earliest/", typeChanged,
                 typeChanged ? null : ((FlexibleActivity) old).getEarliestStart());
@@ -751,6 +761,9 @@ public class ActivityCommandParser {
                 typeChanged ? null : ((FlexibleActivity) old).getLatestEnd());
         if (!latestEnd.isAfter(earliestStart)) {
             throw new InvalidActivityException("latest end time must be after earliest start time.");
+        }
+        if (fields.containsKey("date/") || fields.containsKey("earliest/")) {
+            DateTimeParser.requireNotPastIfToday(earliestStart, date, now);
         }
         int durationMinutes;
         if (fields.containsKey("dur/")) {

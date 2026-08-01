@@ -64,22 +64,25 @@ public class ActivityCommandParser {
      * @param activityManager the manager the resulting command will add to
      * @param topicManager the manager used to validate that a supplied topic/ already exists
      *     under the activity's category
+     * @param today the current local date, used to reject a date/ earlier than today
      * @param args the text after the "add" command word
      * @return the parsed AddCommand
      * @throws MissingInputException if a required field is missing
      * @throws InvalidActivityException if a field value fails validation
-     * @throws InvalidDateTimeException if the date or a time value is invalid
+     * @throws InvalidDateTimeException if the date is malformed, does not exist, is before
+     *     today, or a time value is invalid
      * @throws InvalidCommandException if type is neither FIXED nor FLEXIBLE
      * @throws InvalidIndexException if topic/ does not exist under the category
      */
-    public AddCommand parseAdd(ActivityManager activityManager, TopicManager topicManager, String args)
+    public AddCommand parseAdd(ActivityManager activityManager, TopicManager topicManager, LocalDate today,
+            String args)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
         rejectUnrecognisedLeadingText(args, EDIT_MARKERS);
         String description = requireField(args, "n/", "c/", "description");
         validateNoDelimiter(description, "description");
         ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category"));
-        LocalDate date = DateTimeParser.parseDate(requireField(args, "date/", "type/", "date"));
+        LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date"), today);
         String typeEndMarker = firstPresentMarker(args, "type/", "from/", "earliest/");
         String type = requireField(args, "type/", typeEndMarker, "type");
 
@@ -658,6 +661,7 @@ public class ActivityCommandParser {
      * @param activityManager the manager holding the activity being edited
      * @param topicManager the manager used to validate that the activity's resulting topic
      *     (carried over or newly supplied) exists under its resulting category
+     * @param today the current local date, used to reject a supplied date/ earlier than today
      * @param args the text after the "edit" command word, starting with the activity ID
      * @return the parsed EditCommand
      * @throws MissingInputException if no ID, no fields, or a required new-type timing field is
@@ -667,11 +671,13 @@ public class ActivityCommandParser {
      * @throws InvalidIndexException if no activity has that ID, or the resulting topic does not
      *     exist under the resulting category
      * @throws InvalidActivityException if a field value fails validation
-     * @throws InvalidDateTimeException if a date or time value is invalid
+     * @throws InvalidDateTimeException if a supplied date is malformed, does not exist, or is
+     *     before today, or a time value is invalid
      * @throws DuplicateActivityException if the resulting activity exactly duplicates another,
      *     or (for a FixedActivity) overlaps another fixed activity on the same date
      */
-    public EditCommand parseEdit(ActivityManager activityManager, TopicManager topicManager, String args)
+    public EditCommand parseEdit(ActivityManager activityManager, TopicManager topicManager, LocalDate today,
+            String args)
             throws MissingInputException, InvalidCommandException, InvalidIndexException, InvalidActivityException,
             InvalidDateTimeException, DuplicateActivityException {
         String[] parts = args.trim().split("\\s+", 2);
@@ -687,7 +693,8 @@ public class ActivityCommandParser {
         Activity old = activityManager.getById(id);
         String description = fields.getOrDefault("n/", old.getDescription());
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : old.getCategory();
-        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : old.getDate();
+        LocalDate date = fields.containsKey("date/")
+                ? DateTimeParser.parseNotBeforeDate(fields.get("date/"), today) : old.getDate();
         EnergyRating energy = fields.containsKey("energy/")
                 ? RatingParser.parseEnergyRating(fields.get("energy/")) : old.getEnergyRating();
         SensoryRating sensory = fields.containsKey("sensory/")

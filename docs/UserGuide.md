@@ -61,7 +61,14 @@ accessibility information, or medical advice.
 - Command words, field prefixes, and structured values are case-insensitive.
 - Descriptions and notes preserve the letter case you enter.
 - Leading and trailing spaces around structured values are ignored.
-- Dates use `YYYY-MM-DD`, e.g. `2026-08-15`.
+- Dates use `YYYY-MM-DD`, e.g. `2026-08-15`. A `date/` you supply to `add` or `edit` is checked
+  in three stages, each with its own specific message: the text must match the `YYYY-MM-DD`
+  shape (`date must be in yyyy-MM-dd format.`); it must name a calendar date that actually exists
+  (`date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.` — e.g.
+  `2026-02-30` or `2027-02-29` are rejected here, not described as "wrong format"); and it must
+  not be earlier than today (`date has passed. Please enter a date from TODAY onwards.`). This
+  only applies to a date you are actively supplying through `add`/`edit` — `list`/`find`'s
+  `date/` filter and previously-saved activities may still refer to a genuinely past date.
 - Times use 24-hour `HH:mm`, e.g. `09:30` or `17:45`.
 - Durations use whole minutes.
 - Energy demand and sensory load use whole numbers from `1` (very low) to `5` (very high).

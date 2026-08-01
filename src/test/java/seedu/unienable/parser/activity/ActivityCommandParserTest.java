@@ -33,6 +33,9 @@ import seedu.unienable.model.enums.ScheduleType;
 
 class ActivityCommandParserTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 15, 10, 0);
+    // Deliberately far earlier than every date literal used in this file's existing tests, so
+    // adding the new not-before-today check to parseAdd/parseEdit doesn't require touching them.
+    private static final LocalDate TODAY = LocalDate.of(2020, 1, 1);
 
     private final ActivityCommandParser parser = new ActivityCommandParser();
 
@@ -41,7 +44,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
         topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
-        AddCommand command = parser.parseAdd(manager, topicManager,
+        AddCommand command = parser.parseAdd(manager, topicManager, TODAY,
                 "n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
                         + "energy/4 sensory/3 topic/CG3207 note/Bring laptop");
 
@@ -65,7 +68,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
         topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
-        AddCommand command = parser.parseAdd(manager, topicManager,
+        AddCommand command = parser.parseAdd(manager, topicManager, TODAY,
                 "n/Finish assignment 1 c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "dur/90 energy/5 sensory/2 topic/CG3207");
 
@@ -84,7 +87,7 @@ class ActivityCommandParserTest {
     public void parseAdd_noteWithoutTopic_parsesNoteCorrectly() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        AddCommand command = parser.parseAdd(manager, topicManager,
+        AddCommand command = parser.parseAdd(manager, topicManager, TODAY,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 note/Bring headphones");
 
@@ -100,7 +103,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
         topicManager.add(ActivityCategory.OTHERS, "Misc");
-        AddCommand command = parser.parseAdd(manager, topicManager,
+        AddCommand command = parser.parseAdd(manager, topicManager, TODAY,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 topic/Misc");
 
@@ -119,7 +122,7 @@ class ActivityCommandParserTest {
         TopicManager topicManager = new TopicManager(manager);
         int idBefore = manager.getNextId();
 
-        assertThrows(InvalidIndexException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidIndexException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 topic/NeverCreated"));
 
@@ -135,7 +138,7 @@ class ActivityCommandParserTest {
         TopicManager topicManager = new TopicManager(manager);
         topicManager.add(ActivityCategory.ACADEMIC, "Misc");
 
-        assertThrows(InvalidIndexException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidIndexException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 topic/Misc"));
     }
@@ -146,7 +149,7 @@ class ActivityCommandParserTest {
         // instead of being treated the same as omitting topic/ entirely.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        AddCommand command = parser.parseAdd(manager, topicManager,
+        AddCommand command = parser.parseAdd(manager, topicManager, TODAY,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 topic/    note/Bring headphones");
 
@@ -159,7 +162,7 @@ class ActivityCommandParserTest {
     public void parseAdd_whitespaceOnlyNote_isTreatedAsAbsent() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        AddCommand command = parser.parseAdd(manager, topicManager,
+        AddCommand command = parser.parseAdd(manager, topicManager, TODAY,
                 "n/Consultation c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2 note/    ");
 
@@ -175,7 +178,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/    c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
@@ -187,7 +190,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Bad|Desc c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
@@ -196,7 +199,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3 "
                         + "topic/Bad|Topic"));
     }
@@ -206,7 +209,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3 "
                         + "note/Bad|Note"));
     }
@@ -219,7 +222,7 @@ class ActivityCommandParserTest {
         // second "n/" is absorbed as literal text rather than starting a new field or erroring.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        AddCommand command = parser.parseAdd(manager, topicManager,
+        AddCommand command = parser.parseAdd(manager, topicManager, TODAY,
                 "n/A n/B c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3");
 
         command.execute();
@@ -235,7 +238,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "ignored/yes n/Test activity c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 "
                         + "energy/2 sensory/2"));
         assertEquals(1, manager.getNextId());
@@ -250,7 +253,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Test activity c/ACADEMIC date/2026-08-15 type/FIXED ignored/again from/09:00 to/10:00 "
                         + "energy/2 sensory/2"));
         assertEquals(0, manager.size());
@@ -261,7 +264,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
@@ -270,7 +273,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(MissingInputException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Lecture c/ACADEMIC date/2026-08-15"));
     }
 
@@ -279,7 +282,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/BOGUS from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
@@ -288,7 +291,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/11:00 to/09:00 energy/4 sensory/3"));
     }
 
@@ -297,7 +300,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Lecture c/BOGUS date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
@@ -306,7 +309,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Lecture c/ACADEMIC date/15-08-2026 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
     }
 
@@ -319,7 +322,7 @@ class ActivityCommandParserTest {
         TopicManager topicManager = new TopicManager(manager);
         int idBefore = manager.getNextId();
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Exam c/ACADEMIC date/2026-02-30 type/FIXED from/09:00 to/10:00 energy/3 sensory/3"));
 
         assertEquals(idBefore, manager.getNextId());
@@ -327,11 +330,119 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_pastDate_rejectedWithoutConsumingIdOrMutatingManager() {
+        // Regression test for the v1.0 RC retest bug report: a valid, calendar-existent date that
+        // is earlier than today must be rejected with a "date has passed" message, using the same
+        // "reject before AddCommand is built" discipline as every other add validation failure.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDate today = LocalDate.of(2026, 8, 1);
+        int idBefore = manager.getNextId();
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseAdd(manager, topicManager, today,
+                        "n/Old exam c/ACADEMIC date/2026-07-31 type/FIXED from/09:00 to/10:00 "
+                                + "energy/3 sensory/3"));
+
+        assertEquals("date has passed. Please enter a date from 2026-08-01 onwards.", exception.getMessage());
+        assertEquals(idBefore, manager.getNextId());
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseAdd_today_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDate today = LocalDate.of(2026, 8, 1);
+
+        parser.parseAdd(manager, topicManager, today,
+                "n/Exam c/ACADEMIC date/2026-08-01 type/FIXED from/09:00 to/10:00 energy/3 sensory/3").execute();
+
+        assertEquals(LocalDate.of(2026, 8, 1), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseAdd_futureDate_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDate today = LocalDate.of(2026, 8, 1);
+
+        parser.parseAdd(manager, topicManager, today,
+                "n/Exam c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 to/10:00 energy/3 sensory/3").execute();
+
+        assertEquals(LocalDate.of(2026, 8, 2), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseAdd_futureLeapDate_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDate today = LocalDate.of(2026, 8, 1);
+
+        parser.parseAdd(manager, topicManager, today,
+                "n/Leap day event c/ACADEMIC date/2028-02-29 type/FIXED from/09:00 to/10:00 "
+                        + "energy/3 sensory/3").execute();
+
+        assertEquals(LocalDate.of(2028, 2, 29), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseEdit_pastDate_rejectedWithoutMutatingActivity() throws Exception {
+        // A rejected edit must not change the stored activity, matching the "no confirmation
+        // prompt is even reached" guarantee: parseEdit throws before EditCommand is built, so
+        // CommandConfirmationHandler never sees this edit at all.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDate today = LocalDate.of(2026, 8, 1);
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseEdit(manager, topicManager, today, "1 date/2026-07-31"));
+
+        assertEquals("date has passed. Please enter a date from 2026-08-01 onwards.", exception.getMessage());
+        assertEquals(LocalDate.of(2026, 8, 15), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseEdit_dateUntouchedWithExistingPastDate_stillSucceeds() throws Exception {
+        // The not-before-today check only applies when date/ is actually supplied; editing an
+        // unrelated field on an activity that already has a past date (e.g. a legitimate overdue
+        // activity) must not be blocked by it.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDate today = LocalDate.of(2026, 8, 1);
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 7, 1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        parser.parseEdit(manager, topicManager, today, "1 energy/5").execute();
+
+        assertEquals(5, manager.getById(1).getEnergyRating().getValue());
+        assertEquals(LocalDate.of(2026, 7, 1), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseEdit_todayOrFutureDate_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDate today = LocalDate.of(2026, 8, 1);
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        parser.parseEdit(manager, topicManager, today, "1 date/2026-08-01").execute();
+
+        assertEquals(LocalDate.of(2026, 8, 1), manager.getById(1).getDate());
+    }
+
+    @Test
     public void parseAdd_hourTwentyFour_throwsInvalidDateTimeException() {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Late c/ACADEMIC date/2026-08-20 type/FIXED from/24:00 to/01:00 energy/3 sensory/3"));
     }
 
@@ -340,7 +451,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/7 sensory/3"));
     }
 
@@ -349,7 +460,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "dur/0 energy/5 sensory/2"));
     }
@@ -359,7 +470,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "dur/-30 energy/5 sensory/2"));
     }
@@ -372,7 +483,8 @@ class ActivityCommandParserTest {
         TopicManager topicManager = new TopicManager(manager);
 
         InvalidActivityException exception = assertThrows(InvalidActivityException.class, () -> parser.parseAdd(
-                manager, topicManager, "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 "
+                manager, topicManager, TODAY,
+                "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 "
                         + "dur/500 energy/5 sensory/2"));
         assertTrue(exception.getMessage().contains("60 min available"));
     }
@@ -383,7 +495,7 @@ class ActivityCommandParserTest {
         // window" and should be accepted, not rejected.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        AddCommand command = parser.parseAdd(manager, topicManager,
+        AddCommand command = parser.parseAdd(manager, topicManager, TODAY,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/11:00 "
                         + "dur/60 energy/5 sensory/2");
 
@@ -400,7 +512,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager,
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
                 "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                         + "energy/5 sensory/2"));
     }
@@ -1085,7 +1197,7 @@ class ActivityCommandParserTest {
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
 
         assertThrows(InvalidCommandException.class,
-                () -> parser.parseEdit(manager, topicManager, "1 ignored/yes energy/5"));
+                () -> parser.parseEdit(manager, topicManager, TODAY, "1 ignored/yes energy/5"));
         assertEquals(2, manager.getById(1).getEnergyRating().getValue());
     }
 
@@ -1098,7 +1210,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
                 EnergyRating.of(5), SensoryRating.of(2), "CG3207", null));
 
-        parser.parseEdit(manager, topicManager, "1 dur/60").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 dur/60").execute();
 
         Activity updated = manager.getById(1);
         assertEquals(60, ((FlexibleActivity) updated).getDurationMinutes());
@@ -1117,7 +1229,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
 
-        parser.parseEdit(manager, topicManager, "1 topic/   ").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 topic/   ").execute();
 
         assertNull(manager.getById(1).getTopic());
     }
@@ -1130,7 +1242,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, "Bring laptop"));
 
-        parser.parseEdit(manager, topicManager, "1 note/   ").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 note/   ").execute();
 
         assertNull(manager.getById(1).getNote());
     }
@@ -1145,7 +1257,8 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, "1 n/Bad|Desc"));
+        assertThrows(InvalidActivityException.class,
+                () -> parser.parseEdit(manager, topicManager, TODAY, "1 n/Bad|Desc"));
     }
 
     @Test
@@ -1157,7 +1270,7 @@ class ActivityCommandParserTest {
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
         assertThrows(InvalidActivityException.class,
-                () -> parser.parseEdit(manager, topicManager, "1 topic/Bad|Topic"));
+                () -> parser.parseEdit(manager, topicManager, TODAY, "1 topic/Bad|Topic"));
     }
 
     @Test
@@ -1168,7 +1281,8 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, "1 note/Bad|Note"));
+        assertThrows(InvalidActivityException.class,
+                () -> parser.parseEdit(manager, topicManager, TODAY, "1 note/Bad|Note"));
     }
 
     @Test
@@ -1181,7 +1295,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, topicManager, "1 n/X n/Y").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 n/X n/Y").execute();
 
         assertEquals("X n/Y", manager.getById(1).getDescription());
     }
@@ -1199,7 +1313,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, topicManager, "1 topic/CS2113").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 topic/CS2113").execute();
 
         Activity updated = manager.getById(1);
         assertEquals("CS2113", updated.getTopic());
@@ -1221,7 +1335,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CS2113", null));
 
-        assertThrows(InvalidIndexException.class, () -> parser.parseEdit(manager, topicManager, "1 c/CCA"));
+        assertThrows(InvalidIndexException.class, () -> parser.parseEdit(manager, topicManager, TODAY, "1 c/CCA"));
 
         Activity unchanged = manager.getById(1);
         assertEquals(ActivityCategory.ACADEMIC, unchanged.getCategory());
@@ -1238,7 +1352,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CS2113", null));
 
-        parser.parseEdit(manager, topicManager, "1 c/CCA topic/Basketball Club").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 c/CCA topic/Basketball Club").execute();
 
         Activity updated = manager.getById(1);
         assertEquals(ActivityCategory.CCA, updated.getCategory());
@@ -1253,7 +1367,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, topicManager, "1 c/CCA").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 c/CCA").execute();
 
         assertEquals(ActivityCategory.CCA, manager.getById(1).getCategory());
     }
@@ -1267,7 +1381,7 @@ class ActivityCommandParserTest {
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
         assertThrows(InvalidIndexException.class,
-                () -> parser.parseEdit(manager, topicManager, "1 topic/NeverCreated"));
+                () -> parser.parseEdit(manager, topicManager, TODAY, "1 topic/NeverCreated"));
     }
 
     @Test
@@ -1287,7 +1401,7 @@ class ActivityCommandParserTest {
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
 
         assertThrows(DuplicateActivityException.class,
-                () -> parser.parseEdit(manager, topicManager, "2 from/10:30 to/11:30"));
+                () -> parser.parseEdit(manager, topicManager, TODAY, "2 from/10:30 to/11:30"));
 
         Activity unchanged = manager.getById(2);
         assertEquals(LocalTime.of(13, 0), ((FixedActivity) unchanged).getStartTime());
@@ -1305,7 +1419,7 @@ class ActivityCommandParserTest {
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
 
         assertThrows(DuplicateActivityException.class,
-                () -> parser.parseEdit(manager, topicManager, "2 date/2026-08-20"));
+                () -> parser.parseEdit(manager, topicManager, TODAY, "2 date/2026-08-20"));
     }
 
     @Test
@@ -1316,7 +1430,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 20), LocalTime.of(10, 0), LocalTime.of(12, 0),
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
 
-        parser.parseEdit(manager, topicManager, "1 from/09:00 to/11:00").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 from/09:00 to/11:00").execute();
 
         assertEquals(LocalTime.of(9, 0), ((FixedActivity) manager.getById(1)).getStartTime());
     }
@@ -1329,7 +1443,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
                 EnergyRating.of(3), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, topicManager, "1 n/New activity name energy/4 sensory/2").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 n/New activity name energy/4 sensory/2").execute();
 
         Activity updated = manager.getById(1);
         assertEquals("New activity name", updated.getDescription());
@@ -1346,7 +1460,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), "Misc", null));
 
-        parser.parseEdit(manager, topicManager, "1 note/Bring headphones").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 note/Bring headphones").execute();
 
         Activity updated = manager.getById(1);
         assertEquals("Bring headphones", updated.getNote());
@@ -1363,7 +1477,7 @@ class ActivityCommandParserTest {
                 EnergyRating.of(5), SensoryRating.of(2), null, null));
         manager.mark(1);
 
-        parser.parseEdit(manager, topicManager, "1 dur/60").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 dur/60").execute();
 
         assertTrue(manager.getById(1).isComplete());
     }
@@ -1376,7 +1490,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        parser.parseEdit(manager, topicManager, "1 type/FLEXIBLE earliest/10:00 latest/18:00 dur/90").execute();
+        parser.parseEdit(manager, topicManager, TODAY, "1 type/FLEXIBLE earliest/10:00 latest/18:00 dur/90").execute();
 
         Activity updated = manager.getById(1);
         assertEquals(ScheduleType.FLEXIBLE, updated.getScheduleType());
@@ -1393,7 +1507,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0), 60,
                 EnergyRating.of(5), SensoryRating.of(2), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, "1 dur/500"));
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, TODAY, "1 dur/500"));
     }
 
     @Test
@@ -1405,7 +1519,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager,
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, TODAY,
                 "1 type/FLEXIBLE earliest/10:00 latest/11:00 dur/500"));
     }
 
@@ -1417,7 +1531,8 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, topicManager, "1 type/FLEXIBLE"));
+        assertThrows(MissingInputException.class,
+                () -> parser.parseEdit(manager, topicManager, TODAY, "1 type/FLEXIBLE"));
     }
 
     @Test
@@ -1428,7 +1543,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, topicManager, "1"));
+        assertThrows(MissingInputException.class, () -> parser.parseEdit(manager, topicManager, TODAY, "1"));
     }
 
     @Test
@@ -1436,7 +1551,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidIndexException.class, () -> parser.parseEdit(manager, topicManager, "999 dur/60"));
+        assertThrows(InvalidIndexException.class, () -> parser.parseEdit(manager, topicManager, TODAY, "999 dur/60"));
     }
 
     @Test
@@ -1444,7 +1559,7 @@ class ActivityCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidCommandException.class, () -> parser.parseEdit(manager, topicManager, "abc dur/60"));
+        assertThrows(InvalidCommandException.class, () -> parser.parseEdit(manager, topicManager, TODAY, "abc dur/60"));
     }
 
     @Test
@@ -1455,6 +1570,6 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, "1 c/BOGUS"));
+        assertThrows(InvalidActivityException.class, () -> parser.parseEdit(manager, topicManager, TODAY, "1 c/BOGUS"));
     }
 }

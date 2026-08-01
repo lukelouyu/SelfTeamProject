@@ -250,8 +250,11 @@ find [k/KEYWORD ...] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|ch
 ```
 
 At least one keyword or filter is required. Matching is case-insensitive and partial (`assign`
-matches `assignment`); keywords search description, topic, and note. Multiple keywords and
-filters all combine with AND. Header wording is `"Found N activity/activities:"`.
+matches `assignment`); keywords search description, topic, and note. `k/` accepts exactly one or
+two words (e.g. `k/lecture` or `k/finish assignment`, both combined with AND); three or more
+words is rejected rather than silently searched. Leading, trailing, and repeated whitespace
+within `k/` don't count toward the word limit. Multiple keywords and filters all combine with
+AND. Header wording is `"Found N activity/activities:"`.
 
 ### 6.6 View/Set the Default Ordering: `order`
 

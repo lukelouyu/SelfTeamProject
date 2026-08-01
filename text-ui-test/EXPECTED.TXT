@@ -83,7 +83,8 @@ ____________________________________________________________
 ____________________________________________________________
 Find activities
 Format: find [k/KEYWORD ...] [FILTERS]
-Multiple keywords and filters use AND.
+Multiple keywords and filters use AND. k/ accepts one or two
+words; three or more words is rejected.
 
 Examples:
   find k/PL1101E
@@ -1425,6 +1426,12 @@ ____________________________________________________________
 Found 1 activity:
 [2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: keyword must contain one or two words.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: keyword must contain one or two words.
 ____________________________________________________________
 ____________________________________________________________
 Before: energy = 1/5

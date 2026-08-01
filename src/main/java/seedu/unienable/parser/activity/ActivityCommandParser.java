@@ -380,7 +380,7 @@ public class ActivityCommandParser {
      * @return the parsed FindCommand
      * @throws MissingInputException if neither a keyword nor a filter is supplied
      * @throws InvalidActivityException if the category is invalid
-     * @throws InvalidCommandException if order is invalid
+     * @throws InvalidCommandException if order is invalid, or k/ contains more than two words
      * @throws InvalidDateTimeException if the date is invalid
      */
     public FindCommand parseFind(ActivityManager activityManager, String args)
@@ -396,6 +396,9 @@ public class ActivityCommandParser {
         List<String> keywords = rawKeywords != null
                 ? Arrays.asList(rawKeywords.split("\\s+"))
                 : List.of();
+        if (keywords.size() > 2) {
+            throw new InvalidCommandException("keyword must contain one or two words.");
+        }
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
         LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;

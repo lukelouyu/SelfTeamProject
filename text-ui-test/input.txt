@@ -181,6 +181,8 @@ find k/CG3207 c/ACADEMIC
 find c/OTHERS
 find topic/Basketball Club
 find k/finish assignment order/time
+find k/Edited exact extra
+find k/one two three c/ACADEMIC
 
 edit 1 energy/2
 edit 1 energy/2

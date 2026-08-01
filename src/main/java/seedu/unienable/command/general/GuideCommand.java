@@ -278,7 +278,8 @@ public class GuideCommand extends Command {
                 + "asks for y/n before making any change. This cannot be undone.");
         topics.put("find", "Find activities\n"
                 + "Format: find [k/KEYWORD ...] [FILTERS]\n"
-                + "Multiple keywords and filters use AND.\n"
+                + "Multiple keywords and filters use AND. k/ accepts one or two\n"
+                + "words; three or more words is rejected.\n"
                 + "\n"
                 + "Examples:\n"
                 + "  find k/PL1101E\n"

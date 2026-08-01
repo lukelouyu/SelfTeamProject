@@ -1241,6 +1241,60 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseFind_threeWordKeyword_throwsInvalidCommandException() {
+        // Regression test for BUG-05 (v1.0 manual release test, 2026-08-01): "find k/Edited exact
+        // extra" was previously accepted as a valid (if zero-result) three-word AND search,
+        // contradicting the documented one-or-two-word k/ scope.
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "k/Edited exact extra"));
+        assertEquals("keyword must contain one or two words.", exception.getMessage());
+    }
+
+    @Test
+    public void parseFind_fourWordKeyword_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseFind(manager, "k/one two three four"));
+    }
+
+    @Test
+    public void parseFind_threeWordKeywordCombinedWithFilters_rejectedBeforeAnyResult() {
+        // The word-count check must reject before any search executes, even when valid filters
+        // are also supplied alongside the over-long keyword.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "k/one two three c/ACADEMIC order/time"));
+    }
+
+    @Test
+    public void parseFind_twoWordKeywordWithIrregularWhitespace_isTreatedAsTwoWords() throws Exception {
+        // Leading, trailing, and repeated internal whitespace must not be counted as extra words.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Flexible study session", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "k/  Flexible   study  ").execute();
+
+        assertTrue(result.getFeedback().contains("Flexible study session"));
+    }
+
+    @Test
+    public void parseFind_oneWordKeyword_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Class", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "k/Class").execute();
+
+        assertTrue(result.getFeedback().contains("Class"));
+    }
+
+    @Test
     public void parseFind_filterOnlyNoKeyword_isAllowed() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);

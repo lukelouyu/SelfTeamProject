@@ -304,6 +304,8 @@ facility find type/RAMP
 facility find type/BOGUS
 facility find status/YES
 facility find type/lift
+facility validate
+facility validate extra
 
 connection list
 connection view 1
@@ -328,6 +330,8 @@ connection find type/BOGUS
 connection find status/BOGUS
 connection find shelter/BOGUS
 connection find
+connection validate
+connection validate extra
 
 bye ignored trailing text
 list

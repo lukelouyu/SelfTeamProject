@@ -3,23 +3,28 @@ package seedu.unienable.parser;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import seedu.unienable.command.activity.AddCommand;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.accessibility.ConnectionFindCommand;
 import seedu.unienable.command.accessibility.ConnectionListCommand;
+import seedu.unienable.command.accessibility.ConnectionValidateCommand;
 import seedu.unienable.command.accessibility.ConnectionViewCommand;
 import seedu.unienable.command.activity.DeleteCommand;
 import seedu.unienable.command.activity.EditCommand;
 import seedu.unienable.command.general.ExitCommand;
 import seedu.unienable.command.accessibility.FacilityFindCommand;
 import seedu.unienable.command.accessibility.FacilityListCommand;
+import seedu.unienable.command.accessibility.FacilityValidateCommand;
 import seedu.unienable.command.accessibility.FacilityViewCommand;
 import seedu.unienable.command.activity.FindCommand;
 import seedu.unienable.command.general.GuideCommand;
@@ -45,16 +50,28 @@ import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.storage.Storage;
 
 class CommandDispatcherTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 15, 10, 0);
+
+    @TempDir
+    Path tempDir;
 
     private final ActivityManager activityManager = new ActivityManager();
     private final TopicManager topicManager = new TopicManager(activityManager);
     private final FacilityManager facilityManager = new FacilityManager(List.of());
     private final ConnectionManager connectionManager = new ConnectionManager(List.of());
-    private final CommandDispatcher dispatcher = new CommandDispatcher(activityManager, topicManager,
-            facilityManager, connectionManager);
+    private CommandDispatcher dispatcher;
+
+    @BeforeEach
+    public void setUp() {
+        // CommandDispatcher needs Storage, which in turn needs @TempDir's injected path - built
+        // here rather than as a field initialiser, since @TempDir fields are only populated after
+        // instance construction (field initialisers would still see tempDir as null).
+        dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager, connectionManager,
+                new Storage(tempDir));
+    }
 
     @Test
     public void dispatch_add_returnsAddCommand() throws Exception {
@@ -171,6 +188,16 @@ class CommandDispatcherTest {
     @Test
     public void dispatch_connectionFind_returnsConnectionFindCommand() throws Exception {
         assertTrue(dispatcher.dispatch("connection find from/COM3", NOW) instanceof ConnectionFindCommand);
+    }
+
+    @Test
+    public void dispatch_facilityValidate_returnsFacilityValidateCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("facility validate", NOW) instanceof FacilityValidateCommand);
+    }
+
+    @Test
+    public void dispatch_connectionValidate_returnsConnectionValidateCommand() throws Exception {
+        assertTrue(dispatcher.dispatch("connection validate", NOW) instanceof ConnectionValidateCommand);
     }
 
     @Test

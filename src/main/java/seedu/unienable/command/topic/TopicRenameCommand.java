@@ -2,6 +2,8 @@ package seedu.unienable.command.topic;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.Confirmable;
+import seedu.unienable.command.Confirmation;
 
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
@@ -13,7 +15,7 @@ import seedu.unienable.model.enums.ActivityCategory;
  * confirmation preview ("Rename this topic? (y/n)") is a UI-loop concern handled before this
  * command is executed; execute() performs the rename immediately.
  */
-public class TopicRenameCommand extends Command {
+public class TopicRenameCommand extends Command implements Confirmable {
     private final TopicManager topicManager;
     private final ActivityCategory category;
     private final String oldName;
@@ -47,6 +49,12 @@ public class TopicRenameCommand extends Command {
     /** Returns the topic's proposed new name, for the UI loop's preview. */
     public String getNewName() {
         return newName;
+    }
+
+    @Override
+    public Confirmation getConfirmation() {
+        String diff = "Before: topic = " + oldName + "\nAfter : topic = " + newName;
+        return Confirmation.ask(diff + "\nSave changes? (y/n)");
     }
 
     @Override

@@ -604,6 +604,36 @@ connection find [from/FACILITY] [to/FACILITY]
 At least one filter is required; all supplied filters combine with AND. Since every stored
 connection is two-way, `from/` and `to/` each match either endpoint, not a specific direction.
 
+### 8.7 Check `facilities.txt` for Problems: `facility validate`
+
+```text
+facility validate
+```
+
+If you've edited `data/facilities.txt` by hand, this re-checks it for the same problems the
+application already looks for every time it starts — a blank or duplicate facility ID, a
+duplicate facility name, or an invalid feature type/status — and lists them, one per line, so you
+don't have to close and reopen the application (or scroll back to catch a startup warning) just to
+see whether your edit was accepted. It only reports; it never changes `facilities.txt` and never
+affects what's currently loaded, so running it is always safe. If nothing is wrong, it says so:
+
+```text
+facility validate
+____________________________________________________________
+facilities.txt: no issues found.
+____________________________________________________________
+```
+
+### 8.8 Check `connections.txt` for Problems: `connection validate`
+
+```text
+connection validate
+```
+
+Works the same way as `facility validate`, for `data/connections.txt` — including checking that
+every connection's `from`/`to` endpoint still names a facility that actually exists in
+`facilities.txt`. Read-only; changes nothing.
+
 ## 9. Built-In Guide: `guide`
 
 ```text
@@ -685,6 +715,10 @@ instead of silently loading bad data:
 - `facilities.txt` — unique facility IDs and unique facility names (facilities are looked up by
   name, so a duplicate name would otherwise make that lookup ambiguous).
 
+If you'd rather check a hand-edited `facilities.txt`/`connections.txt` without restarting the
+application, `facility validate`/`connection validate` (Sections 8.7–8.8) run the exact same
+checks on demand.
+
 ## 12. Error Handling
 
 ```text
@@ -723,7 +757,8 @@ output.
 
 **Can I edit `facilities.txt`/`connections.txt` manually?**
 Yes, while the application is closed. Changes are validated and loaded the next time you start
-the application.
+the application. If you want to check your edit is well-formed without restarting, run `facility
+validate`/`connection validate` (Sections 8.7–8.8) any time while the application is running.
 
 ## 14. Complete Command Summary
 
@@ -755,9 +790,11 @@ topic delete c/CATEGORY n/TOPIC
 facility list
 facility view FACILITY
 facility find type/FEATURE [status/YES|NO|UNKNOWN]
+facility validate
 connection list
 connection view ID
 connection find [from/FACILITY] [to/FACILITY] [type/TYPE] [status/YES|NO|UNKNOWN] [shelter/YES|NO|UNKNOWN]
+connection validate
 ```
 
 ## 15. Coming in a Future Release (v2.0 — not yet implemented)

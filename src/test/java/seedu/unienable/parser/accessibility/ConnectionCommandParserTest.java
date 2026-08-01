@@ -1,11 +1,15 @@
 package seedu.unienable.parser.accessibility;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.enums.AccessibilityStatus;
@@ -15,8 +19,12 @@ import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ConnectionManager;
+import seedu.unienable.storage.Storage;
 
 class ConnectionCommandParserTest {
+    @TempDir
+    Path tempDir;
+
     private final ConnectionCommandParser parser = new ConnectionCommandParser();
 
     private static Connection newConnection(int id, String from, String to) {
@@ -167,5 +175,24 @@ class ConnectionCommandParserTest {
         String feedback = result.getFeedback();
         assertTrue(feedback.contains("[2]"));
         assertTrue(!feedback.contains("[1]"));
+    }
+
+    @Test
+    public void parseValidate_takesNoArguments_returnsConnectionValidateCommand() throws Exception {
+        Files.write(tempDir.resolve("facilities.txt"), List.of("FACILITY|F01|AS1|Block 1",
+                "FACILITY|F02|AS2|Block 2"));
+        Files.write(tempDir.resolve("connections.txt"), List.of("CONNECTION|1|AS1|AS2|50|YES|PATH|YES"));
+        Storage storage = new Storage(tempDir);
+
+        CommandResult result = parser.parseValidate(storage, "").execute();
+
+        assertEquals("connections.txt: no issues found.", result.getFeedback());
+    }
+
+    @Test
+    public void parseValidate_trailingArguments_throwsInvalidCommandException() {
+        Storage storage = new Storage(tempDir);
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseValidate(storage, "ignored-text"));
     }
 }

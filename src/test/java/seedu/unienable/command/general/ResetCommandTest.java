@@ -10,6 +10,7 @@ import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.Confirmation;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.classes.EnergyRating;
@@ -78,5 +79,32 @@ class ResetCommandTest {
 
         assertEquals(1, command.getActivityCount());
         assertEquals(2, command.getTopicCount());
+    }
+
+    @Test
+    public void getConfirmation_nothingToReset_returnsProceedWithNoPrompt() {
+        ActivityManager activityManager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(activityManager);
+
+        Confirmation confirmation = new ResetCommand(activityManager, topicManager).getConfirmation();
+
+        assertTrue(confirmation.isProceed());
+    }
+
+    @Test
+    public void getConfirmation_hasDataToReset_asksWithCountsPreview() throws Exception {
+        ActivityManager activityManager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(activityManager);
+        activityManager.add(new FixedActivity(activityManager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        Confirmation confirmation = new ResetCommand(activityManager, topicManager).getConfirmation();
+
+        assertTrue(confirmation.isAsk());
+        assertTrue(confirmation.getMessage().contains("Activities to delete: 1"));
+        assertTrue(confirmation.getMessage().contains("Topics to delete   : 1"));
+        assertTrue(confirmation.getMessage().contains("Continue? (y/n)"));
     }
 }

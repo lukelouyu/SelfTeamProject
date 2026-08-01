@@ -344,6 +344,10 @@ public class GuideCommand extends Command {
                 + "  facility find type/LIFT\n"
                 + "  facility find type/LIFT status/NO\n"
                 + "\n"
+                + "If you have edited facilities.txt yourself and want to check it is still in a\n"
+                + "format UniEnable can read, run facility validate. It only reports problems -\n"
+                + "line by line, with no application restart needed - and never changes the file.\n"
+                + "\n"
                 + AccessibilityDisclaimer.TEXT);
         topics.put("connection", "Accessible connections\n"
                 + "View and search the local read-only connection graph between facilities.\n"
@@ -354,6 +358,11 @@ public class GuideCommand extends Command {
                 + "  connection list\n"
                 + "  connection view 1\n"
                 + "  connection find from/AS6\n"
+                + "\n"
+                + "If you have edited connections.txt yourself, run connection validate to check\n"
+                + "it is still in a format UniEnable can read - including that every connection's\n"
+                + "endpoints still match a known facility. It only reports problems and never\n"
+                + "changes the file.\n"
                 + "\n"
                 + AccessibilityDisclaimer.TEXT);
         topics.put("route", "Accessible routes\n"

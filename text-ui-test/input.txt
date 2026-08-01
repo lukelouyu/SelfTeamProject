@@ -260,7 +260,6 @@ mark 18
 next
 mark 17
 next
-add n/Far past overdue c/ACADEMIC date/2000-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1
 add n/Bad calendar date c/ACADEMIC date/2026-02-30 type/FIXED from/09:00 to/10:00 energy/1 sensory/1
 next
 

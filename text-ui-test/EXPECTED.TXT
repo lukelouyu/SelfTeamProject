@@ -1938,9 +1938,6 @@ Your next relevant activity is:
 Overdue incomplete activities: 0
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: date has passed. Please enter a date from 2026-08-02 onwards.
-____________________________________________________________
-____________________________________________________________
 [Error] Invalid input: date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.
 ____________________________________________________________
 ____________________________________________________________

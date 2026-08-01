@@ -1,4 +1,4 @@
-package seedu.unienable.command.activity;
+package seedu.unienable.command.activity.general;
 
 import java.util.Locale;
 

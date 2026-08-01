@@ -1,4 +1,4 @@
-package seedu.unienable.command.activity;
+package seedu.unienable.command.activity.crud;
 
 import seedu.unienable.command.CommandResult;
 

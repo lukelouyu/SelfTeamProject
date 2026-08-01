@@ -59,6 +59,30 @@ public class FieldParser {
     }
 
     /**
+     * Returns the trimmed text before the first occurrence of any of the given markers - the
+     * portion of a command's argument text that marker-based extraction never looks at, and so
+     * would otherwise be silently discarded instead of rejected. If text contains none of the
+     * given markers at all, the entire (trimmed) text counts as "before the first marker", since
+     * none of it is ever captured as a field value either.
+     *
+     * @param text the full argument text
+     * @param markers every marker the calling command recognises
+     * @return the trimmed leading text, or an empty string if text starts with a recognised
+     *     marker (or is itself blank)
+     */
+    public static String leadingUnrecognisedText(String text, String... markers) {
+        int firstMarkerIndex = -1;
+        for (String marker : markers) {
+            int index = indexOfMarker(text, marker, 0);
+            if (index != -1 && (firstMarkerIndex == -1 || index < firstMarkerIndex)) {
+                firstMarkerIndex = index;
+            }
+        }
+        String leading = firstMarkerIndex == -1 ? text : text.substring(0, firstMarkerIndex);
+        return leading.trim();
+    }
+
+    /**
      * Finds the first case-insensitive occurrence of marker at or after fromIndex.
      *
      * @param text the text to search

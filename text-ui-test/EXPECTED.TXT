@@ -1449,7 +1449,7 @@ ____________________________________________________________
 [Error] Not found: Activity [999] does not exist.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Missing input: at least one field must be supplied.
+[Error] Invalid input: Unknown option "bogus/value".
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: energy must be a whole number from 1 to 5.

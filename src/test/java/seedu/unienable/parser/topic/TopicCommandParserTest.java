@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
+import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
@@ -67,6 +68,26 @@ class TopicCommandParserTest {
     }
 
     @Test
+    public void parseAdd_unrecognisedLeadingToken_throwsInvalidCommandExceptionAndDoesNotCreateTopic()
+            throws Exception {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01).
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseAdd(manager, "ignored/yes c/ACADEMIC n/CS2113"));
+        assertFalse(manager.exists(ActivityCategory.ACADEMIC, "CS2113"));
+    }
+
+    @Test
+    public void parseList_unrecognisedLeadingToken_throwsInvalidCommandException() {
+        // Regression test for RC05: "topic list nonsense" previously ignored "nonsense" entirely
+        // and returned the unfiltered list.
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, "nonsense"));
+    }
+
+    @Test
     public void parseList_noFilter_listsEveryCategory() throws Exception {
         TopicManager manager = new TopicManager(new ActivityManager());
         manager.add(ActivityCategory.ACADEMIC, "CG3207");
@@ -91,6 +112,25 @@ class TopicCommandParserTest {
         TopicManager manager = new TopicManager(new ActivityManager());
 
         assertThrows(InvalidActivityException.class, () -> parser.parseList(manager, "c/BOGUS"));
+    }
+
+    @Test
+    public void parseRename_unrecognisedLeadingToken_throwsInvalidCommandException() throws Exception {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01).
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseRename(manager, "ignored/yes c/ACADEMIC old/CG3207 new/CS2113"));
+    }
+
+    @Test
+    public void parseDelete_unrecognisedLeadingToken_throwsInvalidCommandException() {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01).
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseDelete(manager, "ignored/yes c/ACADEMIC n/CG3207"));
     }
 
     @Test

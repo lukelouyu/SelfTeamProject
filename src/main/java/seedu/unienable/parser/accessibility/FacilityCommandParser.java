@@ -58,6 +58,7 @@ public class FacilityCommandParser {
      */
     public FacilityFindCommand parseFind(FacilityManager facilityManager, String args)
             throws MissingInputException, InvalidCommandException {
+        rejectUnrecognisedLeadingText(args, "type/", "status/");
         boolean hasStatus = FieldParser.indexOfMarker(args, "status/", 0) != -1;
         String typeEndMarker = hasStatus ? "status/" : null;
         String typeText = FieldParser.extractField(args, "type/", typeEndMarker);
@@ -85,6 +86,22 @@ public class FacilityCommandParser {
             return AccessibilityStatus.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("status must be YES, NO, or UNKNOWN.");
+        }
+    }
+
+    /**
+     * Rejects text that appears before the first marker this command recognises (or, if none of
+     * the given markers appear at all, any non-blank text at all) - see
+     * {@link FieldParser#leadingUnrecognisedText}.
+     *
+     * @param args the full argument text
+     * @param markers every marker this command recognises
+     * @throws InvalidCommandException if unrecognised leading text is present
+     */
+    private void rejectUnrecognisedLeadingText(String args, String... markers) throws InvalidCommandException {
+        String leading = FieldParser.leadingUnrecognisedText(args, markers);
+        if (!leading.isEmpty()) {
+            throw new InvalidCommandException("Unknown option \"" + leading + "\".");
         }
     }
 }

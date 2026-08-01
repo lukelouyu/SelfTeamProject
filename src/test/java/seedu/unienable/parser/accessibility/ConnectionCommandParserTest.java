@@ -102,6 +102,15 @@ class ConnectionCommandParserTest {
     }
 
     @Test
+    public void parseFind_unrecognisedLeadingToken_throwsInvalidCommandException() {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01).
+        ConnectionManager manager = new ConnectionManager(List.of());
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "ignored/yes from/AS6"));
+    }
+
+    @Test
     public void parseFind_whitespaceOnlyFromAlone_throwsMissingInputException() {
         // Regression test: a blank from/ does not count as a supplied filter, so
         // "connection find from/   " with nothing else must still be rejected rather than

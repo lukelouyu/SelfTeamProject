@@ -588,6 +588,31 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_unrecognisedLeadingTokens_areRejectedAcrossCommandFamiliesWithoutMutating() {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01): every one of these previously
+        // executed successfully (and, for the mutating ones, actually changed data) despite
+        // containing unrecognised text.
+        String output = runWithInput(
+                "topic list nonsense\n"
+                        + "topic add ignored/yes c/ACADEMIC n/CS2113\n"
+                        + "add ignored/yes n/Test activity c/ACADEMIC date/2026-08-15 type/FIXED "
+                        + "from/09:00 to/10:00 energy/2 sensory/2\n"
+                        + "find ignored/yes c/ACADEMIC\n"
+                        + "facility find ignored/yes type/LIFT\n"
+                        + "connection find ignored/yes from/AS6\n"
+                        + "topic list\n"
+                        + "list\n"
+                        + "bye\n");
+
+        long unknownOptionErrors = output.lines().filter(line -> line.contains("Unknown option \"")).count();
+        assertEquals(6, unknownOptionErrors);
+        assertTrue(!output.contains("Test activity"));
+        assertTrue(!output.contains("Topic created"));
+        assertTrue(output.contains("No topics"));
+        assertTrue(output.contains("No activities found."));
+    }
+
+    @Test
     public void run_freshDataDirectory_loadsBundledFacilityDefaults() {
         String output = runWithInput("facility list\nbye\n");
 

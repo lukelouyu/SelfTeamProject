@@ -18,5 +18,11 @@ text-ui-test/EXPECTED-UNIX.TXT
 text-ui-test/data/
 
 # Application-managed data created when running the JAR manually
-/data/
+/data/*
+# ...except the external, human-editable academic calendar reference file, which must be a
+# tracked source file living outside the JAR (see recur's external-calendar requirement) so
+# releaseZip can package it and future academic years can be added without recompiling. Git
+# cannot re-include a file whose parent directory is itself excluded, hence "/data/*" above
+# rather than "/data/".
+!/data/academic-calendar.txt
 /exports/

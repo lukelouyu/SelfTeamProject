@@ -48,6 +48,30 @@ public class ActivityManager {
     }
 
     /**
+     * Restores an exact in-memory snapshot after a transactional command (recur, reset) could
+     * not be persisted. Unlike {@link #loadAll(List)}, this preserves a next-ID counter that may
+     * be higher than the largest current ID, since earlier activities may have been deleted.
+     *
+     * @param snapshot activities captured immediately before the command ran
+     * @param snapshotNextId the exact next-ID counter captured with the activities
+     * @param snapshotOrder the exact default order captured with the activities
+     * @throws IllegalArgumentException if the supplied next ID would collide with a snapshot ID
+     */
+    public void restoreState(List<Activity> snapshot, int snapshotNextId, ActivityOrder snapshotOrder) {
+        int minimumNextId = 1;
+        for (Activity activity : snapshot) {
+            minimumNextId = Math.max(minimumNextId, activity.getId() + 1);
+        }
+        if (snapshotNextId < minimumNextId) {
+            throw new IllegalArgumentException("snapshot next ID would collide with an activity");
+        }
+        activities.clear();
+        activities.addAll(snapshot);
+        nextId = snapshotNextId;
+        defaultOrder = snapshotOrder;
+    }
+
+    /**
      * Adds the given activity and consumes its ID from the assignment counter.
      *
      * @param activity the activity to add, constructed using getNextId()'s current value
@@ -58,6 +82,35 @@ public class ActivityManager {
         validateNoDuplicateOrOverlap(activity, -1);
         activities.add(activity);
         nextId++;
+    }
+
+    /**
+     * Adds a preconstructed batch of activities (e.g. a recurrence plan's occurrences) as one
+     * in-memory operation. Every candidate - including its stable ID and any conflict with
+     * existing activities or with an earlier candidate in the same batch - is validated before
+     * the stored list or next-ID counter changes, so a rejection partway through never leaves a
+     * partial series added.
+     *
+     * @param candidates activities whose IDs must start at {@link #getNextId()} and increase by
+     *     exactly one each
+     * @throws DuplicateActivityException if any candidate exactly duplicates, or (for a
+     *     FixedActivity) overlaps, existing or same-batch data
+     * @throws IllegalArgumentException if a candidate's ID is not the expected consecutive value
+     */
+    public void addAllAtomically(List<? extends Activity> candidates) throws DuplicateActivityException {
+        List<Activity> validated = new ArrayList<>(activities);
+        for (int index = 0; index < candidates.size(); index++) {
+            Activity candidate = candidates.get(index);
+            int expectedId = nextId + index;
+            if (candidate.getId() != expectedId) {
+                throw new IllegalArgumentException("expected activity ID " + expectedId
+                        + " but received " + candidate.getId());
+            }
+            validateNoDuplicateOrOverlap(candidate, -1, validated);
+            validated.add(candidate);
+        }
+        activities.addAll(candidates);
+        nextId += candidates.size();
     }
 
     /**
@@ -100,11 +153,23 @@ public class ActivityManager {
     }
 
     private void validateNoDuplicateOrOverlap(Activity candidate, int excludeId) throws DuplicateActivityException {
-        if (isDuplicate(candidate, excludeId)) {
+        validateNoDuplicateOrOverlap(candidate, excludeId, activities);
+    }
+
+    /**
+     * Same check as {@link #validateNoDuplicateOrOverlap(Activity, int)}, but against an
+     * explicitly supplied list instead of the manager's own stored activities. Used by
+     * {@link #addAllAtomically} to validate each batch candidate against both the existing
+     * activities and every candidate already accepted earlier in the same batch, without
+     * mutating the manager's real list until the whole batch has passed.
+     */
+    private void validateNoDuplicateOrOverlap(Activity candidate, int excludeId, List<Activity> activitiesToCheck)
+            throws DuplicateActivityException {
+        if (isDuplicate(candidate, excludeId, activitiesToCheck)) {
             throw new DuplicateActivityException(DUPLICATE_MESSAGE);
         }
         if (candidate instanceof FixedActivity) {
-            FixedActivity overlapping = findOverlap((FixedActivity) candidate, excludeId);
+            FixedActivity overlapping = findOverlap((FixedActivity) candidate, excludeId, activitiesToCheck);
             if (overlapping != null) {
                 throw new DuplicateActivityException(String.format(OVERLAP_MESSAGE, overlapping.getId(),
                         overlapping.getDescription(), overlapping.getStartTime(), overlapping.getEndTime()));
@@ -121,8 +186,8 @@ public class ActivityManager {
         return -1;
     }
 
-    private boolean isDuplicate(Activity candidate, int excludeId) {
-        for (Activity existing : activities) {
+    private boolean isDuplicate(Activity candidate, int excludeId, List<Activity> activitiesToCheck) {
+        for (Activity existing : activitiesToCheck) {
             if (existing.getId() == excludeId) {
                 continue;
             }
@@ -152,8 +217,8 @@ public class ActivityManager {
         return false;
     }
 
-    private FixedActivity findOverlap(FixedActivity candidate, int excludeId) {
-        for (Activity existing : activities) {
+    private FixedActivity findOverlap(FixedActivity candidate, int excludeId, List<Activity> activitiesToCheck) {
+        for (Activity existing : activitiesToCheck) {
             if (existing.getId() == excludeId || !(existing instanceof FixedActivity)) {
                 continue;
             }

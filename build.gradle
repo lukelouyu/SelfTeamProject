@@ -41,6 +41,22 @@ checkstyle {
     toolVersion = '10.2'
 }
 
-run{
+// The editable academic calendar must remain outside the JAR (see recur's external-calendar
+// requirement). CS2113 permits packaging the release as a single portable ZIP when an
+// application needs an external editable file, so this task produces that complete distribution
+// while keeping the calendar replaceable for a future academic year without recompiling.
+tasks.register('releaseZip', Zip) {
+    dependsOn shadowJar
+    archiveFileName.set("unienable.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    from(shadowJar.archiveFile) {
+        rename { "unienable.jar" }
+    }
+    from("data/academic-calendar.txt") {
+        into "data"
+    }
+}
+
+run {
     standardInput = System.in
 }

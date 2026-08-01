@@ -25,6 +25,7 @@ public class Storage {
     private final Path facilitiesFile;
     private final Path connectionsFile;
     private final Path settingsFile;
+    private final Path academicCalendarFile;
 
     private final ActivityStorage activityStorage = new ActivityStorage();
     private final TopicStorage topicStorage = new TopicStorage();
@@ -36,7 +37,7 @@ public class Storage {
      * Creates a Storage coordinator rooted at the given data directory.
      *
      * @param dataDirectory directory containing activities.txt, topics.txt, facilities.txt,
-     *     connections.txt, and settings.txt
+     *     connections.txt, settings.txt, and the externally supplied academic-calendar.txt
      */
     public Storage(Path dataDirectory) {
         this.activitiesFile = dataDirectory.resolve("activities.txt");
@@ -44,6 +45,17 @@ public class Storage {
         this.facilitiesFile = dataDirectory.resolve("facilities.txt");
         this.connectionsFile = dataDirectory.resolve("connections.txt");
         this.settingsFile = dataDirectory.resolve("settings.txt");
+        this.academicCalendarFile = dataDirectory.resolve("academic-calendar.txt");
+    }
+
+    /**
+     * Returns the path to the external, human-editable academic-calendar.txt used only by
+     * {@code recur}. This class never reads, creates, repairs, or writes this file itself -
+     * {@code AcademicCalendarStorage} owns the actual strict load, lazily, the first time
+     * {@code recur} is used.
+     */
+    public Path getAcademicCalendarFile() {
+        return academicCalendarFile;
     }
 
     /**

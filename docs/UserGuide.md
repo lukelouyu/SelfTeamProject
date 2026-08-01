@@ -612,8 +612,8 @@ guide TOPIC
 guide NUMBER
 ```
 
-`guide` alone shows a 10-item numbered menu. `guide TOPIC` shows one topic's text directly.
-Implemented topics: `getting-started`, `activities`, `browse`, `accessibility`, `add`, `view`,
+`guide` alone shows an 11-item numbered menu. `guide TOPIC` shows one topic's text directly.
+Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`,
 `list`, `edit`, `delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`,
 `topic`, `facility`, `connection`, `storage`. Topics for v2.0-only features (`timetable`,
 `recommend`, `route`, `export`) are still listed but end with `(Coming soon in a future
@@ -625,12 +625,12 @@ Each menu item can also be selected by its number, either as `guide NUMBER` or b
 bare number as its own command right after the menu is shown (e.g. `1` selects "Getting
 started"). Menu items that span more than one command topic use a dedicated overview topic
 instead of picking just one: item `2` ("Add, edit and delete activities") is the `activities`
-topic, item `3` ("List, find and view activities") is the `browse` topic, and item `7`
-("Accessible facilities and routes") is the `accessibility` topic; each overview points onward to
-the individual command's own topic (`add`, `edit`, `delete`, `list`, `find`, `view`, `facility`,
-`connection`) for full detail. `facility` and `connection` are separate, independently reachable
-topics - each describes only its own command family. Item `10` ("Return") is not a topic; it
-just acknowledges the selection and returns to the command prompt.
+topic, and item `3` ("List, find and view activities") is the `browse` topic; each overview
+points onward to the individual command's own topic (`add`, `edit`, `delete`, `list`, `find`,
+`view`) for full detail. `facility` (item `7`) and `connection` (item `8`) are separate,
+independently and uniquely numbered topics - each describes only its own command family, with
+no combined item grouping them together. Item `11` ("Return") is not a topic; it just
+acknowledges the selection and returns to the command prompt.
 
 ## 10. Exit: `bye`
 

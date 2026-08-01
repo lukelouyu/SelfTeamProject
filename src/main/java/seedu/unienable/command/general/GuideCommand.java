@@ -13,7 +13,7 @@ import seedu.unienable.command.accessibility.AccessibilityDisclaimer;
  *
  * <p>The main menu's items can be selected either by their existing text keyword (e.g. "add") or
  * by the number shown next to them in the menu (e.g. "1"), both as the argument to "guide" and as
- * a bare top-level command entered right after the menu is displayed. Menu item 10 ("Return") is
+ * a bare top-level command entered right after the menu is displayed. Menu item 11 ("Return") is
  * not a topic; it's a no-op that acknowledges the selection instead of showing topic text.
  */
 public class GuideCommand extends Command {
@@ -26,11 +26,14 @@ public class GuideCommand extends Command {
      * list/find/view) map to a dedicated overview topic ("activities", "browse") rather than to a
      * single command's own topic, so the numbered entry and its own keyword always agree with
      * each other; each overview topic points onward to the individual command topics for detail.
-     * Item 10 ("Return") is handled separately, not through this list.
+     * Facility and connection are independent command families with independent guide topics, so
+     * unlike "activities"/"browse" they each get their own direct number (7 and 8) rather than
+     * being folded into one combined overview. Item 11 ("Return") is handled separately, not
+     * through this list.
      */
     private static final String[] MENU_NUMBER_TOPICS = {
         "getting-started", "activities", "browse", "topic", "dashboard",
-        "recommend", "accessibility", "export", "storage",
+        "recommend", "facility", "connection", "export", "storage",
     };
 
     private static final String MAIN_MENU = "Application Guide\n\n"
@@ -40,11 +43,12 @@ public class GuideCommand extends Command {
             + "4. Categories and topics\n"
             + "5. Completion and dashboard\n"
             + "6. Recommended timetable\n"
-            + "7. Accessible facilities and routes\n"
-            + "8. CSV export\n"
-            + "9. Data files and storage\n"
-            + "10. Return\n\n"
-            + "Enter a number from 1 to 10.";
+            + "7. Accessible facilities\n"
+            + "8. Accessible connections\n"
+            + "9. CSV export\n"
+            + "10. Data files and storage\n"
+            + "11. Return\n\n"
+            + "Enter a number from 1 to 11.";
 
     private static final Map<String, String> TOPICS = buildTopics();
 
@@ -64,7 +68,7 @@ public class GuideCommand extends Command {
         if (topic == null) {
             return new CommandResult(MAIN_MENU);
         }
-        if (topic.equals("10")) {
+        if (topic.equals("11")) {
             return new CommandResult(RETURN_MESSAGE);
         }
         String text = TOPICS.get(resolveMenuNumber(topic).toLowerCase(Locale.ROOT));
@@ -324,15 +328,6 @@ public class GuideCommand extends Command {
                 + "Use recommend PERIOD [PREFERENCE_OVERRIDES].\n"
                 + "Review the plan before choosing whether to adopt it."
                 + COMING_SOON_NOTE);
-        topics.put("accessibility", "Accessible facilities and routes\n"
-                + "facility   - view and search the facility reference. See: guide facility\n"
-                + "connection - view and search the connection graph. See: guide connection\n"
-                + "\n"
-                + "Quick examples:\n"
-                + "  facility view AS1\n"
-                + "  connection find from/AS6\n"
-                + "\n"
-                + AccessibilityDisclaimer.TEXT);
         topics.put("facility", "Accessible facilities\n"
                 + "View and search the local read-only accessibility facility reference.\n"
                 + "Related commands: connection (see guide connection for the route graph\n"

@@ -1197,6 +1197,183 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseList_nextWeekFromSaturday_matchesFollowingMondayThroughSunday() throws Exception {
+        // FEATURE-02 (v1.0 manual release test, 2026-08-01): with now fixed at Saturday
+        // 2026-08-01, the current week is 2026-07-27 to 2026-08-02, so "list next week" must
+        // resolve to 2026-08-03 (Mon) through 2026-08-09 (Sun) - the report's own worked example.
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 10, 0);
+
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Next Monday activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 3), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Next Sunday activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 9), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "This Sunday activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 2), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Week after next activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 10), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "next week").execute().getFeedback();
+
+        assertTrue(feedback.contains("Next Monday activity"));
+        assertTrue(feedback.contains("Next Sunday activity"));
+        assertTrue(!feedback.contains("This Sunday activity"));
+        assertTrue(!feedback.contains("Week after next activity"));
+    }
+
+    @Test
+    public void parseList_nextWeekYearBoundary_computesCorrectWeek() throws Exception {
+        // Regression case from the report: with now = 2026-12-31, next week is 2027-01-04
+        // through 2027-01-10.
+        LocalDateTime now = LocalDateTime.of(2026, 12, 31, 10, 0);
+
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Next year Monday", ActivityCategory.ACADEMIC,
+                LocalDate.of(2027, 1, 4), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Next year Sunday", ActivityCategory.ACADEMIC,
+                LocalDate.of(2027, 1, 10), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Outside next week", ActivityCategory.ACADEMIC,
+                LocalDate.of(2027, 1, 11), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "next week").execute().getFeedback();
+
+        assertTrue(feedback.contains("Next year Monday"));
+        assertTrue(feedback.contains("Next year Sunday"));
+        assertTrue(!feedback.contains("Outside next week"));
+    }
+
+    @Test
+    public void parseList_nextWeekCombinedWithFilters_appliesAllFilters() throws Exception {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 10, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Matching", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 5), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Wrong category", ActivityCategory.CCA,
+                LocalDate.of(2026, 8, 5), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "next week c/ACADEMIC order/time").execute()
+                .getFeedback();
+
+        assertTrue(feedback.contains("Matching"));
+        assertTrue(!feedback.contains("Wrong category"));
+    }
+
+    @Test
+    public void parseList_nextWeekCombinedWithDateMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "next week date/2026-08-15"));
+    }
+
+    @Test
+    public void parseList_nextMonth_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "next month"));
+    }
+
+    @Test
+    public void parseList_overdue_matchesOnlyIncompletePastActivities() throws Exception {
+        // FEATURE-01 (v1.0 manual release test, 2026-08-01): an incomplete activity whose
+        // scheduled time has passed must appear; a completed one must not; an upcoming one must
+        // not either.
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 12, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue incomplete", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue but completed", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.mark(2);
+        manager.add(new FixedActivity(manager.getNextId(), "Still upcoming", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(13, 0), LocalTime.of(14, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "overdue").execute().getFeedback();
+
+        assertTrue(feedback.contains("Overdue incomplete"));
+        assertTrue(!feedback.contains("Overdue but completed"));
+        assertTrue(!feedback.contains("Still upcoming"));
+    }
+
+    @Test
+    public void parseList_overdue_omittedFromNormalListIsStillShownByPlainList() throws Exception {
+        // Confirms the additive scope decision: "list overdue" is a new, separate selector, and
+        // the plain "list" continues to show every activity exactly as before - nothing is
+        // hidden from it.
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 12, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue incomplete", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "").execute().getFeedback();
+
+        assertTrue(feedback.contains("Overdue incomplete"));
+    }
+
+    @Test
+    public void parseList_overdueNoOverdueActivities_reportsNoActivitiesFound() throws Exception {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 12, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Upcoming", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(13, 0), LocalTime.of(14, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertEquals("No activities found.", parser.parseList(manager, now, "overdue").execute().getFeedback());
+    }
+
+    @Test
+    public void parseList_overdueCombinedWithCategoryFilter_appliesBothConditions() throws Exception {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 12, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue academic", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue cca", ActivityCategory.CCA,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "overdue c/ACADEMIC").execute().getFeedback();
+
+        assertTrue(feedback.contains("Overdue academic"));
+        assertTrue(!feedback.contains("Overdue cca"));
+    }
+
+    @Test
+    public void parseList_overdueCombinedWithStatusMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "overdue status/completed"));
+    }
+
+    @Test
+    public void parseList_overdueThenToday_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "overdue today"));
+    }
+
+    @Test
+    public void parseList_overdueWithTrailingGarbage_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "overdue extra"));
+    }
+
+    @Test
     public void parseList_todayCombinedWithDateMarker_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
 

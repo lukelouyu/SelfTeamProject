@@ -175,7 +175,7 @@ window. As with a fixed activity, a supplied `topic/` must already exist under t
 ### 6.3 List Activities: `list`
 
 ```text
-list [today|tomorrow|this week]
+list [today|tomorrow|this week|next week|overdue]
      [view/concise|detail]
      [status/all|completed|incomplete]
      [c/CATEGORY] [topic/TOPIC] [date/DATE]
@@ -200,22 +200,33 @@ list today
 list tomorrow
 list this week status/incomplete c/ACADEMIC order/time
 list tomorrow view/detail
+list next week
+list overdue
 ```
 
 - `today` — activities on the current local date.
 - `tomorrow` — activities on the current local date plus one day.
 - `this week` — activities from Monday through Sunday of the week containing today.
+- `next week` — activities from Monday through Sunday of the week immediately after `this week`.
+- `overdue` — incomplete activities whose scheduled time has already fully passed. This is a
+  separate view, not a replacement: plain `list` (and every other selector above) keeps showing
+  every activity regardless of overdue status. A completed activity, and any activity that hasn't
+  started yet, never appears here. `overdue` cannot be combined with `status/`, since it already
+  means "incomplete" by definition; it can still be combined with `c/`, `topic/`, `date/`,
+  `view/`, and `order/`.
 
-A relative-date phrase can be freely combined with the other filters above, but not with
-`date/YYYY-MM-DD` (which still works on its own) or with another relative-date phrase; either
-combination, or unrecognised trailing text after a relative-date phrase, is rejected with a clear
-error rather than silently falling back to plain `list`:
+A relative-date phrase can be freely combined with the other filters above (except `overdue` with
+`status/`, see above), but not with `date/YYYY-MM-DD` (which still works on its own) or with
+another relative-date phrase; either combination, or unrecognised trailing text after a
+relative-date phrase, is rejected with a clear error rather than silently falling back to plain
+`list`:
 
 ```text
 list today date/2026-08-15
 list today tomorrow
 list this month
 list today extra
+list overdue status/completed
 ```
 
 ### 6.4 View One Activity: `view`
@@ -738,7 +749,7 @@ bye
 
 add n/DESCRIPTION c/CATEGORY date/DATE type/FIXED from/START to/END energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]
 add n/DESCRIPTION c/CATEGORY date/DATE type/FLEXIBLE earliest/TIME latest/TIME dur/MINUTES energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]
-list [today|tomorrow|this week] [view/concise|detail] [status/all|completed|incomplete] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
+list [today|tomorrow|this week|next week|overdue] [view/concise|detail] [status/all|completed|incomplete] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
 view ID
 find [k/KEYWORD ...] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
 order view

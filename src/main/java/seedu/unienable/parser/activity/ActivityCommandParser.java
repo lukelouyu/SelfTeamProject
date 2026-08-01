@@ -214,17 +214,20 @@ public class ActivityCommandParser {
 
     /**
      * Parses a list command's argument text into a ListCommand. Every marker field is optional
-     * and may appear in any order; an optional relative-date phrase ("today", "tomorrow", or
-     * "this week") may additionally appear at the very start of the text, before any markers.
+     * and may appear in any order; an optional relative-date phrase ("today", "tomorrow", "this
+     * week", "next week", or "overdue") may additionally appear at the very start of the text,
+     * before any markers.
      *
      * @param activityManager the manager the resulting command will read from
-     * @param now the current date and time, used to resolve "today"/"tomorrow"/"this week"
+     * @param now the current date and time, used to resolve "today"/"tomorrow"/"this week"/
+     *     "next week"/"overdue"
      * @param args the text after the "list" command word
      * @return the parsed ListCommand
      * @throws InvalidActivityException if the category is invalid
      * @throws InvalidCommandException if status or order is invalid, a relative-date phrase is
      *     unrecognised, a relative-date phrase is combined with date/ or another relative-date
-     *     phrase, or unrecognised text follows a relative-date phrase
+     *     phrase, status/ is combined with overdue, or unrecognised text follows a relative-date
+     *     phrase
      * @throws InvalidDateTimeException if the date is invalid
      */
     public ListCommand parseList(ActivityManager activityManager, LocalDateTime now, String args)
@@ -233,25 +236,30 @@ public class ActivityCommandParser {
         Map<String, String> fields = extractPresentFields(parsed.remainder, LIST_MARKERS);
         if (parsed.hasRelativeDate() && fields.containsKey("date/")) {
             throw new InvalidCommandException(
-                    "date/ cannot be combined with today, tomorrow, or this week.");
+                    "date/ cannot be combined with today, tomorrow, this week, or next week.");
+        }
+        if (parsed.overdue && fields.containsKey("status/")) {
+            throw new InvalidCommandException("status/ cannot be combined with overdue - overdue already "
+                    + "means incomplete.");
         }
 
         boolean detail = parseViewMode(fields.get("view/"));
-        CompletionStatus status = parseStatus(fields.get("status/"));
+        CompletionStatus status = parsed.overdue ? null : parseStatus(fields.get("status/"));
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
         LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : parsed.date;
         ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
 
         ActivityFilter filter = new ActivityFilter(status, category, topic, date, parsed.dateFrom, parsed.dateTo);
-        return new ListCommand(activityManager, filter, order, detail);
+        LocalDateTime overdueAsOf = parsed.overdue ? now : null;
+        return new ListCommand(activityManager, filter, order, detail, overdueAsOf);
     }
 
     /**
-     * Consumes an optional leading relative-date phrase ("today", "tomorrow", or "this week")
-     * from a list command's argument text, resolving it against now. Text that already starts
-     * with a recognised list marker is left untouched (no relative-date phrase is possible
-     * there), preserving every existing marker-only usage exactly as before.
+     * Consumes an optional leading relative-date phrase ("today", "tomorrow", "this week", "next
+     * week", or "overdue") from a list command's argument text, resolving it against now. Text
+     * that already starts with a recognised list marker is left untouched (no relative-date
+     * phrase is possible there), preserving every existing marker-only usage exactly as before.
      *
      * @param now the current date and time
      * @param args the full text after the "list" command word
@@ -264,16 +272,19 @@ public class ActivityCommandParser {
             throws InvalidCommandException {
         String trimmed = args.trim();
         if (trimmed.isEmpty() || startsWithKnownMarker(trimmed)) {
-            return new RelativeDateAndRemainder(null, null, null, trimmed);
+            return new RelativeDateAndRemainder(null, null, null, false, trimmed);
         }
 
         String[] words = trimmed.split("\\s+", 3);
         LocalDate today = now.toLocalDate();
         RelativeDateAndRemainder result;
         if ("today".equalsIgnoreCase(words[0])) {
-            result = new RelativeDateAndRemainder(today, null, null, remainderAfter(trimmed, words, 1));
+            result = new RelativeDateAndRemainder(today, null, null, false, remainderAfter(trimmed, words, 1));
         } else if ("tomorrow".equalsIgnoreCase(words[0])) {
-            result = new RelativeDateAndRemainder(today.plusDays(1), null, null, remainderAfter(trimmed, words, 1));
+            result = new RelativeDateAndRemainder(today.plusDays(1), null, null, false,
+                    remainderAfter(trimmed, words, 1));
+        } else if ("overdue".equalsIgnoreCase(words[0])) {
+            result = new RelativeDateAndRemainder(null, null, null, true, remainderAfter(trimmed, words, 1));
         } else if ("this".equalsIgnoreCase(words[0])) {
             if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
                 throw new InvalidCommandException(
@@ -282,7 +293,17 @@ public class ActivityCommandParser {
             }
             LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
             LocalDate sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-            result = new RelativeDateAndRemainder(null, monday, sunday, remainderAfter(trimmed, words, 2));
+            result = new RelativeDateAndRemainder(null, monday, sunday, false, remainderAfter(trimmed, words, 2));
+        } else if ("next".equalsIgnoreCase(words[0])) {
+            if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
+                throw new InvalidCommandException(
+                        "Unknown list option \"next " + (words.length > 1 ? words[1] : "")
+                                + "\"; only \"next week\" is supported.");
+            }
+            LocalDate nextMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusDays(7);
+            LocalDate nextSunday = nextMonday.plusDays(6);
+            result = new RelativeDateAndRemainder(null, nextMonday, nextSunday, false,
+                    remainderAfter(trimmed, words, 2));
         } else {
             throw new InvalidCommandException("Unknown list option \"" + words[0] + "\".");
         }
@@ -311,17 +332,24 @@ public class ActivityCommandParser {
         return trimmed.substring(consumed).trim();
     }
 
-    /** Carries a resolved relative date (exact or range) plus the marker text left to parse. */
+    /**
+     * Carries a resolved relative date (exact or range), or the "overdue" flag, plus the marker
+     * text left to parse. date/dateFrom/dateTo and overdue are mutually exclusive - "overdue"
+     * doesn't resolve to any date, since it's a completion+time condition, not a date filter.
+     */
     private static final class RelativeDateAndRemainder {
         private final LocalDate date;
         private final LocalDate dateFrom;
         private final LocalDate dateTo;
+        private final boolean overdue;
         private final String remainder;
 
-        private RelativeDateAndRemainder(LocalDate date, LocalDate dateFrom, LocalDate dateTo, String remainder) {
+        private RelativeDateAndRemainder(LocalDate date, LocalDate dateFrom, LocalDate dateTo, boolean overdue,
+                String remainder) {
             this.date = date;
             this.dateFrom = dateFrom;
             this.dateTo = dateTo;
+            this.overdue = overdue;
             this.remainder = remainder;
         }
 

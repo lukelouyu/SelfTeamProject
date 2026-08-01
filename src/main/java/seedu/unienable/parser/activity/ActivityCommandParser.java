@@ -75,11 +75,13 @@ public class ActivityCommandParser {
     public AddCommand parseAdd(ActivityManager activityManager, TopicManager topicManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
+        rejectUnrecognisedLeadingText(args, EDIT_MARKERS);
         String description = requireField(args, "n/", "c/", "description");
         validateNoDelimiter(description, "description");
         ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category"));
         LocalDate date = DateTimeParser.parseDate(requireField(args, "date/", "type/", "date"));
-        String type = firstToken(requireField(args, "type/", null, "type"));
+        String typeEndMarker = firstPresentMarker(args, "type/", "from/", "earliest/");
+        String type = requireField(args, "type/", typeEndMarker, "type");
 
         int id = activityManager.getNextId();
         if ("FIXED".equalsIgnoreCase(type)) {
@@ -376,6 +378,7 @@ public class ActivityCommandParser {
     public FindCommand parseFind(ActivityManager activityManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidCommandException,
             InvalidDateTimeException {
+        rejectUnrecognisedLeadingText(args, FIND_MARKERS);
         Map<String, String> fields = extractPresentFields(args, FIND_MARKERS);
         if (!hasKeywordOrFilter(fields)) {
             throw new MissingInputException("at least one keyword or filter is required.");
@@ -581,8 +584,22 @@ public class ActivityCommandParser {
         }
     }
 
-    private String firstToken(String text) {
-        return text.trim().split("\\s+", 2)[0];
+    /**
+     * Rejects text that appears before the first marker this command recognises (or, if none of
+     * the given markers appear at all, any non-blank text at all). Without this check, such text
+     * is invisible to marker-based extraction and would be silently discarded rather than
+     * reported as a specific, correctable mistake - e.g. "add ignored/yes n/Lecture ..." would
+     * otherwise mutate data despite the unrecognised "ignored/" text.
+     *
+     * @param args the full argument text
+     * @param markers every marker this command recognises
+     * @throws InvalidCommandException if unrecognised leading text is present
+     */
+    private void rejectUnrecognisedLeadingText(String args, String... markers) throws InvalidCommandException {
+        String leading = FieldParser.leadingUnrecognisedText(args, markers);
+        if (!leading.isEmpty()) {
+            throw new InvalidCommandException("Unknown option \"" + leading + "\".");
+        }
     }
 
     private String firstPresentMarker(String text, String afterMarker, String... candidates) {
@@ -661,6 +678,7 @@ public class ActivityCommandParser {
         int id = parseEditId(parts[0]);
         String fieldsText = parts.length > 1 ? parts[1] : "";
 
+        rejectUnrecognisedLeadingText(fieldsText, EDIT_MARKERS);
         Map<String, String> fields = extractPresentFields(fieldsText, EDIT_MARKERS);
         if (fields.isEmpty()) {
             throw new MissingInputException("at least one field must be supplied.");

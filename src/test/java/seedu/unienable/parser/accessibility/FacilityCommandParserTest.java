@@ -93,4 +93,13 @@ class FacilityCommandParserTest {
         assertThrows(InvalidCommandException.class,
                 () -> parser.parseFind(manager, "type/LIFT status/BOGUS"));
     }
+
+    @Test
+    public void parseFind_unrecognisedLeadingToken_throwsInvalidCommandException() {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01).
+        FacilityManager manager = new FacilityManager(List.of());
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "ignored/yes type/LIFT"));
+    }
 }

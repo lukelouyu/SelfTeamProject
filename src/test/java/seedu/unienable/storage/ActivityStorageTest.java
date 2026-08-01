@@ -332,4 +332,27 @@ class ActivityStorageTest {
         assertEquals(1, result.getRecords().size());
         assertEquals(0, result.getWarnings().size());
     }
+
+    @Test
+    public void load_fixedLineWithExtraColumn_recordsWarningInsteadOfSilentlyDiscardingIt() throws Exception {
+        // Regression test for RC04 (v1.0 RC retest, 2026-08-01): a 13th FIXED column was
+        // previously parsed successfully and silently discarded.
+        Path file = writeFile(
+                "FIXED|1|Lecture|ACADEMIC|2026-08-15|09:00|10:00|2|2|INCOMPLETE|Topic|Visible note|extra column");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+    }
+
+    @Test
+    public void load_flexibleLineWithExtraColumn_recordsWarning() throws Exception {
+        Path file = writeFile("FLEXIBLE|1|Task|ACADEMIC|2026-08-15|09:00|18:00|60|2|2|INCOMPLETE|Topic|Note|extra");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+    }
 }

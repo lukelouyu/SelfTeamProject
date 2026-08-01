@@ -82,4 +82,62 @@ class TopicStorageTest {
 
         assertThrows(StorageException.class, () -> new TopicStorage().load(missing));
     }
+
+    @Test
+    public void load_blankName_recordsWarning() throws Exception {
+        // Regression test for RC02 (v1.0 RC retest, 2026-08-01): "TOPIC|ACADEMIC|" previously
+        // loaded a topic with an empty-string name, a state topic add() would never let a user
+        // create.
+        Path file = writeFile("TOPIC|ACADEMIC|");
+
+        LoadResult<TopicStorage.TopicRecord> result = new TopicStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("blank"));
+    }
+
+    @Test
+    public void load_extraTrailingColumn_recordsWarningInsteadOfSilentlyDiscardingIt() throws Exception {
+        // Regression test for RC04 (v1.0 RC retest, 2026-08-01): a fourth column was previously
+        // parsed successfully and just discarded, silently truncating whatever a user or another
+        // tool had put there.
+        Path file = writeFile("TOPIC|OTHERS|Real name|silently ignored column");
+
+        LoadResult<TopicStorage.TopicRecord> result = new TopicStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+    }
+
+    @Test
+    public void load_caseInsensitiveDuplicateUnderSameCategory_secondLineIsSkippedWithWarning() throws Exception {
+        // Regression test for RC02: "CS2113" and "cs2113" under the same category previously both
+        // loaded as separate topics, a state topic add() (case-insensitive uniqueness) would never
+        // let a user create.
+        Path file = writeFile(
+                "TOPIC|ACADEMIC|CS2113",
+                "TOPIC|ACADEMIC|cs2113");
+
+        LoadResult<TopicStorage.TopicRecord> result = new TopicStorage().load(file);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals("CS2113", result.getRecords().get(0).getName());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("duplicate"));
+    }
+
+    @Test
+    public void load_sameNameUnderDifferentCategories_bothLoad() throws Exception {
+        // A topic is scoped to its category, so the same name under two different categories is
+        // not a duplicate.
+        Path file = writeFile(
+                "TOPIC|ACADEMIC|CS2113",
+                "TOPIC|CCA|CS2113");
+
+        LoadResult<TopicStorage.TopicRecord> result = new TopicStorage().load(file);
+
+        assertEquals(0, result.getWarnings().size());
+        assertEquals(2, result.getRecords().size());
+    }
 }

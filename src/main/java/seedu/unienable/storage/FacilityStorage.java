@@ -25,11 +25,16 @@ import seedu.unienable.exception.StorageException;
  *
  * <p>Loading rejects a duplicate facility ID and a duplicate facility name (case-insensitively) -
  * facilities are looked up by name (see FacilityManager.findByName), so two facilities sharing a
- * name would make that lookup ambiguous.
+ * name would make that lookup ambiguous - as well as a blank facility/feature ID or name, and a
+ * record with more fields than its format defines.
  */
 public class FacilityStorage {
     private static final String FACILITY_TAG = "FACILITY";
     private static final String FEATURE_TAG = "FEATURE";
+    private static final int FACILITY_MIN_FIELDS = 3;
+    private static final int FACILITY_MAX_FIELDS = 4;
+    private static final int FEATURE_MIN_FIELDS = 4;
+    private static final int FEATURE_MAX_FIELDS = 5;
 
     /**
      * Loads facilities from the given file.
@@ -79,11 +84,18 @@ public class FacilityStorage {
     }
 
     private void parseFacilityLine(String[] fields, Map<String, PendingFacility> pending, Set<String> seenNames) {
-        if (fields.length < 3) {
-            throw new IllegalArgumentException("FACILITY line requires an id and a name");
+        if (fields.length < FACILITY_MIN_FIELDS || fields.length > FACILITY_MAX_FIELDS) {
+            throw new IllegalArgumentException("FACILITY line requires an id and a name, and no more than "
+                    + "an optional description after that");
         }
         String id = fields[1];
         String name = fields[2];
+        if (id.isBlank()) {
+            throw new IllegalArgumentException("facility id must not be blank");
+        }
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("facility name must not be blank");
+        }
         if (pending.containsKey(id)) {
             throw new IllegalArgumentException("duplicate facility id " + id);
         }
@@ -95,12 +107,17 @@ public class FacilityStorage {
     }
 
     private void parseFeatureLine(String[] fields, Map<String, PendingFacility> pending) {
-        if (fields.length < 4) {
-            throw new IllegalArgumentException("FEATURE line requires facility ID, type, and status");
+        if (fields.length < FEATURE_MIN_FIELDS || fields.length > FEATURE_MAX_FIELDS) {
+            throw new IllegalArgumentException("FEATURE line requires facility ID, type, and status, and no more "
+                    + "than an optional notes field after that");
         }
-        PendingFacility facility = pending.get(fields[1]);
+        String facilityId = fields[1];
+        if (facilityId.isBlank()) {
+            throw new IllegalArgumentException("FEATURE facility ID must not be blank");
+        }
+        PendingFacility facility = pending.get(facilityId);
         if (facility == null) {
-            throw new IllegalArgumentException("FEATURE references unknown facility ID " + fields[1]);
+            throw new IllegalArgumentException("FEATURE references unknown facility ID " + facilityId);
         }
         FacilityFeature.Type type;
         AccessibilityStatus status;

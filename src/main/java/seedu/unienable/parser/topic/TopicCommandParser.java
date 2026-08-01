@@ -8,6 +8,7 @@ import seedu.unienable.command.topic.TopicListCommand;
 import seedu.unienable.command.topic.TopicRenameCommand;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
+import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.TopicManager;
@@ -27,7 +28,8 @@ public class TopicCommandParser {
      * @throws InvalidActivityException if the category is invalid
      */
     public TopicAddCommand parseAdd(TopicManager topicManager, String args)
-            throws MissingInputException, InvalidActivityException {
+            throws MissingInputException, InvalidActivityException, InvalidCommandException {
+        rejectUnrecognisedLeadingText(args, "c/", "n/");
         ActivityCategory category = parseCategory(requireField(args, "c/", "n/", "category"));
         String name = requireField(args, "n/", null, "topic name");
         validateNoDelimiter(name, "topic name");
@@ -43,7 +45,9 @@ public class TopicCommandParser {
      * @return the parsed TopicListCommand
      * @throws InvalidActivityException if the category is invalid
      */
-    public TopicListCommand parseList(TopicManager topicManager, String args) throws InvalidActivityException {
+    public TopicListCommand parseList(TopicManager topicManager, String args)
+            throws InvalidActivityException, InvalidCommandException {
+        rejectUnrecognisedLeadingText(args, "c/");
         if (FieldParser.indexOfMarker(args, "c/", 0) == -1) {
             return new TopicListCommand(topicManager, null);
         }
@@ -65,7 +69,8 @@ public class TopicCommandParser {
      */
     public TopicRenameCommand parseRename(TopicManager topicManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidIndexException,
-            DuplicateActivityException {
+            DuplicateActivityException, InvalidCommandException {
+        rejectUnrecognisedLeadingText(args, "c/", "old/", "new/");
         ActivityCategory category = parseCategory(requireField(args, "c/", "old/", "category"));
         String oldName = requireField(args, "old/", "new/", "old topic name");
         String newName = requireField(args, "new/", null, "new topic name");
@@ -89,7 +94,8 @@ public class TopicCommandParser {
      */
     public TopicDeleteCommand parseDelete(TopicManager topicManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidIndexException,
-            DuplicateActivityException {
+            DuplicateActivityException, InvalidCommandException {
+        rejectUnrecognisedLeadingText(args, "c/", "n/");
         ActivityCategory category = parseCategory(requireField(args, "c/", "n/", "category"));
         String name = requireField(args, "n/", null, "topic name");
         topicManager.checkCanDelete(category, name);
@@ -126,6 +132,22 @@ public class TopicCommandParser {
     private void validateNoDelimiter(String value, String fieldName) throws InvalidActivityException {
         if (value.contains("|")) {
             throw new InvalidActivityException(fieldName + " must not contain the '|' character.");
+        }
+    }
+
+    /**
+     * Rejects text that appears before the first marker this command recognises (or, if none of
+     * the given markers appear at all, any non-blank text at all) - see
+     * {@link FieldParser#leadingUnrecognisedText}.
+     *
+     * @param args the full argument text
+     * @param markers every marker this command recognises
+     * @throws InvalidCommandException if unrecognised leading text is present
+     */
+    private void rejectUnrecognisedLeadingText(String args, String... markers) throws InvalidCommandException {
+        String leading = FieldParser.leadingUnrecognisedText(args, markers);
+        if (!leading.isEmpty()) {
+            throw new InvalidCommandException("Unknown option \"" + leading + "\".");
         }
     }
 }

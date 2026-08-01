@@ -228,6 +228,35 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_unrecognisedLeadingToken_throwsInvalidCommandExceptionAndConsumesNoId() {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01): text before the first recognised
+        // marker was previously invisible to extraction and silently discarded, letting a typo'd
+        // command mutate data anyway.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager,
+                "ignored/yes n/Test activity c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2"));
+        assertEquals(1, manager.getNextId());
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseAdd_unrecognisedTokenBetweenTypeAndTiming_throwsInvalidCommandException() {
+        // Regression test for RC05: type/'s value previously took only its first word and
+        // discarded everything else up to the next marker, so "type/FIXED ignored/again" silently
+        // dropped "ignored/again" instead of rejecting it.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseAdd(manager, topicManager,
+                "n/Test activity c/ACADEMIC date/2026-08-15 type/FIXED ignored/again from/09:00 to/10:00 "
+                        + "energy/2 sensory/2"));
+        assertEquals(0, manager.size());
+    }
+
+    @Test
     public void parseAdd_missingDescription_throwsMissingInputException() {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
@@ -803,6 +832,15 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseFind_unrecognisedLeadingToken_throwsInvalidCommandException() {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01).
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "ignored/yes c/ACADEMIC"));
+    }
+
+    @Test
     public void parseFind_multiWordKeyword_splitsIntoAndedKeywords() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
@@ -1035,6 +1073,20 @@ class ActivityCommandParserTest {
     @Test
     public void extractPresentFields_noMarkersPresent_returnsEmptyMap() {
         assertTrue(parser.extractPresentFields("nothing relevant here", "n/", "c/").isEmpty());
+    }
+
+    @Test
+    public void parseEdit_unrecognisedLeadingToken_throwsInvalidCommandExceptionAndDoesNotMutate() throws Exception {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01).
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseEdit(manager, topicManager, "1 ignored/yes energy/5"));
+        assertEquals(2, manager.getById(1).getEnergyRating().getValue());
     }
 
     @Test

@@ -72,6 +72,7 @@ public class ConnectionCommandParser {
      */
     public ConnectionFindCommand parseFind(ConnectionManager connectionManager, String args)
             throws MissingInputException, InvalidCommandException {
+        rejectUnrecognisedLeadingText(args, FIND_MARKERS);
         Map<String, String> fields = extractPresentFields(args, FIND_MARKERS);
         String from = blankToNull(fields.get("from/"));
         String to = blankToNull(fields.get("to/"));
@@ -122,6 +123,22 @@ public class ConnectionCommandParser {
      */
     private String blankToNull(String value) {
         return value == null || value.isEmpty() ? null : value;
+    }
+
+    /**
+     * Rejects text that appears before the first marker this command recognises (or, if none of
+     * the given markers appear at all, any non-blank text at all) - see
+     * {@link FieldParser#leadingUnrecognisedText}.
+     *
+     * @param args the full argument text
+     * @param markers every marker this command recognises
+     * @throws InvalidCommandException if unrecognised leading text is present
+     */
+    private void rejectUnrecognisedLeadingText(String args, String... markers) throws InvalidCommandException {
+        String leading = FieldParser.leadingUnrecognisedText(args, markers);
+        if (!leading.isEmpty()) {
+            throw new InvalidCommandException("Unknown option \"" + leading + "\".");
+        }
     }
 
     private Map<String, String> extractPresentFields(String text, String... markers) {

@@ -2,6 +2,7 @@ package seedu.unienable.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -19,12 +20,14 @@ import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.accessibility.enums.AccessibilityStatus;
 import seedu.unienable.accessibility.enums.ShelterStatus;
 import seedu.unienable.accessibility.enums.TraversalType;
+import seedu.unienable.exception.StorageException;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ActivityOrder;
 
 class StorageTest {
     @TempDir
@@ -138,5 +141,90 @@ class StorageTest {
         storage.prepareDataFiles();
 
         assertEquals(1, storage.loadActivities().getRecords().size());
+    }
+
+    @Test
+    public void saveAll_normalCase_savesActivitiesTopicsAndSettingsTogether() throws Exception {
+        Storage storage = new Storage(tempDir);
+        FixedActivity fixed = new FixedActivity(1, "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null);
+        List<Topic> topics = List.of(new Topic(ActivityCategory.ACADEMIC, "CG3207"));
+
+        storage.saveAll(List.of(fixed), topics, ActivityOrder.INPUT);
+
+        assertEquals(1, storage.loadActivities().getRecords().size());
+        assertEquals(1, storage.loadTopics().getRecords().size());
+        assertEquals(ActivityOrder.INPUT, storage.loadSettings().getRecords().get(0));
+    }
+
+    @Test
+    public void saveAll_laterFileCommitFails_earlierCommittedFileIsRolledBack() throws Exception {
+        // Regression test for RC01 (v1.0 RC retest, 2026-08-01): saveAll() previously moved each
+        // temporary file into place sequentially with no way to undo an earlier successful move
+        // if a later one failed. Reproducing the exact repro from that report: topics.txt is not
+        // a plain file (here, a directory) at commit time, so Files.isWritable() passes the
+        // upfront check but the actual move still fails - after activities.txt has already been
+        // replaced.
+        write("activities.txt", "FIXED|1|Old activity|ACADEMIC|2026-08-15|09:00|10:00|2|2|INCOMPLETE||");
+        Files.createDirectory(tempDir.resolve("topics.txt"));
+        Files.writeString(tempDir.resolve("topics.txt").resolve("blocker.txt"), "x");
+        Storage storage = new Storage(tempDir);
+        FixedActivity newActivity = new FixedActivity(2, "New activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 16), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null);
+
+        assertThrows(StorageException.class,
+                () -> storage.saveAll(List.of(newActivity), List.of(), ActivityOrder.INPUT));
+
+        List<Activity> activitiesOnDisk = storage.loadActivities().getRecords();
+        assertEquals(1, activitiesOnDisk.size());
+        assertEquals("Old activity", activitiesOnDisk.get(0).getDescription());
+        assertFalse(Files.exists(tempDir.resolve("settings.txt")));
+        assertFalse(Files.exists(tempDir.resolve("activities.txt.tmp")));
+        assertFalse(Files.exists(tempDir.resolve("activities.txt.bak")));
+    }
+
+    @Test
+    public void saveAll_failureOnFreshDirectory_leavesNoNewFilesBehind() throws Exception {
+        // Same failure as above, but activities.txt did not exist before this call - the rollback
+        // must delete the file it created, not just restore stale content, so the directory ends
+        // up exactly as it started.
+        Files.createDirectory(tempDir.resolve("topics.txt"));
+        Files.writeString(tempDir.resolve("topics.txt").resolve("blocker.txt"), "x");
+        Storage storage = new Storage(tempDir);
+        FixedActivity newActivity = new FixedActivity(1, "New activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 16), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null);
+
+        assertThrows(StorageException.class,
+                () -> storage.saveAll(List.of(newActivity), List.of(), ActivityOrder.INPUT));
+
+        assertFalse(Files.exists(tempDir.resolve("activities.txt")));
+        assertFalse(Files.exists(tempDir.resolve("settings.txt")));
+    }
+
+    @Test
+    public void saveAll_readOnlyDestination_rejectedBeforeAnyFileIsTouched() throws Exception {
+        write("activities.txt", "FIXED|1|Old activity|ACADEMIC|2026-08-15|09:00|10:00|2|2|INCOMPLETE||");
+        write("topics.txt");
+        Path topicsFile = tempDir.resolve("topics.txt");
+        assertTrue(topicsFile.toFile().setWritable(false), "test setup: could not make file read-only");
+        Storage storage = new Storage(tempDir);
+        FixedActivity newActivity = new FixedActivity(2, "New activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 16), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null);
+
+        try {
+            assertThrows(StorageException.class,
+                    () -> storage.saveAll(List.of(newActivity), List.of(), ActivityOrder.INPUT));
+
+            List<Activity> activitiesOnDisk = storage.loadActivities().getRecords();
+            assertEquals(1, activitiesOnDisk.size());
+            assertEquals("Old activity", activitiesOnDisk.get(0).getDescription());
+            assertFalse(Files.exists(tempDir.resolve("settings.txt")));
+        } finally {
+            topicsFile.toFile().setWritable(true);
+        }
     }
 }

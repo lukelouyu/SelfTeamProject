@@ -32,9 +32,11 @@ requirements, design, implementation, and documentation below are my own work.
   - A built-in `guide` command with a numbered, number-or-keyword-selectable menu and copyable
     command examples.
   - Local, human-editable text-file storage for activities and topics.
-- **Testing**: grew the JUnit suite to 486 tests and the `text-ui-test` end-to-end regression
-  script from a 7-line happy path to a 319-line scripted run covering every v1.0 command,
-  boundary case, and error path, catching several real bugs before release.
+- **Testing**: grew the JUnit suite to 657 tests and the `text-ui-test` end-to-end regression
+  script from a 7-line happy path to a 346-line scripted run covering most v1.0 commands,
+  boundary cases, and error paths (date-dependent cases like `list today` are covered by JUnit
+  with a fixed injected clock instead, since they can't be scripted deterministically),
+  catching several real bugs before release.
 - **Documentation**: wrote the [User Guide](../UserGuide.md) and
   [Developer Guide](../DeveloperGuide.md), including the architecture, design rationale, and
   manual testing instructions.

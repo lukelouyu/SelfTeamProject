@@ -471,6 +471,26 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_malformedTopicsFile_surfacesPartialLoadWarningAndKeepsValidRecords() throws Exception {
+        // Regression test for RC02 (v1.0 RC retest, 2026-08-01): a blank name, a case-insensitive
+        // duplicate, and an overlong record previously all loaded without any warning.
+        Files.writeString(tempDir.resolve("topics.txt"),
+                "TOPIC|ACADEMIC|\n"
+                        + "TOPIC|ACADEMIC|CS2113\n"
+                        + "TOPIC|ACADEMIC|cs2113\n"
+                        + "TOPIC|OTHERS|Real name|silently ignored column\n");
+
+        String output = runWithInput("topic list\nbye\n");
+
+        assertTrue(output.contains("[Warning] Partial data loaded: topics.txt"));
+        assertTrue(output.contains("Line 1 was skipped"));
+        assertTrue(output.contains("Line 3 was skipped"));
+        assertTrue(output.contains("Line 4 was skipped"));
+        assertTrue(output.contains("CS2113"));
+        assertTrue(!output.contains("Real name"));
+    }
+
+    @Test
     public void run_malformedFacilitiesFile_surfacesPartialLoadWarningAndKeepsValidRecords() throws Exception {
         Files.writeString(tempDir.resolve("facilities.txt"),
                 "FACILITY|F01|COM3|Engineering building\n"
@@ -483,6 +503,26 @@ class UniEnableTest {
         assertTrue(output.contains("[Warning] Partial data loaded: facilities.txt"));
         assertTrue(output.contains("Line 3 was skipped"));
         assertTrue(output.contains("LIFT"));
+    }
+
+    @Test
+    public void run_blankAccessibilityFields_surfacePartialLoadWarningsAndAreNeverPresented() throws Exception {
+        // Regression test for RC03 (v1.0 RC retest, 2026-08-01): a blank facility id/name and
+        // blank connection endpoints previously loaded without warning and were then presented
+        // as usable accessibility reference data ("[]" and " <-> ").
+        Files.writeString(tempDir.resolve("facilities.txt"),
+                "FACILITY|||blank id and blank name accepted\n"
+                        + "FEATURE||LIFT|YES|Feature attached to blank facility\n");
+        Files.writeString(tempDir.resolve("connections.txt"),
+                "CONNECTION|1|||25|YES|PATH|YES|None|Blank endpoints accepted\n");
+
+        String output = runWithInput("facility list\nconnection list\nbye\n");
+
+        assertTrue(output.contains("[Warning] Partial data loaded: facilities.txt"));
+        assertTrue(output.contains("[Warning] Partial data loaded: connections.txt"));
+        assertTrue(!output.contains("[]"));
+        assertTrue(!output.contains(" <-> "));
+        assertTrue(!output.contains("blank id"));
     }
 
     @Test
@@ -545,6 +585,31 @@ class UniEnableTest {
 
         assertTrue(output.contains("[Error] Invalid input: Unknown command \"banana\""));
         assertTrue(output.contains("Bye! Take care and see you again."));
+    }
+
+    @Test
+    public void run_unrecognisedLeadingTokens_areRejectedAcrossCommandFamiliesWithoutMutating() {
+        // Regression test for RC05 (v1.0 RC retest, 2026-08-01): every one of these previously
+        // executed successfully (and, for the mutating ones, actually changed data) despite
+        // containing unrecognised text.
+        String output = runWithInput(
+                "topic list nonsense\n"
+                        + "topic add ignored/yes c/ACADEMIC n/CS2113\n"
+                        + "add ignored/yes n/Test activity c/ACADEMIC date/2026-08-15 type/FIXED "
+                        + "from/09:00 to/10:00 energy/2 sensory/2\n"
+                        + "find ignored/yes c/ACADEMIC\n"
+                        + "facility find ignored/yes type/LIFT\n"
+                        + "connection find ignored/yes from/AS6\n"
+                        + "topic list\n"
+                        + "list\n"
+                        + "bye\n");
+
+        long unknownOptionErrors = output.lines().filter(line -> line.contains("Unknown option \"")).count();
+        assertEquals(6, unknownOptionErrors);
+        assertTrue(!output.contains("Test activity"));
+        assertTrue(!output.contains("Topic created"));
+        assertTrue(output.contains("No topics"));
+        assertTrue(output.contains("No activities found."));
     }
 
     @Test

@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.model.enums.ActivityCategory;
@@ -12,14 +15,20 @@ import seedu.unienable.model.enums.ActivityCategory;
 /**
  * Loads and saves topic records from/to a pipe-delimited topics.txt-format file.
  *
- * <p>Format: {@code TOPIC|category|name}. Uses its own {@link TopicRecord} category/name pair
- * rather than the {@link seedu.unienable.model.classes.Topic} model class directly; the main
- * loop converts between them at load/save time. Fields must not contain the '|' delimiter; this
- * is not escaped in v1.0.
+ * <p>Format: {@code TOPIC|category|name} - exactly three fields, no optional trailing ones.
+ * Uses its own {@link TopicRecord} category/name pair rather than the
+ * {@link seedu.unienable.model.classes.Topic} model class directly; the main loop converts
+ * between them at load/save time. Fields must not contain the '|' delimiter; this is not escaped
+ * in v1.0.
+ *
+ * <p>Loading rejects a blank name, an extra or missing field, and a duplicate category+name
+ * (case-insensitive) - the same shapes topic creation through the app already rejects, so a
+ * hand-edited file cannot load a state the app itself would never allow a user to create.
  */
 public class TopicStorage {
     private static final String TOPIC_TAG = "TOPIC";
     private static final String DELIMITER = "|";
+    private static final int EXPECTED_FIELD_COUNT = 3;
 
     /**
      * Loads topic records from the given file.
@@ -32,6 +41,7 @@ public class TopicStorage {
         List<String> lines = readLines(filePath);
         List<TopicRecord> topics = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        Set<String> seenKeys = new HashSet<>();
 
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
@@ -39,7 +49,13 @@ public class TopicStorage {
                 continue;
             }
             try {
-                topics.add(parseLine(line));
+                TopicRecord topic = parseLine(line);
+                String key = topic.getCategory() + "|" + topic.getName().toLowerCase(Locale.ROOT);
+                if (!seenKeys.add(key)) {
+                    throw new IllegalArgumentException(
+                            "duplicate topic \"" + topic.getName() + "\" under " + topic.getCategory());
+                }
+                topics.add(topic);
             } catch (IllegalArgumentException e) {
                 warnings.add("Line " + (i + 1) + " was skipped: " + e.getMessage());
             }
@@ -71,14 +87,18 @@ public class TopicStorage {
         if (!fields[0].equals(TOPIC_TAG)) {
             throw new IllegalArgumentException("unknown record type \"" + fields[0] + "\"");
         }
-        if (fields.length < 3) {
-            throw new IllegalArgumentException("TOPIC line requires a category and a name");
+        if (fields.length != EXPECTED_FIELD_COUNT) {
+            throw new IllegalArgumentException(
+                    "TOPIC line requires exactly a category and a name (found " + (fields.length - 1) + " fields)");
         }
         ActivityCategory category;
         try {
             category = ActivityCategory.valueOf(fields[1]);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("invalid category \"" + fields[1] + "\"");
+        }
+        if (fields[2].isBlank()) {
+            throw new IllegalArgumentException("topic name must not be blank");
         }
         return new TopicRecord(category, fields[2]);
     }

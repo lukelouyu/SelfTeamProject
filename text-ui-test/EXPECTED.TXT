@@ -1449,7 +1449,7 @@ ____________________________________________________________
 [Error] Not found: Activity [999] does not exist.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Missing input: at least one field must be supplied.
+[Error] Invalid input: Unknown option "bogus/value".
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: energy must be a whole number from 1 to 5.
@@ -2361,6 +2361,44 @@ Here are 20 matching activities:
              ACADEMIC | E3 | S3
 [19][ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
              ACADEMIC | 60 min | E2 | S2
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: reset requires "all".
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: reset only accepts "all".
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: reset only accepts "all".
+____________________________________________________________
+____________________________________________________________
+Reset all user data?
+
+Activities to delete: 20
+Topics to delete   : 3
+Default order      : reset to chronological
+
+Facility and connection reference data will be kept.
+This action cannot be undone.
+Continue? (y/n)
+____________________________________________________________
+____________________________________________________________
+All user data has been reset.
+Your next activity will use ID [1].
+____________________________________________________________
+____________________________________________________________
+No activities found.
+____________________________________________________________
+____________________________________________________________
+Here are your topics:
+ACADEMIC       : No topics
+CCA            : No topics
+WORK_INTERNSHIP: No topics
+OTHERS         : No topics
+____________________________________________________________
+____________________________________________________________
+Saved default activity order: chronological
+Activities are ordered by date, then start time, then ID.
 ____________________________________________________________
 ____________________________________________________________
 Your data has been saved.

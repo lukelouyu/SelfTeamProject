@@ -208,8 +208,8 @@ public class ActivityStorage {
     }
 
     private Activity parseFixed(String[] fields) throws InvalidActivityException, InvalidDateTimeException {
-        if (fields.length < 10) {
-            throw new IllegalArgumentException("FIXED line is missing required fields");
+        if (fields.length < 10 || fields.length > 12) {
+            throw new IllegalArgumentException("FIXED line has the wrong number of fields");
         }
         int id = parsePositiveWholeNumber(fields[1], "id");
         String description = requireNonBlank(fields[2], "description");
@@ -233,8 +233,8 @@ public class ActivityStorage {
     }
 
     private Activity parseFlexible(String[] fields) throws InvalidActivityException, InvalidDateTimeException {
-        if (fields.length < 11) {
-            throw new IllegalArgumentException("FLEXIBLE line is missing required fields");
+        if (fields.length < 11 || fields.length > 13) {
+            throw new IllegalArgumentException("FLEXIBLE line has the wrong number of fields");
         }
         int id = parsePositiveWholeNumber(fields[1], "id");
         String description = requireNonBlank(fields[2], "description");

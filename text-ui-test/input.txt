@@ -334,4 +334,13 @@ connection find
 
 bye ignored trailing text
 list
+
+reset
+reset extra
+reset all extra
+reset all
+y
+list
+topic list
+order view
 bye

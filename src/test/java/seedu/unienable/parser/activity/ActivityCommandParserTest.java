@@ -34,8 +34,11 @@ import seedu.unienable.model.enums.ScheduleType;
 class ActivityCommandParserTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 15, 10, 0);
     // Deliberately far earlier than every date literal used in this file's existing tests, so
-    // adding the new not-before-today check to parseAdd/parseEdit doesn't require touching them.
-    private static final LocalDate TODAY = LocalDate.of(2020, 1, 1);
+    // adding the new not-before-today/not-before-now checks to parseAdd/parseEdit doesn't require
+    // touching them. Midnight of that date, not just the date, since parseAdd/parseEdit now also
+    // reject a same-day start time at or before "now" - midnight is always earlier than the
+    // daytime from/earliest values these existing tests use.
+    private static final LocalDateTime TODAY = LocalDate.of(2020, 1, 1).atStartOfDay();
 
     private final ActivityCommandParser parser = new ActivityCommandParser();
 
@@ -278,6 +281,119 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseAdd_missingDateMarker_throwsMissingInputExceptionNamingDateNotCategory() {
+        // Regression test for BUG-04 (v1.0 manual release test, 2026-08-01, reproduction A): the
+        // supplied category (ACADEMIC) is perfectly valid; date/ is the field that's actually
+        // missing. Before the fix, c/'s extraction had no end marker to stop at, so it greedily
+        // absorbed everything up to the end of input and was misreported as an invalid category.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing date c/ACADEMIC type/FIXED from/09:00 to/10:00 energy/3 sensory/3"));
+        assertEquals("date is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_missingToMarker_throwsMissingInputExceptionNamingToNotFrom() {
+        // Regression test for BUG-04, reproduction B: the supplied from/09:00 is perfectly valid;
+        // to/ is the field that's actually missing.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing end time c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 "
+                                + "energy/3 sensory/3"));
+        assertEquals("to is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_missingEnergyMarkerAfterTo_throwsMissingInputExceptionNamingEnergy() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing energy c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 to/10:00 sensory/3"));
+        assertEquals("energy is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_missingLatestMarker_throwsMissingInputExceptionNamingLatestNotEarliest() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing latest c/ACADEMIC date/2026-08-03 type/FLEXIBLE earliest/09:00 dur/30 "
+                                + "energy/3 sensory/3"));
+        assertEquals("latest is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_missingCMarkerEntirely_stillCorrectlyReportsCategoryMissing() {
+        // Sanity check that the fix doesn't regress the already-correct case: when c/ is absent
+        // entirely (not just its own end marker), the independent c/-lookup downstream already
+        // finds nothing and reports "category is required." regardless of what n/'s value absorbs.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Missing category date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                                + "energy/3 sensory/3"));
+        assertEquals("category is required.", exception.getMessage());
+    }
+
+    @Test
+    public void parseAdd_multipleRejectedAddsOfDifferentKinds_doNotConsumeIdsBeforeNextValidAdd()
+            throws Exception {
+        // Regression test for INVESTIGATION-01 (v1.0 manual release test, 2026-08-01): an earlier
+        // manual session observed a non-contiguous ID gap, but a clean rerun could not reproduce
+        // it and concluded ordinary rejected adds do not consume IDs - recorded as an
+        // investigation item, not a confirmed defect, and the report explicitly says not to
+        // change ID allocation based on the unreproduced observation alone. This locks in the
+        // clean rerun's actual finding across every rejection kind it called out: a parser-level
+        // rejection (malformed date), and two manager-level rejections (an overlap conflict and
+        // an exact duplicate).
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        parser.parseAdd(manager, topicManager, TODAY,
+                "n/Base class c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2").execute();
+        assertEquals(2, manager.getNextId());
+
+        // Parser-level rejection: thrown before AddCommand is even constructed.
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
+                "n/Bad date c/ACADEMIC date/15-08-2026 type/FIXED from/11:00 to/12:00 "
+                        + "energy/2 sensory/2"));
+        assertEquals(2, manager.getNextId());
+
+        // Manager-level rejection: thrown from ActivityManager.add() during execute().
+        assertThrows(DuplicateActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
+                "n/Overlapping class c/ACADEMIC date/2026-08-15 type/FIXED from/09:30 to/10:30 "
+                        + "energy/2 sensory/2").execute());
+        assertEquals(2, manager.getNextId());
+
+        // Also manager-level: an exact duplicate of the base class.
+        assertThrows(DuplicateActivityException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
+                "n/Base class c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2").execute());
+        assertEquals(2, manager.getNextId());
+
+        parser.parseAdd(manager, topicManager, TODAY,
+                "n/Class after rejections c/ACADEMIC date/2026-08-16 type/FIXED from/09:00 to/10:00 "
+                        + "energy/2 sensory/2").execute();
+
+        assertEquals(2, manager.size());
+        assertEquals("Class after rejections", manager.getById(2).getDescription());
+        assertEquals(3, manager.getNextId());
+    }
+
+    @Test
     public void parseAdd_invalidType_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
@@ -336,7 +452,7 @@ class ActivityCommandParserTest {
         // "reject before AddCommand is built" discipline as every other add validation failure.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
         int idBefore = manager.getNextId();
 
         InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
@@ -353,7 +469,7 @@ class ActivityCommandParserTest {
     public void parseAdd_today_isAccepted() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
 
         parser.parseAdd(manager, topicManager, today,
                 "n/Exam c/ACADEMIC date/2026-08-01 type/FIXED from/09:00 to/10:00 energy/3 sensory/3").execute();
@@ -365,7 +481,7 @@ class ActivityCommandParserTest {
     public void parseAdd_futureDate_isAccepted() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
 
         parser.parseAdd(manager, topicManager, today,
                 "n/Exam c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 to/10:00 energy/3 sensory/3").execute();
@@ -377,7 +493,7 @@ class ActivityCommandParserTest {
     public void parseAdd_futureLeapDate_isAccepted() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
 
         parser.parseAdd(manager, topicManager, today,
                 "n/Leap day event c/ACADEMIC date/2028-02-29 type/FIXED from/09:00 to/10:00 "
@@ -393,7 +509,7 @@ class ActivityCommandParserTest {
         // CommandConfirmationHandler never sees this edit at all.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
@@ -412,7 +528,7 @@ class ActivityCommandParserTest {
         // activity) must not be blocked by it.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
         manager.add(new FixedActivity(manager.getNextId(), "Overdue lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 7, 1), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
@@ -427,7 +543,7 @@ class ActivityCommandParserTest {
     public void parseEdit_todayOrFutureDate_isAccepted() throws Exception {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
-        LocalDate today = LocalDate.of(2026, 8, 1);
+        LocalDateTime today = LocalDate.of(2026, 8, 1).atStartOfDay();
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), null, null));
@@ -435,6 +551,202 @@ class ActivityCommandParserTest {
         parser.parseEdit(manager, topicManager, today, "1 date/2026-08-01").execute();
 
         assertEquals(LocalDate.of(2026, 8, 1), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseAdd_todayEndTimeAlreadyPassed_throwsInvalidDateTimeException() {
+        // BUG-02 (v1.0 manual release test, 2026-08-01): an activity scheduled for today must be
+        // rejected once its scheduled time has fully passed, not just when the date itself is
+        // before today.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 15, 40);
+        int idBefore = manager.getNextId();
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseAdd(manager, topicManager, now,
+                        "n/Today date c/ACADEMIC date/2026-08-01 type/FIXED from/09:00 to/10:00 "
+                                + "energy/3 sensory/3"));
+
+        assertTrue(exception.getMessage().contains("start time has passed"));
+        assertEquals(idBefore, manager.getNextId());
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseAdd_todayEndTimeExactlyNow_throwsInvalidDateTimeException() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 15, 40);
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, now,
+                "n/Today date c/ACADEMIC date/2026-08-01 type/FIXED from/15:00 to/15:40 "
+                        + "energy/3 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_todayStartsInFuture_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 15, 40);
+
+        parser.parseAdd(manager, topicManager, now,
+                "n/Today date c/ACADEMIC date/2026-08-01 type/FIXED from/16:00 to/17:00 "
+                        + "energy/3 sensory/3").execute();
+
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void parseAdd_futureDateWithEarlyTime_isAccepted() throws Exception {
+        // A time value that would be "already passed" on today's date must still be accepted
+        // when the activity's own date is genuinely in the future.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 15, 40);
+
+        parser.parseAdd(manager, topicManager, now,
+                "n/Tomorrow early c/ACADEMIC date/2026-08-02 type/FIXED from/09:00 to/10:00 "
+                        + "energy/3 sensory/3").execute();
+
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void parseAdd_todayStartTimeBeforeNow_throwsInvalidDateTimeExceptionWithoutConsumingId() {
+        // BUG-03: a start time at or before now must be rejected even when the end time has not
+        // itself passed.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        int idBefore = manager.getNextId();
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseAdd(manager, topicManager, now,
+                        "n/Already started c/ACADEMIC date/2026-08-01 type/FIXED from/15:59 to/18:00 "
+                                + "energy/3 sensory/3"));
+
+        assertEquals("activity start time has passed. Please enter a start time after 16:00.",
+                exception.getMessage());
+        assertEquals(idBefore, manager.getNextId());
+        assertEquals(0, manager.size());
+    }
+
+    @Test
+    public void parseAdd_todayStartTimeExactlyNow_throwsInvalidDateTimeException() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, now,
+                "n/Starts now c/ACADEMIC date/2026-08-01 type/FIXED from/16:00 to/17:00 "
+                        + "energy/3 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_todayStartTimeJustAfterNow_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        parser.parseAdd(manager, topicManager, now,
+                "n/Starts soon c/ACADEMIC date/2026-08-01 type/FIXED from/16:01 to/17:00 "
+                        + "energy/3 sensory/3").execute();
+
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void parseAdd_flexibleTodayEarliestAtOrBeforeNow_throwsInvalidDateTimeException() {
+        // The same start-time rule applies to a flexible activity's earliest/ field.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, now,
+                "n/Flexible today c/ACADEMIC date/2026-08-01 type/FLEXIBLE earliest/15:00 latest/18:00 "
+                        + "dur/60 energy/3 sensory/3"));
+    }
+
+    @Test
+    public void parseAdd_flexibleTodayEarliestAfterNow_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+
+        parser.parseAdd(manager, topicManager, now,
+                "n/Flexible today c/ACADEMIC date/2026-08-01 type/FLEXIBLE earliest/16:30 latest/18:00 "
+                        + "dur/60 energy/3 sensory/3").execute();
+
+        assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void parseEdit_movingActivityToAlreadyPassedTimeToday_rejectedBeforeAnyMutation() throws Exception {
+        // Reproduction B from BUG-03: editing date/ and from/ together into an already-passed
+        // slot must be rejected before any confirmation preview is even reachable, and must not
+        // change the stored activity.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        manager.add(new FixedActivity(manager.getNextId(), "Future slot", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 2), LocalTime.of(17, 0), LocalTime.of(18, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseEdit(manager, topicManager, now, "1 date/2026-08-01 from/11:30 to/12:00"));
+
+        assertEquals("activity start time has passed. Please enter a start time after 16:00.",
+                exception.getMessage());
+        assertEquals(LocalDate.of(2026, 8, 2), manager.getById(1).getDate());
+        assertEquals(LocalTime.of(17, 0), ((FixedActivity) manager.getById(1)).getStartTime());
+    }
+
+    @Test
+    public void parseEdit_movingActivityToFutureTimeToday_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        manager.add(new FixedActivity(manager.getNextId(), "Future slot", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 2), LocalTime.of(17, 0), LocalTime.of(18, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        parser.parseEdit(manager, topicManager, now, "1 date/2026-08-01 from/16:30 to/17:30").execute();
+
+        assertEquals(LocalDate.of(2026, 8, 1), manager.getById(1).getDate());
+    }
+
+    @Test
+    public void parseEdit_activelySupplyingFromOnActivityAlreadyDatedToday_reappliesTheCheck() throws Exception {
+        // Even when date/ isn't touched, actively supplying from/ on an activity already dated
+        // today must still be checked against now.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        manager.add(new FixedActivity(manager.getNextId(), "Today activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 1), LocalTime.of(17, 0), LocalTime.of(18, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        assertThrows(InvalidDateTimeException.class,
+                () -> parser.parseEdit(manager, topicManager, now, "1 from/15:00 to/18:00"));
+    }
+
+    @Test
+    public void parseEdit_untouchedFromOnAlreadyPassedTodayActivity_stillSucceeds() throws Exception {
+        // The start-time-not-passed check only applies when date/ or the start marker is
+        // actively supplied - editing an unrelated field on an activity that has simply become
+        // overdue during the session must not be blocked by it.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 16, 0);
+        manager.add(new FixedActivity(manager.getNextId(), "Already passed today", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        parser.parseEdit(manager, topicManager, now, "1 energy/5").execute();
+
+        assertEquals(5, manager.getById(1).getEnergyRating().getValue());
+        assertEquals(LocalTime.of(9, 0), ((FixedActivity) manager.getById(1)).getStartTime());
     }
 
     @Test
@@ -505,16 +817,20 @@ class ActivityCommandParserTest {
     }
 
     @Test
-    public void parseAdd_flexibleMissingDurationEntirely_throwsInvalidDateTimeException() {
-        // dur/ is dropped entirely, so latest/'s end marker ("dur/") is never found and its
-        // extraction greedily captures the trailing "energy/5 sensory/2" text, which then fails
-        // time parsing before a dedicated "dur is required" check is ever reached.
+    public void parseAdd_flexibleMissingDurationEntirely_throwsMissingInputExceptionNamingDur() {
+        // Regression test for BUG-04 (v1.0 manual release test, 2026-08-01, reproduction C): dur/
+        // is dropped entirely. Before the fix, latest/'s end marker ("dur/") was never found, so
+        // its extraction greedily captured the trailing "energy/5 sensory/2" text, which then
+        // failed time parsing and misreported "latest" as invalid - even though the supplied
+        // latest/18:00 value was perfectly valid and the real problem was the missing dur/.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(InvalidDateTimeException.class, () -> parser.parseAdd(manager, topicManager, TODAY,
-                "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
-                        + "energy/5 sensory/2"));
+        MissingInputException exception = assertThrows(MissingInputException.class,
+                () -> parser.parseAdd(manager, topicManager, TODAY,
+                        "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
+                                + "energy/5 sensory/2"));
+        assertEquals("dur is required.", exception.getMessage());
     }
 
     @Test
@@ -881,6 +1197,183 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseList_nextWeekFromSaturday_matchesFollowingMondayThroughSunday() throws Exception {
+        // FEATURE-02 (v1.0 manual release test, 2026-08-01): with now fixed at Saturday
+        // 2026-08-01, the current week is 2026-07-27 to 2026-08-02, so "list next week" must
+        // resolve to 2026-08-03 (Mon) through 2026-08-09 (Sun) - the report's own worked example.
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 10, 0);
+
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Next Monday activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 3), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Next Sunday activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 9), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "This Sunday activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 2), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Week after next activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 10), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "next week").execute().getFeedback();
+
+        assertTrue(feedback.contains("Next Monday activity"));
+        assertTrue(feedback.contains("Next Sunday activity"));
+        assertTrue(!feedback.contains("This Sunday activity"));
+        assertTrue(!feedback.contains("Week after next activity"));
+    }
+
+    @Test
+    public void parseList_nextWeekYearBoundary_computesCorrectWeek() throws Exception {
+        // Regression case from the report: with now = 2026-12-31, next week is 2027-01-04
+        // through 2027-01-10.
+        LocalDateTime now = LocalDateTime.of(2026, 12, 31, 10, 0);
+
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Next year Monday", ActivityCategory.ACADEMIC,
+                LocalDate.of(2027, 1, 4), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Next year Sunday", ActivityCategory.ACADEMIC,
+                LocalDate.of(2027, 1, 10), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Outside next week", ActivityCategory.ACADEMIC,
+                LocalDate.of(2027, 1, 11), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "next week").execute().getFeedback();
+
+        assertTrue(feedback.contains("Next year Monday"));
+        assertTrue(feedback.contains("Next year Sunday"));
+        assertTrue(!feedback.contains("Outside next week"));
+    }
+
+    @Test
+    public void parseList_nextWeekCombinedWithFilters_appliesAllFilters() throws Exception {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 10, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Matching", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 5), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Wrong category", ActivityCategory.CCA,
+                LocalDate.of(2026, 8, 5), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "next week c/ACADEMIC order/time").execute()
+                .getFeedback();
+
+        assertTrue(feedback.contains("Matching"));
+        assertTrue(!feedback.contains("Wrong category"));
+    }
+
+    @Test
+    public void parseList_nextWeekCombinedWithDateMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "next week date/2026-08-15"));
+    }
+
+    @Test
+    public void parseList_nextMonth_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "next month"));
+    }
+
+    @Test
+    public void parseList_overdue_matchesOnlyIncompletePastActivities() throws Exception {
+        // FEATURE-01 (v1.0 manual release test, 2026-08-01): an incomplete activity whose
+        // scheduled time has passed must appear; a completed one must not; an upcoming one must
+        // not either.
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 12, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue incomplete", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue but completed", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.mark(2);
+        manager.add(new FixedActivity(manager.getNextId(), "Still upcoming", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(13, 0), LocalTime.of(14, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "overdue").execute().getFeedback();
+
+        assertTrue(feedback.contains("Overdue incomplete"));
+        assertTrue(!feedback.contains("Overdue but completed"));
+        assertTrue(!feedback.contains("Still upcoming"));
+    }
+
+    @Test
+    public void parseList_overdue_omittedFromNormalListIsStillShownByPlainList() throws Exception {
+        // Confirms the additive scope decision: "list overdue" is a new, separate selector, and
+        // the plain "list" continues to show every activity exactly as before - nothing is
+        // hidden from it.
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 12, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue incomplete", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "").execute().getFeedback();
+
+        assertTrue(feedback.contains("Overdue incomplete"));
+    }
+
+    @Test
+    public void parseList_overdueNoOverdueActivities_reportsNoActivitiesFound() throws Exception {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 12, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Upcoming", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(13, 0), LocalTime.of(14, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        assertEquals("No activities found.", parser.parseList(manager, now, "overdue").execute().getFeedback());
+    }
+
+    @Test
+    public void parseList_overdueCombinedWithCategoryFilter_appliesBothConditions() throws Exception {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 12, 0);
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue academic", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Overdue cca", ActivityCategory.CCA,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parseList(manager, now, "overdue c/ACADEMIC").execute().getFeedback();
+
+        assertTrue(feedback.contains("Overdue academic"));
+        assertTrue(!feedback.contains("Overdue cca"));
+    }
+
+    @Test
+    public void parseList_overdueCombinedWithStatusMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "overdue status/completed"));
+    }
+
+    @Test
+    public void parseList_overdueThenToday_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "overdue today"));
+    }
+
+    @Test
+    public void parseList_overdueWithTrailingGarbage_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseList(manager, NOW, "overdue extra"));
+    }
+
+    @Test
     public void parseList_todayCombinedWithDateMarker_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
 
@@ -968,6 +1461,60 @@ class ActivityCommandParserTest {
         String feedback = result.getFeedback();
         assertTrue(feedback.contains("Finish assignment 1"));
         assertTrue(!feedback.contains("Finish reading"));
+    }
+
+    @Test
+    public void parseFind_threeWordKeyword_throwsInvalidCommandException() {
+        // Regression test for BUG-05 (v1.0 manual release test, 2026-08-01): "find k/Edited exact
+        // extra" was previously accepted as a valid (if zero-result) three-word AND search,
+        // contradicting the documented one-or-two-word k/ scope.
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "k/Edited exact extra"));
+        assertEquals("keyword must contain one or two words.", exception.getMessage());
+    }
+
+    @Test
+    public void parseFind_fourWordKeyword_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parseFind(manager, "k/one two three four"));
+    }
+
+    @Test
+    public void parseFind_threeWordKeywordCombinedWithFilters_rejectedBeforeAnyResult() {
+        // The word-count check must reject before any search executes, even when valid filters
+        // are also supplied alongside the over-long keyword.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "k/one two three c/ACADEMIC order/time"));
+    }
+
+    @Test
+    public void parseFind_twoWordKeywordWithIrregularWhitespace_isTreatedAsTwoWords() throws Exception {
+        // Leading, trailing, and repeated internal whitespace must not be counted as extra words.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Flexible study session", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "k/  Flexible   study  ").execute();
+
+        assertTrue(result.getFeedback().contains("Flexible study session"));
+    }
+
+    @Test
+    public void parseFind_oneWordKeyword_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Class", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        CommandResult result = parser.parseFind(manager, "k/Class").execute();
+
+        assertTrue(result.getFeedback().contains("Class"));
     }
 
     @Test

@@ -13,12 +13,13 @@ Application Guide
 4. Categories and topics
 5. Completion and dashboard
 6. Recommended timetable
-7. Accessible facilities and routes
-8. CSV export
-9. Data files and storage
-10. Return
+7. Accessible facilities
+8. Accessible connections
+9. CSV export
+10. Data files and storage
+11. Return
 
-Enter a number from 1 to 10.
+Enter a number from 1 to 11.
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -82,7 +83,8 @@ ____________________________________________________________
 ____________________________________________________________
 Find activities
 Format: find [k/KEYWORD ...] [FILTERS]
-Multiple keywords and filters use AND.
+Multiple keywords and filters use AND. k/ accepts one or two
+words; three or more words is rejected.
 
 Examples:
   find k/PL1101E
@@ -205,12 +207,13 @@ Application Guide
 4. Categories and topics
 5. Completion and dashboard
 6. Recommended timetable
-7. Accessible facilities and routes
-8. CSV export
-9. Data files and storage
-10. Return
+7. Accessible facilities
+8. Accessible connections
+9. CSV export
+10. Data files and storage
+11. Return
 
-Enter a number from 1 to 10.
+Enter a number from 1 to 11.
 ____________________________________________________________
 ____________________________________________________________
 Add activities
@@ -293,15 +296,36 @@ Example - delete an unused topic:
 A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
-Accessible facilities and routes
-facility   - view and search the facility reference. See: guide facility
-connection - view and search the connection graph. See: guide connection
+Accessible facilities
+View and search the local read-only accessibility facility reference.
+Related commands: connection (see guide connection for the route graph
+between facilities)
 
-Quick examples:
+Examples:
+  facility list
   facility view AS1
+  facility find type/LIFT
+  facility find type/LIFT status/NO
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Accessible connections
+View and search the local read-only connection graph between facilities.
+Related commands: facility (see guide facility for individual facility
+lookups)
+
+Examples:
+  connection list
+  connection view 1
   connection find from/AS6
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Data files and storage
+Application data (activities, topics, and your saved default order)
+is stored under data/. Do not edit data files while the application runs.
 ____________________________________________________________
 ____________________________________________________________
 Returning to the command prompt.
@@ -310,7 +334,7 @@ ____________________________________________________________
 No guide topic named "0". Enter guide to see the list of topics.
 ____________________________________________________________
 ____________________________________________________________
-No guide topic named "11". Enter guide to see the list of topics.
+No guide topic named "12". Enter guide to see the list of topics.
 ____________________________________________________________
 ____________________________________________________________
 Application Guide
@@ -321,12 +345,13 @@ Application Guide
 4. Categories and topics
 5. Completion and dashboard
 6. Recommended timetable
-7. Accessible facilities and routes
-8. CSV export
-9. Data files and storage
-10. Return
+7. Accessible facilities
+8. Accessible connections
+9. CSV export
+10. Data files and storage
+11. Return
 
-Enter a number from 1 to 10.
+Enter a number from 1 to 11.
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -401,12 +426,28 @@ Review the plan before choosing whether to adopt it.
 (Coming soon in a future release.)
 ____________________________________________________________
 ____________________________________________________________
-Accessible facilities and routes
-facility   - view and search the facility reference. See: guide facility
-connection - view and search the connection graph. See: guide connection
+Accessible facilities
+View and search the local read-only accessibility facility reference.
+Related commands: connection (see guide connection for the route graph
+between facilities)
 
-Quick examples:
+Examples:
+  facility list
   facility view AS1
+  facility find type/LIFT
+  facility find type/LIFT status/NO
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Accessible connections
+View and search the local read-only connection graph between facilities.
+Related commands: facility (see guide facility for individual facility
+lookups)
+
+Examples:
+  connection list
+  connection view 1
   connection find from/AS6
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
@@ -429,7 +470,7 @@ ____________________________________________________________
 [Error] Invalid input: Unknown command "0". Enter guide for help.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: Unknown command "11". Enter guide for help.
+[Error] Invalid input: Unknown command "12". Enter guide for help.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: Unknown command "banana". Enter guide for help.
@@ -668,10 +709,10 @@ ____________________________________________________________
 [Error] Missing input: category is required.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.
+[Error] Missing input: date is required.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: date must be in yyyy-MM-dd format.
+[Error] Missing input: type is required.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.
@@ -1394,6 +1435,12 @@ ____________________________________________________________
 Found 1 activity:
 [2][ ][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1
              ACADEMIC / CS2113 | 90 min | E5 | S5
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: keyword must contain one or two words.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: keyword must contain one or two words.
 ____________________________________________________________
 ____________________________________________________________
 Before: energy = 1/5

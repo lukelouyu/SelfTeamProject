@@ -64,45 +64,48 @@ public class ActivityCommandParser {
      * @param activityManager the manager the resulting command will add to
      * @param topicManager the manager used to validate that a supplied topic/ already exists
      *     under the activity's category
-     * @param today the current local date, used to reject a date/ earlier than today
+     * @param now the current date and time, used to reject a date/ earlier than today and, for
+     *     today, a start time at or before now
      * @param args the text after the "add" command word
      * @return the parsed AddCommand
      * @throws MissingInputException if a required field is missing
      * @throws InvalidActivityException if a field value fails validation
-     * @throws InvalidDateTimeException if the date is malformed, does not exist, is before
-     *     today, or a time value is invalid
+     * @throws InvalidDateTimeException if the date is malformed, does not exist, or is before
+     *     today; or a time value is invalid, or (for today) the start time is at or before now
      * @throws InvalidCommandException if type is neither FIXED nor FLEXIBLE
      * @throws InvalidIndexException if topic/ does not exist under the category
      */
-    public AddCommand parseAdd(ActivityManager activityManager, TopicManager topicManager, LocalDate today,
+    public AddCommand parseAdd(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
             String args)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
         rejectUnrecognisedLeadingText(args, EDIT_MARKERS);
-        String description = requireField(args, "n/", "c/", "description");
+        String description = requireField(args, "n/", "c/", "description", "category");
         validateNoDelimiter(description, "description");
-        ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category"));
-        LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date"), today);
+        ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category", "date"));
+        LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date", "type"),
+                now.toLocalDate());
         String typeEndMarker = firstPresentMarker(args, "type/", "from/", "earliest/");
         String type = requireField(args, "type/", typeEndMarker, "type");
 
         int id = activityManager.getNextId();
         if ("FIXED".equalsIgnoreCase(type)) {
             return new AddCommand(activityManager,
-                    parseFixed(args, id, description, category, date, topicManager));
+                    parseFixed(args, id, description, category, date, now, topicManager));
         }
         if ("FLEXIBLE".equalsIgnoreCase(type)) {
             return new AddCommand(activityManager,
-                    parseFlexible(args, id, description, category, date, topicManager));
+                    parseFlexible(args, id, description, category, date, now, topicManager));
         }
         throw new InvalidCommandException("type must be FIXED or FLEXIBLE.");
     }
 
     private FixedActivity parseFixed(String args, int id, String description, ActivityCategory category,
-            LocalDate date, TopicManager topicManager)
+            LocalDate date, LocalDateTime now, TopicManager topicManager)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
-        LocalTime start = DateTimeParser.parseTime(requireField(args, "from/", "to/", "from"));
-        LocalTime end = DateTimeParser.parseTime(requireField(args, "to/", "energy/", "to"));
+        LocalTime start = DateTimeParser.parseNotBeforeNow(
+                requireField(args, "from/", "to/", "from", "to"), date, now);
+        LocalTime end = DateTimeParser.parseTime(requireField(args, "to/", "energy/", "to", "energy"));
         if (!end.isAfter(start)) {
             throw new InvalidActivityException("end time must be later than start time.");
         }
@@ -113,14 +116,15 @@ public class ActivityCommandParser {
     }
 
     private FlexibleActivity parseFlexible(String args, int id, String description, ActivityCategory category,
-            LocalDate date, TopicManager topicManager)
+            LocalDate date, LocalDateTime now, TopicManager topicManager)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
-        LocalTime earliestStart = DateTimeParser.parseTime(requireField(args, "earliest/", "latest/", "earliest"));
-        LocalTime latestEnd = DateTimeParser.parseTime(requireField(args, "latest/", "dur/", "latest"));
+        LocalTime earliestStart = DateTimeParser.parseNotBeforeNow(
+                requireField(args, "earliest/", "latest/", "earliest", "latest"), date, now);
+        LocalTime latestEnd = DateTimeParser.parseTime(requireField(args, "latest/", "dur/", "latest", "dur"));
         if (!latestEnd.isAfter(earliestStart)) {
             throw new InvalidActivityException("latest end time must be after earliest start time.");
         }
-        int durationMinutes = parsePositiveInt(requireField(args, "dur/", "energy/", "dur"), "dur");
+        int durationMinutes = parsePositiveInt(requireField(args, "dur/", "energy/", "dur", "energy"), "dur");
         validateDurationFitsWindow(earliestStart, latestEnd, durationMinutes);
         CommonTail tail = parseCommonTail(args, "energy/");
         validateTopicExists(topicManager, category, tail.topic);
@@ -130,7 +134,8 @@ public class ActivityCommandParser {
 
     private CommonTail parseCommonTail(String args, String energyMarker)
             throws MissingInputException, InvalidActivityException {
-        EnergyRating energy = RatingParser.parseEnergyRating(requireField(args, energyMarker, "sensory/", "energy"));
+        EnergyRating energy = RatingParser.parseEnergyRating(
+                requireField(args, energyMarker, "sensory/", "energy", "sensory"));
 
         String sensoryEndMarker = firstPresentMarker(args, "sensory/", "topic/", "note/");
         SensoryRating sensory = RatingParser.parseSensoryRating(
@@ -209,17 +214,20 @@ public class ActivityCommandParser {
 
     /**
      * Parses a list command's argument text into a ListCommand. Every marker field is optional
-     * and may appear in any order; an optional relative-date phrase ("today", "tomorrow", or
-     * "this week") may additionally appear at the very start of the text, before any markers.
+     * and may appear in any order; an optional relative-date phrase ("today", "tomorrow", "this
+     * week", "next week", or "overdue") may additionally appear at the very start of the text,
+     * before any markers.
      *
      * @param activityManager the manager the resulting command will read from
-     * @param now the current date and time, used to resolve "today"/"tomorrow"/"this week"
+     * @param now the current date and time, used to resolve "today"/"tomorrow"/"this week"/
+     *     "next week"/"overdue"
      * @param args the text after the "list" command word
      * @return the parsed ListCommand
      * @throws InvalidActivityException if the category is invalid
      * @throws InvalidCommandException if status or order is invalid, a relative-date phrase is
      *     unrecognised, a relative-date phrase is combined with date/ or another relative-date
-     *     phrase, or unrecognised text follows a relative-date phrase
+     *     phrase, status/ is combined with overdue, or unrecognised text follows a relative-date
+     *     phrase
      * @throws InvalidDateTimeException if the date is invalid
      */
     public ListCommand parseList(ActivityManager activityManager, LocalDateTime now, String args)
@@ -228,25 +236,30 @@ public class ActivityCommandParser {
         Map<String, String> fields = extractPresentFields(parsed.remainder, LIST_MARKERS);
         if (parsed.hasRelativeDate() && fields.containsKey("date/")) {
             throw new InvalidCommandException(
-                    "date/ cannot be combined with today, tomorrow, or this week.");
+                    "date/ cannot be combined with today, tomorrow, this week, or next week.");
+        }
+        if (parsed.overdue && fields.containsKey("status/")) {
+            throw new InvalidCommandException("status/ cannot be combined with overdue - overdue already "
+                    + "means incomplete.");
         }
 
         boolean detail = parseViewMode(fields.get("view/"));
-        CompletionStatus status = parseStatus(fields.get("status/"));
+        CompletionStatus status = parsed.overdue ? null : parseStatus(fields.get("status/"));
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
         LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : parsed.date;
         ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
 
         ActivityFilter filter = new ActivityFilter(status, category, topic, date, parsed.dateFrom, parsed.dateTo);
-        return new ListCommand(activityManager, filter, order, detail);
+        LocalDateTime overdueAsOf = parsed.overdue ? now : null;
+        return new ListCommand(activityManager, filter, order, detail, overdueAsOf);
     }
 
     /**
-     * Consumes an optional leading relative-date phrase ("today", "tomorrow", or "this week")
-     * from a list command's argument text, resolving it against now. Text that already starts
-     * with a recognised list marker is left untouched (no relative-date phrase is possible
-     * there), preserving every existing marker-only usage exactly as before.
+     * Consumes an optional leading relative-date phrase ("today", "tomorrow", "this week", "next
+     * week", or "overdue") from a list command's argument text, resolving it against now. Text
+     * that already starts with a recognised list marker is left untouched (no relative-date
+     * phrase is possible there), preserving every existing marker-only usage exactly as before.
      *
      * @param now the current date and time
      * @param args the full text after the "list" command word
@@ -259,16 +272,19 @@ public class ActivityCommandParser {
             throws InvalidCommandException {
         String trimmed = args.trim();
         if (trimmed.isEmpty() || startsWithKnownMarker(trimmed)) {
-            return new RelativeDateAndRemainder(null, null, null, trimmed);
+            return new RelativeDateAndRemainder(null, null, null, false, trimmed);
         }
 
         String[] words = trimmed.split("\\s+", 3);
         LocalDate today = now.toLocalDate();
         RelativeDateAndRemainder result;
         if ("today".equalsIgnoreCase(words[0])) {
-            result = new RelativeDateAndRemainder(today, null, null, remainderAfter(trimmed, words, 1));
+            result = new RelativeDateAndRemainder(today, null, null, false, remainderAfter(trimmed, words, 1));
         } else if ("tomorrow".equalsIgnoreCase(words[0])) {
-            result = new RelativeDateAndRemainder(today.plusDays(1), null, null, remainderAfter(trimmed, words, 1));
+            result = new RelativeDateAndRemainder(today.plusDays(1), null, null, false,
+                    remainderAfter(trimmed, words, 1));
+        } else if ("overdue".equalsIgnoreCase(words[0])) {
+            result = new RelativeDateAndRemainder(null, null, null, true, remainderAfter(trimmed, words, 1));
         } else if ("this".equalsIgnoreCase(words[0])) {
             if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
                 throw new InvalidCommandException(
@@ -277,7 +293,17 @@ public class ActivityCommandParser {
             }
             LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
             LocalDate sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-            result = new RelativeDateAndRemainder(null, monday, sunday, remainderAfter(trimmed, words, 2));
+            result = new RelativeDateAndRemainder(null, monday, sunday, false, remainderAfter(trimmed, words, 2));
+        } else if ("next".equalsIgnoreCase(words[0])) {
+            if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
+                throw new InvalidCommandException(
+                        "Unknown list option \"next " + (words.length > 1 ? words[1] : "")
+                                + "\"; only \"next week\" is supported.");
+            }
+            LocalDate nextMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusDays(7);
+            LocalDate nextSunday = nextMonday.plusDays(6);
+            result = new RelativeDateAndRemainder(null, nextMonday, nextSunday, false,
+                    remainderAfter(trimmed, words, 2));
         } else {
             throw new InvalidCommandException("Unknown list option \"" + words[0] + "\".");
         }
@@ -306,17 +332,24 @@ public class ActivityCommandParser {
         return trimmed.substring(consumed).trim();
     }
 
-    /** Carries a resolved relative date (exact or range) plus the marker text left to parse. */
+    /**
+     * Carries a resolved relative date (exact or range), or the "overdue" flag, plus the marker
+     * text left to parse. date/dateFrom/dateTo and overdue are mutually exclusive - "overdue"
+     * doesn't resolve to any date, since it's a completion+time condition, not a date filter.
+     */
     private static final class RelativeDateAndRemainder {
         private final LocalDate date;
         private final LocalDate dateFrom;
         private final LocalDate dateTo;
+        private final boolean overdue;
         private final String remainder;
 
-        private RelativeDateAndRemainder(LocalDate date, LocalDate dateFrom, LocalDate dateTo, String remainder) {
+        private RelativeDateAndRemainder(LocalDate date, LocalDate dateFrom, LocalDate dateTo, boolean overdue,
+                String remainder) {
             this.date = date;
             this.dateFrom = dateFrom;
             this.dateTo = dateTo;
+            this.overdue = overdue;
             this.remainder = remainder;
         }
 
@@ -375,7 +408,7 @@ public class ActivityCommandParser {
      * @return the parsed FindCommand
      * @throws MissingInputException if neither a keyword nor a filter is supplied
      * @throws InvalidActivityException if the category is invalid
-     * @throws InvalidCommandException if order is invalid
+     * @throws InvalidCommandException if order is invalid, or k/ contains more than two words
      * @throws InvalidDateTimeException if the date is invalid
      */
     public FindCommand parseFind(ActivityManager activityManager, String args)
@@ -391,6 +424,9 @@ public class ActivityCommandParser {
         List<String> keywords = rawKeywords != null
                 ? Arrays.asList(rawKeywords.split("\\s+"))
                 : List.of();
+        if (keywords.size() > 2) {
+            throw new InvalidCommandException("keyword must contain one or two words.");
+        }
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
         LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
@@ -484,6 +520,35 @@ public class ActivityCommandParser {
             throw new MissingInputException(fieldName + " is required.");
         }
         return value;
+    }
+
+    /**
+     * Like {@link #requireField(String, String, String, String)}, but for a start marker whose
+     * end marker is itself always a required field at a statically-known position in the
+     * grammar (as opposed to a marker whose end boundary can legitimately vary or be absent,
+     * e.g. an optional trailing field). Verifies endMarker is actually present before extracting
+     * startMarker's value.
+     *
+     * <p>Without this, a genuinely missing endMarker lets startMarker's extraction silently
+     * swallow the rest of the command text - {@link FieldParser#extractField} reads to the end of
+     * input whenever its end marker isn't found - producing a misleading validation failure on
+     * startMarker's now-oversized value instead of correctly reporting that endMarker itself is
+     * missing (BUG-04, v1.0 manual release test, 2026-08-01).
+     *
+     * @param args the full argument text
+     * @param startMarker the marker just before the value
+     * @param endMarker the marker required to end the value
+     * @param fieldName startMarker's field name, used if startMarker itself is missing
+     * @param endMarkerFieldName endMarker's field name, used if endMarker is missing
+     * @return the trimmed value between startMarker and endMarker
+     * @throws MissingInputException if endMarker is absent, or startMarker is absent/blank
+     */
+    private String requireField(String args, String startMarker, String endMarker, String fieldName,
+            String endMarkerFieldName) throws MissingInputException {
+        if (FieldParser.indexOfMarker(args, endMarker, 0) == -1) {
+            throw new MissingInputException(endMarkerFieldName + " is required.");
+        }
+        return requireField(args, startMarker, endMarker, fieldName);
     }
 
     private ActivityCategory parseCategory(String text) throws InvalidActivityException {
@@ -661,7 +726,9 @@ public class ActivityCommandParser {
      * @param activityManager the manager holding the activity being edited
      * @param topicManager the manager used to validate that the activity's resulting topic
      *     (carried over or newly supplied) exists under its resulting category
-     * @param today the current local date, used to reject a supplied date/ earlier than today
+     * @param now the current date and time, used to reject a supplied date/ earlier than today
+     *     and, when date/ or the start-time marker is actively supplied and resolves to today, a
+     *     start time at or before now
      * @param args the text after the "edit" command word, starting with the activity ID
      * @return the parsed EditCommand
      * @throws MissingInputException if no ID, no fields, or a required new-type timing field is
@@ -672,11 +739,12 @@ public class ActivityCommandParser {
      *     exist under the resulting category
      * @throws InvalidActivityException if a field value fails validation
      * @throws InvalidDateTimeException if a supplied date is malformed, does not exist, or is
-     *     before today, or a time value is invalid
+     *     before today; or a time value is invalid, or (when date/ or the start-time marker is
+     *     actively supplied) the resulting start time is at or before now on today's date
      * @throws DuplicateActivityException if the resulting activity exactly duplicates another,
      *     or (for a FixedActivity) overlaps another fixed activity on the same date
      */
-    public EditCommand parseEdit(ActivityManager activityManager, TopicManager topicManager, LocalDate today,
+    public EditCommand parseEdit(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
             String args)
             throws MissingInputException, InvalidCommandException, InvalidIndexException, InvalidActivityException,
             InvalidDateTimeException, DuplicateActivityException {
@@ -694,7 +762,7 @@ public class ActivityCommandParser {
         String description = fields.getOrDefault("n/", old.getDescription());
         ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : old.getCategory();
         LocalDate date = fields.containsKey("date/")
-                ? DateTimeParser.parseNotBeforeDate(fields.get("date/"), today) : old.getDate();
+                ? DateTimeParser.parseNotBeforeDate(fields.get("date/"), now.toLocalDate()) : old.getDate();
         EnergyRating energy = fields.containsKey("energy/")
                 ? RatingParser.parseEnergyRating(fields.get("energy/")) : old.getEnergyRating();
         SensoryRating sensory = fields.containsKey("sensory/")
@@ -716,9 +784,10 @@ public class ActivityCommandParser {
         boolean typeChanged = newType != oldType;
 
         Activity newActivity = newType == ScheduleType.FIXED
-                ? buildFixed(id, description, category, date, energy, sensory, topic, note, fields, old, typeChanged)
+                ? buildFixed(id, description, category, date, energy, sensory, topic, note, fields, old, typeChanged,
+                        now)
                 : buildFlexible(id, description, category, date, energy, sensory, topic, note, fields, old,
-                        typeChanged);
+                        typeChanged, now);
         activityManager.checkNoConflicts(newActivity, id);
 
         if (old.isComplete()) {
@@ -729,7 +798,7 @@ public class ActivityCommandParser {
 
     private FixedActivity buildFixed(int id, String description, ActivityCategory category, LocalDate date,
             EnergyRating energy, SensoryRating sensory, String topic, String note, Map<String, String> fields,
-            Activity old, boolean typeChanged)
+            Activity old, boolean typeChanged, LocalDateTime now)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
         LocalTime start = resolveRequiredTime(fields, "from/", typeChanged,
                 typeChanged ? null : ((FixedActivity) old).getStartTime());
@@ -738,12 +807,15 @@ public class ActivityCommandParser {
         if (!end.isAfter(start)) {
             throw new InvalidActivityException("end time must be later than start time.");
         }
+        if (fields.containsKey("date/") || fields.containsKey("from/")) {
+            DateTimeParser.requireNotPastIfToday(start, date, now);
+        }
         return new FixedActivity(id, description, category, date, start, end, energy, sensory, topic, note);
     }
 
     private FlexibleActivity buildFlexible(int id, String description, ActivityCategory category, LocalDate date,
             EnergyRating energy, SensoryRating sensory, String topic, String note, Map<String, String> fields,
-            Activity old, boolean typeChanged)
+            Activity old, boolean typeChanged, LocalDateTime now)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
         LocalTime earliestStart = resolveRequiredTime(fields, "earliest/", typeChanged,
                 typeChanged ? null : ((FlexibleActivity) old).getEarliestStart());
@@ -751,6 +823,9 @@ public class ActivityCommandParser {
                 typeChanged ? null : ((FlexibleActivity) old).getLatestEnd());
         if (!latestEnd.isAfter(earliestStart)) {
             throw new InvalidActivityException("latest end time must be after earliest start time.");
+        }
+        if (fields.containsKey("date/") || fields.containsKey("earliest/")) {
+            DateTimeParser.requireNotPastIfToday(earliestStart, date, now);
         }
         int durationMinutes;
         if (fields.containsKey("dur/")) {

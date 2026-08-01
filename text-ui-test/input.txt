@@ -20,9 +20,11 @@ guide 2
 guide 3
 guide 4
 guide 7
+guide 8
 guide 10
-guide 0
 guide 11
+guide 0
+guide 12
 guide
 1
 2
@@ -34,8 +36,9 @@ guide
 8
 9
 10
-0
 11
+0
+12
 
 banana
 adds n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
@@ -178,6 +181,8 @@ find k/CG3207 c/ACADEMIC
 find c/OTHERS
 find topic/Basketball Club
 find k/finish assignment order/time
+find k/Edited exact extra
+find k/one two three c/ACADEMIC
 
 edit 1 energy/2
 edit 1 energy/2

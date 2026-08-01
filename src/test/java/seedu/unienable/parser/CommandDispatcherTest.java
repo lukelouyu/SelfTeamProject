@@ -76,7 +76,7 @@ class CommandDispatcherTest {
     @Test
     public void dispatch_add_returnsAddCommand() throws Exception {
         Command command = dispatcher.dispatch("add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED "
-                + "from/09:00 to/11:00 energy/4 sensory/3", NOW);
+                + "from/11:00 to/12:00 energy/4 sensory/3", NOW);
 
         assertTrue(command instanceof AddCommand);
     }
@@ -212,7 +212,7 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareMenuNumberOne_returnsGuideCommandForGettingStarted() throws Exception {
-        // Regression test: the guide's main menu says "Enter a number from 1 to 10", so a bare
+        // Regression test: the guide's main menu says "Enter a number from 1 to 11", so a bare
         // "1" entered as its own command (not "guide 1") must resolve the same way.
         Command command = dispatcher.dispatch("1", NOW);
 
@@ -221,8 +221,16 @@ class CommandDispatcherTest {
     }
 
     @Test
-    public void dispatch_bareMenuNumberTen_returnsGuideCommandForReturn() throws Exception {
+    public void dispatch_bareMenuNumberTen_returnsGuideCommandForStorage() throws Exception {
         Command command = dispatcher.dispatch("10", NOW);
+
+        assertTrue(command instanceof GuideCommand);
+        assertTrue(command.execute().getFeedback().startsWith("Data files and storage"));
+    }
+
+    @Test
+    public void dispatch_bareMenuNumberEleven_returnsGuideCommandForReturn() throws Exception {
+        Command command = dispatcher.dispatch("11", NOW);
 
         assertTrue(command instanceof GuideCommand);
         assertTrue(command.execute().getFeedback().startsWith("Returning to the command prompt"));
@@ -230,14 +238,14 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareZero_throwsInvalidCommandException() {
-        // "0" is deliberately outside the recognised 1-10 menu range, so it must still fall
+        // "0" is deliberately outside the recognised 1-11 menu range, so it must still fall
         // through to the normal "unknown command" error rather than being treated as a menu item.
         assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("0", NOW));
     }
 
     @Test
-    public void dispatch_bareEleven_throwsInvalidCommandException() {
-        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("11", NOW));
+    public void dispatch_bareTwelve_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("12", NOW));
     }
 
     @Test

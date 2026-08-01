@@ -13,7 +13,7 @@ import seedu.unienable.command.accessibility.AccessibilityDisclaimer;
  *
  * <p>The main menu's items can be selected either by their existing text keyword (e.g. "add") or
  * by the number shown next to them in the menu (e.g. "1"), both as the argument to "guide" and as
- * a bare top-level command entered right after the menu is displayed. Menu item 10 ("Return") is
+ * a bare top-level command entered right after the menu is displayed. Menu item 11 ("Return") is
  * not a topic; it's a no-op that acknowledges the selection instead of showing topic text.
  */
 public class GuideCommand extends Command {
@@ -26,11 +26,14 @@ public class GuideCommand extends Command {
      * list/find/view) map to a dedicated overview topic ("activities", "browse") rather than to a
      * single command's own topic, so the numbered entry and its own keyword always agree with
      * each other; each overview topic points onward to the individual command topics for detail.
-     * Item 10 ("Return") is handled separately, not through this list.
+     * Facility and connection are independent command families with independent guide topics, so
+     * unlike "activities"/"browse" they each get their own direct number (7 and 8) rather than
+     * being folded into one combined overview. Item 11 ("Return") is handled separately, not
+     * through this list.
      */
     private static final String[] MENU_NUMBER_TOPICS = {
         "getting-started", "activities", "browse", "topic", "dashboard",
-        "recommend", "accessibility", "export", "storage",
+        "recommend", "facility", "connection", "export", "storage",
     };
 
     private static final String MAIN_MENU = "Application Guide\n\n"
@@ -40,11 +43,12 @@ public class GuideCommand extends Command {
             + "4. Categories and topics\n"
             + "5. Completion and dashboard\n"
             + "6. Recommended timetable\n"
-            + "7. Accessible facilities and routes\n"
-            + "8. CSV export\n"
-            + "9. Data files and storage\n"
-            + "10. Return\n\n"
-            + "Enter a number from 1 to 10.";
+            + "7. Accessible facilities\n"
+            + "8. Accessible connections\n"
+            + "9. CSV export\n"
+            + "10. Data files and storage\n"
+            + "11. Return\n\n"
+            + "Enter a number from 1 to 11.";
 
     private static final Map<String, String> TOPICS = buildTopics();
 
@@ -64,7 +68,7 @@ public class GuideCommand extends Command {
         if (topic == null) {
             return new CommandResult(MAIN_MENU);
         }
-        if (topic.equals("10")) {
+        if (topic.equals("11")) {
             return new CommandResult(RETURN_MESSAGE);
         }
         String text = TOPICS.get(resolveMenuNumber(topic).toLowerCase(Locale.ROOT));
@@ -158,7 +162,7 @@ public class GuideCommand extends Command {
                 + "  list\n"
                 + "  view 3");
         topics.put("list", "List activities\n"
-                + "Format: list [today|tomorrow|this week] [FILTERS]\n"
+                + "Format: list [today|tomorrow|this week|next week|overdue] [FILTERS]\n"
                 + "Every filter is optional and combinable. Results use your saved\n"
                 + "default order (see guide order) unless order/ORDER is given, which\n"
                 + "overrides it for this one command only.\n"
@@ -168,7 +172,7 @@ public class GuideCommand extends Command {
                 + "  view/detail - every field, including the note\n"
                 + "\n"
                 + "Filters:\n"
-                + "  status/all|completed|incomplete\n"
+                + "  status/all|completed|incomplete (not with overdue - see below)\n"
                 + "  c/CATEGORY\n"
                 + "  topic/TOPIC\n"
                 + "  date/YYYY-MM-DD\n"
@@ -178,6 +182,12 @@ public class GuideCommand extends Command {
                 + "  today     - activities on the current date\n"
                 + "  tomorrow  - activities on the next date\n"
                 + "  this week - activities from Monday through Sunday of the current week\n"
+                + "  next week - activities from Monday through Sunday of the following week\n"
+                + "\n"
+                + "overdue is different: it shows incomplete activities whose scheduled\n"
+                + "time has already passed. It's a separate view, not a replacement -\n"
+                + "plain list still shows every activity regardless of overdue status.\n"
+                + "Cannot combine with status/, since overdue already means incomplete.\n"
                 + "\n"
                 + "Examples:\n"
                 + "  list\n"
@@ -187,7 +197,9 @@ public class GuideCommand extends Command {
                 + "  list date/2026-08-15\n"
                 + "  list today\n"
                 + "  list tomorrow view/detail\n"
-                + "  list this week status/incomplete c/ACADEMIC order/time");
+                + "  list this week status/incomplete c/ACADEMIC order/time\n"
+                + "  list next week\n"
+                + "  list overdue");
         topics.put("edit", "Edit an activity\n"
                 + "Format: edit ID PREFIX/NEW_VALUE [PREFIX/NEW_VALUE ...]\n"
                 + "Any subset of fields may be supplied, in any order. Stable IDs never\n"
@@ -274,7 +286,8 @@ public class GuideCommand extends Command {
                 + "asks for y/n before making any change. This cannot be undone.");
         topics.put("find", "Find activities\n"
                 + "Format: find [k/KEYWORD ...] [FILTERS]\n"
-                + "Multiple keywords and filters use AND.\n"
+                + "Multiple keywords and filters use AND. k/ accepts one or two\n"
+                + "words; three or more words is rejected.\n"
                 + "\n"
                 + "Examples:\n"
                 + "  find k/PL1101E\n"
@@ -324,15 +337,6 @@ public class GuideCommand extends Command {
                 + "Use recommend PERIOD [PREFERENCE_OVERRIDES].\n"
                 + "Review the plan before choosing whether to adopt it."
                 + COMING_SOON_NOTE);
-        topics.put("accessibility", "Accessible facilities and routes\n"
-                + "facility   - view and search the facility reference. See: guide facility\n"
-                + "connection - view and search the connection graph. See: guide connection\n"
-                + "\n"
-                + "Quick examples:\n"
-                + "  facility view AS1\n"
-                + "  connection find from/AS6\n"
-                + "\n"
-                + AccessibilityDisclaimer.TEXT);
         topics.put("facility", "Accessible facilities\n"
                 + "View and search the local read-only accessibility facility reference.\n"
                 + "Related commands: connection (see guide connection for the route graph\n"

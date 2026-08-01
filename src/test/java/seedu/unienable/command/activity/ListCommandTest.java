@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
@@ -78,5 +79,36 @@ class ListCommandTest {
                 ActivityOrder.INPUT, false).execute();
 
         assertEquals("No activities found.", result.getFeedback());
+    }
+
+    @Test
+    public void execute_overdueAsOfSupplied_listsOnlyOverdueIncompleteActivities() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newActivity(manager.getNextId(), "Overdue", LocalTime.of(6, 0), LocalTime.of(7, 0),
+                ActivityCategory.ACADEMIC));
+        manager.add(newActivity(manager.getNextId(), "Upcoming", LocalTime.of(14, 0), LocalTime.of(15, 0),
+                ActivityCategory.ACADEMIC));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        CommandResult result = new ListCommand(manager, new ActivityFilter(null, null, null, null),
+                ActivityOrder.INPUT, false, now).execute();
+
+        String feedback = result.getFeedback();
+        assertTrue(feedback.contains("Overdue"));
+        assertTrue(!feedback.contains("Upcoming"));
+    }
+
+    @Test
+    public void execute_overdueAsOfNull_usesPlainListInsteadOfOverdue() throws Exception {
+        // The 4-arg constructor (used everywhere else) must keep behaving exactly as before -
+        // no overdue filtering applied.
+        ActivityManager manager = new ActivityManager();
+        manager.add(newActivity(manager.getNextId(), "Overdue", LocalTime.of(6, 0), LocalTime.of(7, 0),
+                ActivityCategory.ACADEMIC));
+
+        CommandResult result = new ListCommand(manager, new ActivityFilter(null, null, null, null),
+                ActivityOrder.INPUT, false).execute();
+
+        assertTrue(result.getFeedback().contains("Overdue"));
     }
 }

@@ -20,12 +20,13 @@ class GuideCommandTest {
                 + "4. Categories and topics\n"
                 + "5. Completion and dashboard\n"
                 + "6. Recommended timetable\n"
-                + "7. Accessible facilities and routes\n"
-                + "8. CSV export\n"
-                + "9. Data files and storage\n"
-                + "10. Return\n"
+                + "7. Accessible facilities\n"
+                + "8. Accessible connections\n"
+                + "9. CSV export\n"
+                + "10. Data files and storage\n"
+                + "11. Return\n"
                 + "\n"
-                + "Enter a number from 1 to 10.", result.getFeedback());
+                + "Enter a number from 1 to 11.", result.getFeedback());
     }
 
     @Test
@@ -107,7 +108,8 @@ class GuideCommandTest {
 
         assertEquals("Find activities\n"
                 + "Format: find [k/KEYWORD ...] [FILTERS]\n"
-                + "Multiple keywords and filters use AND.\n"
+                + "Multiple keywords and filters use AND. k/ accepts one or two\n"
+                + "words; three or more words is rejected.\n"
                 + "\n"
                 + "Examples:\n"
                 + "  find k/PL1101E\n"
@@ -238,10 +240,8 @@ class GuideCommandTest {
 
     @Test
     public void execute_mainMenu_listsBothFacilityAndConnectionAsAvailableTopics() {
-        // "guide facility" and "guide connection" resolve independently even though neither
-        // keyword literally appears in the numbered main menu text (which groups them under item
-        // 7, like every other multi-command menu item) - this asserts both are genuinely
-        // reachable and distinct, not that the word "connection" appears in MAIN_MENU's text.
+        // "guide facility" and "guide connection" resolve independently, each reachable by its
+        // own numbered menu item (7 and 8) as well as by keyword - see BUG-01.
         assertTrue(new GuideCommand("facility").execute().getFeedback().startsWith("Accessible facilities"));
         assertTrue(new GuideCommand("connection").execute().getFeedback().startsWith("Accessible connections"));
         assertTrue(!new GuideCommand("facility").execute().getFeedback()
@@ -414,59 +414,78 @@ class GuideCommandTest {
     }
 
     @Test
-    public void execute_menuNumberSeven_resolvesToAccessibilityOverview() {
-        // Regression test for the "separate facility and connection guide topics" bug report:
-        // item 7 previously resolved straight to the "facility" topic, whose text (before this
-        // fix) happened to also describe connection commands; now that "facility" describes only
-        // facility commands, item 7 must resolve to an overview that genuinely covers both, the
-        // same overview-topic pattern already used for items 2 and 3.
+    public void execute_menuNumberSeven_resolvesToFacility() {
+        // Regression test for BUG-01 (v1.0 manual release test, 2026-08-01): the main guide
+        // previously combined facility and connection under one item 7, resolving to a merged
+        // overview instead of exposing each as its own numbered, uniquely-mapped topic.
         CommandResult result = new GuideCommand("7").execute();
-        String feedback = result.getFeedback();
 
-        assertTrue(feedback.startsWith("Accessible facilities and routes"));
-        assertTrue(feedback.contains("facility"));
-        assertTrue(feedback.contains("connection"));
+        assertTrue(result.getFeedback().startsWith("Accessible facilities"));
+        assertTrue(result.getFeedback().contains("facility list"));
     }
 
     @Test
     public void execute_menuNumberSevenAgreesWithItsOwnKeyword() {
         assertEquals(new GuideCommand("7").execute().getFeedback(),
-                new GuideCommand("accessibility").execute().getFeedback());
+                new GuideCommand("facility").execute().getFeedback());
+    }
+
+    @Test
+    public void execute_menuNumberEight_resolvesToConnection() {
+        CommandResult result = new GuideCommand("8").execute();
+
+        assertTrue(result.getFeedback().startsWith("Accessible connections"));
+        assertTrue(result.getFeedback().contains("connection list"));
+    }
+
+    @Test
+    public void execute_menuNumberEightAgreesWithItsOwnKeyword() {
+        assertEquals(new GuideCommand("8").execute().getFeedback(),
+                new GuideCommand("connection").execute().getFeedback());
+    }
+
+    @Test
+    public void execute_menuNumberSevenAndEight_areDistinctTopics() {
+        // The core BUG-01 assertion: items 7 and 8 must map to genuinely different, independently
+        // reachable topics, not the same combined overview.
+        assertTrue(!new GuideCommand("7").execute().getFeedback()
+                .equals(new GuideCommand("8").execute().getFeedback()));
     }
 
     @Test
     public void execute_everyNumberedMenuMapping_resolvesToItsAdvertisedTopic() {
-        // Every numbered menu item from 1-9 must resolve to a real, distinct topic (never falling
-        // back to the "No guide topic named" error), and the topic text it shows must start with
-        // the same subject the main menu line advertises for that number.
+        // Every numbered menu item from 1-10 must resolve to a real, distinct topic (never
+        // falling back to the "No guide topic named" error), and the topic text it shows must
+        // start with the same subject the main menu line advertises for that number.
         assertTrue(new GuideCommand("1").execute().getFeedback().startsWith("Getting started"));
         assertTrue(new GuideCommand("2").execute().getFeedback().startsWith("Add, edit and delete activities"));
         assertTrue(new GuideCommand("3").execute().getFeedback().startsWith("List, find and view activities"));
         assertTrue(new GuideCommand("4").execute().getFeedback().startsWith("Categories and topics"));
         assertTrue(new GuideCommand("5").execute().getFeedback().startsWith("Completion and daily load"));
         assertTrue(new GuideCommand("6").execute().getFeedback().startsWith("Recommended timetable"));
-        assertTrue(new GuideCommand("7").execute().getFeedback().startsWith("Accessible facilities and routes"));
-        assertTrue(new GuideCommand("8").execute().getFeedback().startsWith("CSV exports"));
-        assertTrue(new GuideCommand("9").execute().getFeedback().startsWith("Data files and storage"));
+        assertTrue(new GuideCommand("7").execute().getFeedback().startsWith("Accessible facilities"));
+        assertTrue(new GuideCommand("8").execute().getFeedback().startsWith("Accessible connections"));
+        assertTrue(new GuideCommand("9").execute().getFeedback().startsWith("CSV exports"));
+        assertTrue(new GuideCommand("10").execute().getFeedback().startsWith("Data files and storage"));
     }
 
     @Test
-    public void execute_menuNumberEight_resolvesToExport() {
-        CommandResult result = new GuideCommand("8").execute();
+    public void execute_menuNumberNine_resolvesToExport() {
+        CommandResult result = new GuideCommand("9").execute();
 
         assertTrue(result.getFeedback().startsWith("CSV exports"));
     }
 
     @Test
-    public void execute_menuNumberNine_resolvesToStorage() {
-        CommandResult result = new GuideCommand("9").execute();
+    public void execute_menuNumberTen_resolvesToStorage() {
+        CommandResult result = new GuideCommand("10").execute();
 
         assertTrue(result.getFeedback().startsWith("Data files and storage"));
     }
 
     @Test
-    public void execute_menuNumberTen_returnsWithoutShowingATopic() {
-        CommandResult result = new GuideCommand("10").execute();
+    public void execute_menuNumberEleven_returnsWithoutShowingATopic() {
+        CommandResult result = new GuideCommand("11").execute();
 
         assertEquals("Returning to the command prompt.", result.getFeedback());
     }
@@ -474,7 +493,7 @@ class GuideCommandTest {
     @Test
     public void execute_menuNumberOutOfRangeBelow_showsFallbackMessage() {
         // "0" is deliberately not treated as a menu number, matching CommandDispatcher's dispatch
-        // table which also only recognises "1" through "10" as bare commands.
+        // table which also only recognises "1" through "11" as bare commands.
         CommandResult result = new GuideCommand("0").execute();
 
         assertEquals("No guide topic named \"0\". Enter guide to see the list of topics.",
@@ -483,9 +502,9 @@ class GuideCommandTest {
 
     @Test
     public void execute_menuNumberOutOfRangeAbove_showsFallbackMessage() {
-        CommandResult result = new GuideCommand("11").execute();
+        CommandResult result = new GuideCommand("12").execute();
 
-        assertEquals("No guide topic named \"11\". Enter guide to see the list of topics.",
+        assertEquals("No guide topic named \"12\". Enter guide to see the list of topics.",
                 result.getFeedback());
     }
 }

@@ -175,7 +175,7 @@ window. As with a fixed activity, a supplied `topic/` must already exist under t
 ### 6.3 List Activities: `list`
 
 ```text
-list [today|tomorrow|this week]
+list [today|tomorrow|this week|next week|overdue]
      [view/concise|detail]
      [status/all|completed|incomplete]
      [c/CATEGORY] [topic/TOPIC] [date/DATE]
@@ -200,22 +200,33 @@ list today
 list tomorrow
 list this week status/incomplete c/ACADEMIC order/time
 list tomorrow view/detail
+list next week
+list overdue
 ```
 
 - `today` — activities on the current local date.
 - `tomorrow` — activities on the current local date plus one day.
 - `this week` — activities from Monday through Sunday of the week containing today.
+- `next week` — activities from Monday through Sunday of the week immediately after `this week`.
+- `overdue` — incomplete activities whose scheduled time has already fully passed. This is a
+  separate view, not a replacement: plain `list` (and every other selector above) keeps showing
+  every activity regardless of overdue status. A completed activity, and any activity that hasn't
+  started yet, never appears here. `overdue` cannot be combined with `status/`, since it already
+  means "incomplete" by definition; it can still be combined with `c/`, `topic/`, `date/`,
+  `view/`, and `order/`.
 
-A relative-date phrase can be freely combined with the other filters above, but not with
-`date/YYYY-MM-DD` (which still works on its own) or with another relative-date phrase; either
-combination, or unrecognised trailing text after a relative-date phrase, is rejected with a clear
-error rather than silently falling back to plain `list`:
+A relative-date phrase can be freely combined with the other filters above (except `overdue` with
+`status/`, see above), but not with `date/YYYY-MM-DD` (which still works on its own) or with
+another relative-date phrase; either combination, or unrecognised trailing text after a
+relative-date phrase, is rejected with a clear error rather than silently falling back to plain
+`list`:
 
 ```text
 list today date/2026-08-15
 list today tomorrow
 list this month
 list today extra
+list overdue status/completed
 ```
 
 ### 6.4 View One Activity: `view`
@@ -250,8 +261,11 @@ find [k/KEYWORD ...] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|ch
 ```
 
 At least one keyword or filter is required. Matching is case-insensitive and partial (`assign`
-matches `assignment`); keywords search description, topic, and note. Multiple keywords and
-filters all combine with AND. Header wording is `"Found N activity/activities:"`.
+matches `assignment`); keywords search description, topic, and note. `k/` accepts exactly one or
+two words (e.g. `k/lecture` or `k/finish assignment`, both combined with AND); three or more
+words is rejected rather than silently searched. Leading, trailing, and repeated whitespace
+within `k/` don't count toward the word limit. Multiple keywords and filters all combine with
+AND. Header wording is `"Found N activity/activities:"`.
 
 ### 6.6 View/Set the Default Ordering: `order`
 
@@ -642,8 +656,8 @@ guide TOPIC
 guide NUMBER
 ```
 
-`guide` alone shows a 10-item numbered menu. `guide TOPIC` shows one topic's text directly.
-Implemented topics: `getting-started`, `activities`, `browse`, `accessibility`, `add`, `view`,
+`guide` alone shows an 11-item numbered menu. `guide TOPIC` shows one topic's text directly.
+Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`,
 `list`, `edit`, `delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`,
 `topic`, `facility`, `connection`, `storage`. Topics for v2.0-only features (`timetable`,
 `recommend`, `route`, `export`) are still listed but end with `(Coming soon in a future
@@ -655,12 +669,12 @@ Each menu item can also be selected by its number, either as `guide NUMBER` or b
 bare number as its own command right after the menu is shown (e.g. `1` selects "Getting
 started"). Menu items that span more than one command topic use a dedicated overview topic
 instead of picking just one: item `2` ("Add, edit and delete activities") is the `activities`
-topic, item `3` ("List, find and view activities") is the `browse` topic, and item `7`
-("Accessible facilities and routes") is the `accessibility` topic; each overview points onward to
-the individual command's own topic (`add`, `edit`, `delete`, `list`, `find`, `view`, `facility`,
-`connection`) for full detail. `facility` and `connection` are separate, independently reachable
-topics - each describes only its own command family. Item `10` ("Return") is not a topic; it
-just acknowledges the selection and returns to the command prompt.
+topic, and item `3` ("List, find and view activities") is the `browse` topic; each overview
+points onward to the individual command's own topic (`add`, `edit`, `delete`, `list`, `find`,
+`view`) for full detail. `facility` (item `7`) and `connection` (item `8`) are separate,
+independently and uniquely numbered topics - each describes only its own command family, with
+no combined item grouping them together. Item `11` ("Return") is not a topic; it just
+acknowledges the selection and returns to the command prompt.
 
 ## 10. Exit: `bye`
 
@@ -770,7 +784,7 @@ bye
 
 add n/DESCRIPTION c/CATEGORY date/DATE type/FIXED from/START to/END energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]
 add n/DESCRIPTION c/CATEGORY date/DATE type/FLEXIBLE earliest/TIME latest/TIME dur/MINUTES energy/1-5 sensory/1-5 [topic/TOPIC] [note/NOTES]
-list [today|tomorrow|this week] [view/concise|detail] [status/all|completed|incomplete] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
+list [today|tomorrow|this week|next week|overdue] [view/concise|detail] [status/all|completed|incomplete] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
 view ID
 find [k/KEYWORD ...] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
 order view

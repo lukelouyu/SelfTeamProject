@@ -535,6 +535,68 @@ class ActivityManagerTest {
     }
 
     @Test
+    public void listOverdue_returnsOnlyIncompleteAndOverdue() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Overdue incomplete",
+                LocalTime.of(6, 0), LocalTime.of(7, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Overdue but complete",
+                LocalTime.of(7, 30), LocalTime.of(8, 0)));
+        manager.mark(2);
+        manager.add(newFixedActivity(manager.getNextId(), "Not yet due",
+                LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        List<Activity> overdue = manager.listOverdue(now, new ActivityFilter(null, null, null, null), null);
+
+        assertEquals(1, overdue.size());
+        assertEquals("Overdue incomplete", overdue.get(0).getDescription());
+    }
+
+    @Test
+    public void listOverdue_doesNotAffectPlainList() throws Exception {
+        // The additive-scope guarantee at the manager level: listOverdue is a separate query,
+        // list() keeps returning every activity regardless of overdue status.
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Overdue incomplete",
+                LocalTime.of(6, 0), LocalTime.of(7, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        List<Activity> plain = manager.list(new ActivityFilter(null, null, null, null), null);
+
+        assertEquals(1, plain.size());
+        List<Activity> overdue = manager.listOverdue(now, new ActivityFilter(null, null, null, null), null);
+        assertEquals(1, overdue.size());
+    }
+
+    @Test
+    public void listOverdue_appliesAdditionalFilterAndOrder() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Overdue academic",
+                LocalTime.of(6, 0), LocalTime.of(7, 0)));
+        Activity overdueCca = new FixedActivity(manager.getNextId(), "Overdue cca", ActivityCategory.CCA,
+                LocalDate.of(2026, 8, 15), LocalTime.of(7, 30), LocalTime.of(8, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null);
+        manager.add(overdueCca);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        List<Activity> result = manager.listOverdue(now,
+                new ActivityFilter(null, ActivityCategory.ACADEMIC, null, null), ActivityOrder.TIME);
+
+        assertEquals(1, result.size());
+        assertEquals("Overdue academic", result.get(0).getDescription());
+    }
+
+    @Test
+    public void listOverdue_noOverdueActivities_returnsEmptyList() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId(), "Upcoming",
+                LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        LocalDateTime now = LocalDateTime.of(2026, 8, 15, 9, 0);
+
+        assertTrue(manager.listOverdue(now, new ActivityFilter(null, null, null, null), null).isEmpty());
+    }
+
+    @Test
     public void replace_validReplacement_swapsInPlaceKeepingSameId() throws Exception {
         ActivityManager manager = new ActivityManager();
         manager.add(newFixedActivity(manager.getNextId(), "Old description",

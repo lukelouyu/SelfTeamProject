@@ -79,7 +79,7 @@ public class CommandDispatcher {
 
         switch (commandWord) {
         case "add":
-            return activityCommandParser.parseAdd(activityManager, topicManager, now.toLocalDate(), args);
+            return activityCommandParser.parseAdd(activityManager, topicManager, now, args);
         case "list":
             return activityCommandParser.parseList(activityManager, now, args);
         case "view":
@@ -87,7 +87,7 @@ public class CommandDispatcher {
         case "find":
             return activityCommandParser.parseFind(activityManager, args);
         case "edit":
-            return activityCommandParser.parseEdit(activityManager, topicManager, now.toLocalDate(), args);
+            return activityCommandParser.parseEdit(activityManager, topicManager, now, args);
         case "delete":
             return activityCommandParser.parseDelete(activityManager, args);
         case "mark":
@@ -112,9 +112,9 @@ public class CommandDispatcher {
             requireNoArguments("bye", args);
             return new ExitCommand();
         case "1": case "2": case "3": case "4": case "5":
-        case "6": case "7": case "8": case "9": case "10":
+        case "6": case "7": case "8": case "9": case "10": case "11":
             // A bare menu number entered right after "guide" displays the main menu, matching
-            // its own "Enter a number from 1 to 10." instruction; see GuideCommand's Javadoc.
+            // its own "Enter a number from 1 to 11." instruction; see GuideCommand's Javadoc.
             return new GuideCommand(commandWord);
         default:
             throw new InvalidCommandException("Unknown command \"" + commandWord + "\". Enter guide for help.");

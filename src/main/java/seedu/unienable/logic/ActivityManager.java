@@ -262,6 +262,28 @@ public class ActivityManager {
     }
 
     /**
+     * Returns overdue incomplete activities (see {@link #isOverdue}) additionally matching the
+     * given filter, ordered as requested. Used by "list overdue" - a separate, additive view;
+     * the plain {@link #list(ActivityFilter, ActivityOrder)} continues to return every activity
+     * regardless of overdue status, unchanged.
+     *
+     * @param now the current date and time
+     * @param filter the filter criteria; null fields mean "no filter" for that field
+     * @param order the one-shot order override, or null to use the saved default order
+     * @return the matching overdue incomplete activities in the requested order
+     */
+    public List<Activity> listOverdue(LocalDateTime now, ActivityFilter filter, ActivityOrder order) {
+        List<Activity> result = new ArrayList<>();
+        for (Activity activity : activities) {
+            if (!activity.isComplete() && isOverdue(activity, now) && filter.matches(activity)) {
+                result.add(activity);
+            }
+        }
+        sort(result, order == null ? defaultOrder : order);
+        return result;
+    }
+
+    /**
      * Finds activities matching every given keyword (each keyword matching description, topic, or
      * note, case-insensitively and partially) and the given filter, ordered as requested.
      *

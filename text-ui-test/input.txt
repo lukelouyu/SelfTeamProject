@@ -5,6 +5,7 @@ guide edit
 guide find
 guide topic
 guide facility
+guide connection
 guide storage
 guide dashboard
 guide timetable
@@ -253,11 +254,7 @@ next
 mark 17
 next
 add n/Far past overdue c/ACADEMIC date/2000-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1
-next
-add n/Far past overdue flexible c/CCA date/2000-01-01 type/FLEXIBLE earliest/09:00 latest/10:00 dur/30 energy/1 sensory/1
-next
-mark 20
-mark 21
+add n/Bad calendar date c/ACADEMIC date/2026-02-30 type/FIXED from/09:00 to/10:00 energy/1 sensory/1
 next
 
 topic rename c/ACADEMIC old/CG3207 new/CS3207

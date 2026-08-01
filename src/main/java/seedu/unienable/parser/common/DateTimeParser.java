@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.util.regex.Pattern;
 
 import seedu.unienable.exception.InvalidDateTimeException;
 
@@ -22,20 +23,53 @@ public class DateTimeParser {
             .withResolverStyle(ResolverStyle.STRICT);
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
             .withResolverStyle(ResolverStyle.STRICT);
+    private static final Pattern DATE_SHAPE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
 
     /**
-     * Parses a date string in yyyy-MM-dd format.
+     * Parses a date string in yyyy-MM-dd format, distinguishing text that does not even match the
+     * expected shape (e.g. "2026-08:15") from text that matches the shape but names a calendar
+     * date that does not exist (e.g. "2026-02-30", "2027-02-29"). Both are strictly rejected -
+     * see the class Javadoc - but with different, specific messages rather than one generic
+     * "wrong format" message covering both.
      *
      * @param date the date text to parse
      * @return the parsed date
-     * @throws InvalidDateTimeException if date is not a valid yyyy-MM-dd date
+     * @throws InvalidDateTimeException if date does not match yyyy-MM-dd shape, or matches the
+     *     shape but names a calendar date that does not exist
      */
     public static LocalDate parseDate(String date) throws InvalidDateTimeException {
-        try {
-            return LocalDate.parse(date.trim(), DATE_FORMAT);
-        } catch (DateTimeParseException e) {
+        String trimmed = date.trim();
+        if (!DATE_SHAPE.matcher(trimmed).matches()) {
             throw new InvalidDateTimeException("date must be in yyyy-MM-dd format.");
         }
+        try {
+            return LocalDate.parse(trimmed, DATE_FORMAT);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDateTimeException(
+                    "date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.");
+        }
+    }
+
+    /**
+     * Parses a date string exactly like {@link #parseDate}, additionally rejecting a
+     * well-formed, calendar-valid date that is earlier than today. Used for activity date fields
+     * a user is actively supplying (add, edit) - not for read-only filters (list/find date/) or
+     * for restoring previously-saved activities from storage, both of which must continue to
+     * accept a genuinely past date.
+     *
+     * @param date the date text to parse
+     * @param today the current local date, threaded down from the application's single
+     *     {@code now} seam rather than read via a new {@code LocalDate.now()} call
+     * @return the parsed date
+     * @throws InvalidDateTimeException if date is malformed, does not exist, or is before today
+     */
+    public static LocalDate parseNotBeforeDate(String date, LocalDate today) throws InvalidDateTimeException {
+        LocalDate parsed = parseDate(date);
+        if (parsed.isBefore(today)) {
+            throw new InvalidDateTimeException("date has passed. Please enter a date from " + today
+                    + " onwards.");
+        }
+        return parsed;
     }
 
     /**

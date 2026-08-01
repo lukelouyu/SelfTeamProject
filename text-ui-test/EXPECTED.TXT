@@ -121,22 +121,27 @@ A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
 Accessible facilities
-Use facility list, facility view, or facility find (and connection list/view/find
-for the route graph between facilities). This data is read-only.
+View and search the local read-only accessibility facility reference.
+Related commands: connection (see guide connection for the route graph
+between facilities)
 
-Example - list and view a facility:
+Examples:
   facility list
   facility view AS1
-
-Example - find facilities with a feature:
   facility find type/LIFT
   facility find type/LIFT status/NO
 
-Example - list and view a connection:
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Accessible connections
+View and search the local read-only connection graph between facilities.
+Related commands: facility (see guide facility for individual facility
+lookups)
+
+Examples:
   connection list
   connection view 1
-
-Example - find connections from a facility:
   connection find from/AS6
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
@@ -279,23 +284,12 @@ Example - delete an unused topic:
 A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
-Accessible facilities
-Use facility list, facility view, or facility find (and connection list/view/find
-for the route graph between facilities). This data is read-only.
+Accessible facilities and routes
+facility   - view and search the facility reference. See: guide facility
+connection - view and search the connection graph. See: guide connection
 
-Example - list and view a facility:
-  facility list
+Quick examples:
   facility view AS1
-
-Example - find facilities with a feature:
-  facility find type/LIFT
-  facility find type/LIFT status/NO
-
-Example - list and view a connection:
-  connection list
-  connection view 1
-
-Example - find connections from a facility:
   connection find from/AS6
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
@@ -398,23 +392,12 @@ Review the plan before choosing whether to adopt it.
 (Coming soon in a future release.)
 ____________________________________________________________
 ____________________________________________________________
-Accessible facilities
-Use facility list, facility view, or facility find (and connection list/view/find
-for the route graph between facilities). This data is read-only.
+Accessible facilities and routes
+facility   - view and search the facility reference. See: guide facility
+connection - view and search the connection graph. See: guide connection
 
-Example - list and view a facility:
-  facility list
+Quick examples:
   facility view AS1
-
-Example - find facilities with a feature:
-  facility find type/LIFT
-  facility find type/LIFT status/NO
-
-Example - list and view a connection:
-  connection list
-  connection view 1
-
-Example - find connections from a facility:
   connection find from/AS6
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
@@ -1802,41 +1785,10 @@ Your next relevant activity is:
 Overdue incomplete activities: 0
 ____________________________________________________________
 ____________________________________________________________
-Got it. Activity [20] has been added:
-[ ][F] 2000-01-01 09:00 -> 10:00 | Far past overdue
-       ACADEMIC | Energy 1/5 | Sensory 1/5
-
-You now have 19 activities.
+[Error] Invalid input: date has passed. Please enter a date from 2026-08-01 onwards.
 ____________________________________________________________
 ____________________________________________________________
-Your next relevant activity is:
-[19][ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
-             ACADEMIC | 60 min | E2 | S2
-
-Overdue incomplete activities: 1
-____________________________________________________________
-____________________________________________________________
-Got it. Activity [21] has been added:
-[ ][L] 2000-01-01 09:00 -> 10:00 | Far past overdue flexible
-       Duration 30 min | CCA
-       Energy 1/5 | Sensory 1/5
-
-You now have 20 activities.
-____________________________________________________________
-____________________________________________________________
-Your next relevant activity is:
-[19][ ][L] 2099-06-01 09:00 -> 17:00 | Far future flexible
-             ACADEMIC | 60 min | E2 | S2
-
-Overdue incomplete activities: 2
-____________________________________________________________
-____________________________________________________________
-Nice! Activity [20] is now complete:
-[X][F] Far past overdue
-____________________________________________________________
-____________________________________________________________
-Nice! Activity [21] is now complete:
-[X][L] Far past overdue flexible
+[Error] Invalid input: date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.
 ____________________________________________________________
 ____________________________________________________________
 Your next relevant activity is:
@@ -2320,11 +2272,7 @@ ____________________________________________________________
 [Error] Invalid input: "bye" does not take any arguments.
 ____________________________________________________________
 ____________________________________________________________
-Here are 20 matching activities:
-[20][X][F] 2000-01-01 09:00 -> 10:00 | Far past overdue
-             ACADEMIC | E1 | S1
-[21][X][L] 2000-01-01 09:00 -> 10:00 | Far past overdue flexible
-             CCA | 30 min | E1 | S1
+Here are 18 matching activities:
 [1][X][F] 2026-08-15 09:00 -> 11:00 | New name n/Another name
              ACADEMIC / CS3207 | E1 | S1
 [2][X][L] 2026-08-15 12:00 -> 18:00 | Finish assignment 1 REVISED
@@ -2374,7 +2322,7 @@ ____________________________________________________________
 ____________________________________________________________
 Reset all user data?
 
-Activities to delete: 20
+Activities to delete: 18
 Topics to delete   : 3
 Default order      : reset to chronological
 

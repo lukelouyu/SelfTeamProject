@@ -417,6 +417,58 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_addNonExistentCalendarDate_showsSpecificMessageAndDoesNotPersist() {
+        // Regression test for the v1.0 RC retest bug report's exact repro: "2026-02-30" was
+        // previously reported with the generic "must be in yyyy-MM-dd format" message, even
+        // though its shape is correct and only the calendar date itself is invalid.
+        String output = runWithInput(
+                "add n/Bad date c/ACADEMIC date/2026-02-30 type/FIXED from/09:00 to/10:00 "
+                        + "energy/3 sensory/3\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("[Error] Invalid input: date does not exist. "
+                + "Please enter a valid calendar date in yyyy-MM-dd format."));
+
+        String restarted = runWithInput("list\nbye\n");
+        assertTrue(restarted.contains("No activities found."));
+    }
+
+    @Test
+    public void run_addPastDate_showsErrorAndDoesNotConsumeIdOrPersist() {
+        String output = runWithInput(
+                "add n/Old event c/ACADEMIC date/2020-01-01 type/FIXED from/09:00 to/10:00 "
+                        + "energy/3 sensory/3\n"
+                        + "add n/Future event c/ACADEMIC date/2099-01-01 type/FIXED from/09:00 to/10:00 "
+                        + "energy/3 sensory/3\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("[Error] Invalid input: date has passed."));
+        assertTrue(!output.contains("Old event"));
+        // The rejected add must not have consumed an ID: the accepted "Future event" add is
+        // still ID [1], not [2].
+        assertTrue(output.contains("Got it. Activity [1] has been added:"));
+
+        String restarted = runWithInput("list\nbye\n");
+        assertTrue(!restarted.contains("Old event"));
+        assertTrue(restarted.contains("Future event"));
+    }
+
+    @Test
+    public void run_editPastDate_showsErrorWithoutConfirmationPromptAndDoesNotMutate() {
+        String output = runWithInput(
+                "add n/Future event c/ACADEMIC date/2099-01-01 type/FIXED from/09:00 to/10:00 "
+                        + "energy/3 sensory/3\n"
+                        + "edit 1 date/2020-01-01\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("[Error] Invalid input: date has passed."));
+        assertTrue(!output.contains("Save changes? (y/n)"));
+
+        String restarted = runWithInput("list\nbye\n");
+        assertTrue(restarted.contains("2099-01-01"));
+    }
+
+    @Test
     public void run_topicRenameAtEndOfInput_cancelsAndLeavesTopicUnchanged() {
         String output = runWithInput(
                 "topic add c/ACADEMIC n/CS2113\n"

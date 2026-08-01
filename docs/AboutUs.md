@@ -1,6 +1,6 @@
 # About us
 
-UniEnable is a CS2113 team project (tP) built solo, simulating the workflow of a small team.
+
 
 Display | Name | Github Profile | Portfolio
 --------|:----:|:--------------:|:---------:

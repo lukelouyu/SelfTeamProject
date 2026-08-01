@@ -1,4 +1,4 @@
-package seedu.unienable.command.accessibility;
+package seedu.unienable.command.accessibility.common;
 
 /**
  * Shared disclaimer appended to every facility/connection command's output. The bundled dataset

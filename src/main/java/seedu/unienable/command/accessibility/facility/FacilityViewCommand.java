@@ -1,7 +1,8 @@
-package seedu.unienable.command.accessibility;
+package seedu.unienable.command.accessibility.facility;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 
 import java.util.List;
 

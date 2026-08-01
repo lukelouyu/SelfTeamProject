@@ -1,9 +1,10 @@
-package seedu.unienable.command.accessibility;
+package seedu.unienable.command.accessibility.facility;
 
 import java.util.List;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.accessibility.common.ValidationReportFormatter;
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.storage.Storage;
 

@@ -1,7 +1,8 @@
-package seedu.unienable.command.accessibility;
+package seedu.unienable.command.accessibility.connection;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 
 import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.exception.InvalidIndexException;

@@ -1,6 +1,9 @@
-package seedu.unienable.command.accessibility;
+package seedu.unienable.command.accessibility.common;
 
 import java.util.List;
+
+import seedu.unienable.command.accessibility.connection.ConnectionValidateCommand;
+import seedu.unienable.command.accessibility.facility.FacilityValidateCommand;
 
 /**
  * Formats the result of a facility/connection "validate" command into one human-readable report.
@@ -9,7 +12,7 @@ import java.util.List;
  * name, and either "no issues found" or a numbered list of the warnings a *Storage load already
  * produced.
  */
-final class ValidationReportFormatter {
+public final class ValidationReportFormatter {
     private ValidationReportFormatter() {
     }
 
@@ -20,7 +23,7 @@ final class ValidationReportFormatter {
      * @param warnings every issue found, in file line order; empty if none
      * @return the formatted report
      */
-    static String format(String fileName, List<String> warnings) {
+    public static String format(String fileName, List<String> warnings) {
         if (warnings.isEmpty()) {
             return fileName + ": no issues found.";
         }

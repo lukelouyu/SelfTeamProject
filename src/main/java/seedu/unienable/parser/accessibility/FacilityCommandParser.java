@@ -4,10 +4,10 @@ import java.util.Locale;
 
 import seedu.unienable.accessibility.classes.FacilityFeature;
 import seedu.unienable.accessibility.enums.AccessibilityStatus;
-import seedu.unienable.command.accessibility.FacilityFindCommand;
-import seedu.unienable.command.accessibility.FacilityListCommand;
-import seedu.unienable.command.accessibility.FacilityValidateCommand;
-import seedu.unienable.command.accessibility.FacilityViewCommand;
+import seedu.unienable.command.accessibility.facility.FacilityFindCommand;
+import seedu.unienable.command.accessibility.facility.FacilityListCommand;
+import seedu.unienable.command.accessibility.facility.FacilityValidateCommand;
+import seedu.unienable.command.accessibility.facility.FacilityViewCommand;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.FacilityManager;

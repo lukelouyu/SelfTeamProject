@@ -1,4 +1,4 @@
-package seedu.unienable.command.accessibility;
+package seedu.unienable.command.accessibility.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

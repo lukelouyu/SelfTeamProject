@@ -506,6 +506,26 @@ class UniEnableTest {
     }
 
     @Test
+    public void run_blankAccessibilityFields_surfacePartialLoadWarningsAndAreNeverPresented() throws Exception {
+        // Regression test for RC03 (v1.0 RC retest, 2026-08-01): a blank facility id/name and
+        // blank connection endpoints previously loaded without warning and were then presented
+        // as usable accessibility reference data ("[]" and " <-> ").
+        Files.writeString(tempDir.resolve("facilities.txt"),
+                "FACILITY|||blank id and blank name accepted\n"
+                        + "FEATURE||LIFT|YES|Feature attached to blank facility\n");
+        Files.writeString(tempDir.resolve("connections.txt"),
+                "CONNECTION|1|||25|YES|PATH|YES|None|Blank endpoints accepted\n");
+
+        String output = runWithInput("facility list\nconnection list\nbye\n");
+
+        assertTrue(output.contains("[Warning] Partial data loaded: facilities.txt"));
+        assertTrue(output.contains("[Warning] Partial data loaded: connections.txt"));
+        assertTrue(!output.contains("[]"));
+        assertTrue(!output.contains(" <-> "));
+        assertTrue(!output.contains("blank id"));
+    }
+
+    @Test
     public void run_orderSetPersistsAcrossRestart() {
         // Regression test: ActivityManager.defaultOrder was memory-only and always reset to
         // CHRONOLOGICAL on restart, even though OrderSetCommand's feedback and the User Guide

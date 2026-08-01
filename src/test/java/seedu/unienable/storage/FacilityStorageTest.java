@@ -130,4 +130,50 @@ class FacilityStorageTest {
         assertEquals(1, result.getWarnings().size());
         assertTrue(result.getWarnings().get(0).contains("duplicate facility name"));
     }
+
+    @Test
+    public void load_blankFacilityIdAndName_recordsWarning() throws Exception {
+        // Regression test for RC03 (v1.0 RC retest, 2026-08-01): "FACILITY|||description"
+        // previously loaded a facility with a blank ID and blank name.
+        Path file = writeFile("FACILITY|||blank id and blank name accepted");
+
+        LoadResult<Facility> result = new FacilityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+    }
+
+    @Test
+    public void load_featureWithBlankFacilityId_recordsWarning() throws Exception {
+        Path file = writeFile("FEATURE||LIFT|YES|Feature attached to blank facility");
+
+        LoadResult<Facility> result = new FacilityStorage().load(file);
+
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("blank"));
+    }
+
+    @Test
+    public void load_facilityLineWithExtraColumn_recordsWarning() throws Exception {
+        // Regression test for RC04: a fifth FACILITY column was previously silently discarded.
+        Path file = writeFile("FACILITY|F01|COM3|Engineering building|extra column");
+
+        LoadResult<Facility> result = new FacilityStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+    }
+
+    @Test
+    public void load_featureLineWithExtraColumn_recordsWarning() throws Exception {
+        Path file = writeFile(
+                "FACILITY|F01|COM3",
+                "FEATURE|F01|LIFT|YES|Level 1 lobby|extra column");
+
+        LoadResult<Facility> result = new FacilityStorage().load(file);
+
+        assertEquals(1, result.getWarnings().size());
+        assertEquals(1, result.getRecords().size());
+        assertEquals(0, result.getRecords().get(0).getFeatures().size());
+    }
 }

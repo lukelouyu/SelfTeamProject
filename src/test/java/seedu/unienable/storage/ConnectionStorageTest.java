@@ -191,4 +191,38 @@ class ConnectionStorageTest {
         assertEquals(1, result.getRecords().size());
         assertEquals(0, result.getWarnings().size());
     }
+
+    @Test
+    public void load_blankFromAndToEndpoints_recordsWarning() throws Exception {
+        // Regression test for RC03 (v1.0 RC retest, 2026-08-01): blank endpoints previously
+        // loaded a connection presented as " <-> " with no warning.
+        Path file = writeFile("CONNECTION|1|||25|YES|PATH|YES|None|Blank endpoints accepted");
+
+        LoadResult<Connection> result = new ConnectionStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+    }
+
+    @Test
+    public void load_selfConnection_recordsWarning() throws Exception {
+        Path file = writeFile("CONNECTION|1|COM3|COM3|25|YES|PATH|YES");
+
+        LoadResult<Connection> result = new ConnectionStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("same facility"));
+    }
+
+    @Test
+    public void load_extraTrailingColumn_recordsWarning() throws Exception {
+        // Regression test for RC04: an 11th column was previously silently discarded.
+        Path file = writeFile("CONNECTION|12|COM3|COM1|80|YES|RAMP|YES|None|Notes|extra column");
+
+        LoadResult<Connection> result = new ConnectionStorage().load(file);
+
+        assertEquals(0, result.getRecords().size());
+        assertEquals(1, result.getWarnings().size());
+    }
 }

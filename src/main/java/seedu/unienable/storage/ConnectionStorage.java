@@ -24,10 +24,13 @@ import seedu.unienable.exception.StorageException;
  * this is not escaped in v1.0.
  *
  * <p>Loading rejects a non-positive or duplicate ID and a non-positive distance, the same way
- * ActivityStorage rejects the equivalent shapes for activities.txt.
+ * ActivityStorage rejects the equivalent shapes for activities.txt; it also rejects a blank or
+ * self-referencing "from"/"to" endpoint and a record with more fields than its format defines.
  */
 public class ConnectionStorage {
     private static final String CONNECTION_TAG = "CONNECTION";
+    private static final int MIN_FIELDS = 8;
+    private static final int MAX_FIELDS = 10;
 
     /**
      * Loads connections from the given file.
@@ -90,9 +93,9 @@ public class ConnectionStorage {
         if (!fields[0].equals(CONNECTION_TAG)) {
             throw new IllegalArgumentException("unknown record type \"" + fields[0] + "\"");
         }
-        if (fields.length < 8) {
-            throw new IllegalArgumentException(
-                    "CONNECTION line requires id, from, to, distance, accessibility, type, and shelter");
+        if (fields.length < MIN_FIELDS || fields.length > MAX_FIELDS) {
+            throw new IllegalArgumentException("CONNECTION line requires id, from, to, distance, accessibility, "
+                    + "type, and shelter, and no more than an optional knownBarrier and notes after that");
         }
 
         int id;
@@ -112,6 +115,15 @@ public class ConnectionStorage {
 
         String from = fields[2];
         String to = fields[3];
+        if (from.isBlank()) {
+            throw new IllegalArgumentException("from facility must not be blank");
+        }
+        if (to.isBlank()) {
+            throw new IllegalArgumentException("to facility must not be blank");
+        }
+        if (from.equalsIgnoreCase(to)) {
+            throw new IllegalArgumentException("from and to must not be the same facility");
+        }
         if (knownFacilityNames != null) {
             if (!knownFacilityNames.contains(from.toLowerCase(Locale.ROOT))) {
                 throw new IllegalArgumentException("from facility \"" + from + "\" is not a known facility");

@@ -1,0 +1,10 @@
+# Deterministic screenshot-derived fixture for the text-UI recur regression. Deliberately a
+# separate, minimal, synthetic calendar (not the real data/academic-calendar.txt) so this test
+# does not depend on the real academic year's dates and stays valid indefinitely.
+FORMAT|1
+SOURCE|TEST-AY|Text-UI regression fixture|2026-08-01
+WEEK|TEST-AY|SEM2|3|INSTRUCTIONAL|2027-01-25|2027-01-29
+WEEK|TEST-AY|SEM2|7|INSTRUCTIONAL|2027-03-01|2027-03-06
+WEEK|TEST-AY|SEM2|9|INSTRUCTIONAL|2027-03-15|2027-03-19
+WEEK|TEST-AY|SEM2|11|INSTRUCTIONAL|2027-03-29|2027-04-02
+NO_CLASS|TEST-AY|2027-03-17|Test Well-Being Day

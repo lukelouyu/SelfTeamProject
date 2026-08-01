@@ -13,6 +13,7 @@ import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
+import seedu.unienable.exception.StorageException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
@@ -21,6 +22,7 @@ import seedu.unienable.parser.activity.ActivityCommandParser;
 import seedu.unienable.parser.accessibility.ConnectionCommandParser;
 import seedu.unienable.parser.accessibility.FacilityCommandParser;
 import seedu.unienable.parser.common.Parser;
+import seedu.unienable.parser.recur.RecurCommandParser;
 import seedu.unienable.parser.topic.TopicCommandParser;
 import seedu.unienable.storage.Storage;
 
@@ -31,6 +33,7 @@ public class CommandDispatcher {
     private final FacilityManager facilityManager;
     private final ConnectionManager connectionManager;
     private final Storage storage;
+    private final RecurCommandParser recurCommandParser;
 
     private final ActivityCommandParser activityCommandParser = new ActivityCommandParser();
     private final TopicCommandParser topicCommandParser = new TopicCommandParser();
@@ -45,7 +48,8 @@ public class CommandDispatcher {
      * @param facilityManager the manager facility commands read from
      * @param connectionManager the manager connection commands read from
      * @param storage the storage coordinator "facility validate"/"connection validate" re-read
-     *     the raw data files through
+     *     the raw data files through, and recur lazily loads the external academic calendar
+     *     through (see {@link Storage#getAcademicCalendarFile()})
      */
     public CommandDispatcher(ActivityManager activityManager, TopicManager topicManager,
             FacilityManager facilityManager, ConnectionManager connectionManager, Storage storage) {
@@ -54,6 +58,7 @@ public class CommandDispatcher {
         this.facilityManager = facilityManager;
         this.connectionManager = connectionManager;
         this.storage = storage;
+        this.recurCommandParser = new RecurCommandParser(storage.getAcademicCalendarFile());
     }
 
     /**
@@ -70,10 +75,11 @@ public class CommandDispatcher {
      * @throws InvalidIndexException if a referenced stable ID does not exist
      * @throws DuplicateActivityException if an edit would exactly duplicate or overlap another
      *     activity, or a topic rename/delete conflicts with existing topics or usage
+     * @throws StorageException if recur's external academic calendar cannot be loaded
      */
     public Command dispatch(String input, LocalDateTime now)
             throws MissingInputException, InvalidActivityException, InvalidCommandException,
-            InvalidDateTimeException, InvalidIndexException, DuplicateActivityException {
+            InvalidDateTimeException, InvalidIndexException, DuplicateActivityException, StorageException {
         String commandWord = Parser.getCommandWord(input);
         String args = Parser.getArguments(input);
 
@@ -98,6 +104,8 @@ public class CommandDispatcher {
             return activityCommandParser.parseNext(activityManager, now, args);
         case "order":
             return activityCommandParser.parseOrder(activityManager, args);
+        case "recur":
+            return recurCommandParser.parse(activityManager, args);
         case "topic":
             return dispatchTopic(args);
         case "facility":

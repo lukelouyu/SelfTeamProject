@@ -156,35 +156,75 @@ class UniEnableTest {
     }
 
     @Test
-    public void run_resetAllShowsPreviewAndConfirmsOnY() {
+    public void run_resetAllOptionOneShowsMenuAndDeletesEverything() {
         String output = runWithInput(
                 "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
                         + "energy/4 sensory/3\n"
                         + "topic add c/ACADEMIC n/CS2113\n"
                         + "reset all\n"
-                        + "y\n"
+                        + "1\n"
                         + "bye\n");
 
-        assertTrue(output.contains("Reset all user data?"));
-        assertTrue(output.contains("Activities to delete: 1"));
-        assertTrue(output.contains("Topics to delete   : 1"));
-        assertTrue(output.contains("Default order      : reset to chronological"));
-        assertTrue(output.contains("Facility and connection reference data will be kept."));
-        assertTrue(output.contains("This action cannot be undone."));
+        assertTrue(output.contains("Reset user data"));
+        assertTrue(output.contains("Activities      : 1"));
+        assertTrue(output.contains("Class schedules : 1"));
+        assertTrue(output.contains("Other activities: 0"));
+        assertTrue(output.contains("Topics          : 1"));
+        assertTrue(output.contains("[1] Delete all user data"));
+        assertTrue(output.contains("[2] Delete other activities but keep class schedules"));
+        assertTrue(output.contains("[3] Do not delete anything"));
+        assertTrue(output.contains("Facility, connection, and academic-calendar reference data will be kept."));
+        assertTrue(output.contains("Enter 1, 2, or 3:"));
         assertTrue(output.contains("All user data has been reset."));
         assertTrue(output.contains("Your next activity will use ID [1]."));
     }
 
     @Test
-    public void run_resetAllCancelledWithN_keepsDataOnDisk() throws Exception {
+    public void run_resetAllOptionTwoKeepsClassScheduleDeletesOthers() {
+        String output = runWithInput(
+                "add n/CG3207 Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "add n/Dentist appointment c/OTHERS date/2026-08-15 type/FIXED from/14:00 to/15:00 "
+                        + "energy/2 sensory/2\n"
+                        + "reset all\n"
+                        + "2\n"
+                        + "list\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Reset complete. Kept 1 class-schedule activity and deleted 1 other activity."));
+        assertTrue(output.contains("Your next activity will use ID [2]."));
+        // "Dentist appointment" legitimately appears earlier (the original add confirmation), so
+        // only the post-reset list output is checked for its absence.
+        String afterReset = output.split("Reset complete")[1];
+        assertTrue(afterReset.contains("CG3207 Lecture"));
+        assertTrue(!afterReset.contains("Dentist appointment"));
+    }
+
+    @Test
+    public void run_resetAllOptionThreeCancels_keepsDataOnDisk() throws Exception {
         String output = runWithInput(
                 "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
                         + "energy/4 sensory/3\n"
                         + "reset all\n"
-                        + "n\n"
+                        + "3\n"
                         + "bye\n");
 
         assertTrue(output.contains("Cancelled. No changes were made."));
+
+        Storage storage = new Storage(tempDir);
+        assertEquals(1, storage.loadActivities().getRecords().size());
+    }
+
+    @Test
+    public void run_resetAllInvalidMenuAnswer_cancelsWithEnterOneTwoThreeMessage() throws Exception {
+        String output = runWithInput(
+                "add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3\n"
+                        + "reset all\n"
+                        + "bogus\n"
+                        + "bye\n");
+
+        assertTrue(output.contains("Enter 1, 2, or 3. No changes were made."));
 
         Storage storage = new Storage(tempDir);
         assertEquals(1, storage.loadActivities().getRecords().size());
@@ -197,8 +237,8 @@ class UniEnableTest {
                         + "energy/4 sensory/3\n"
                         + "reset all\n");
 
-        assertTrue(output.contains("Continue? (y/n)"));
-        assertTrue(output.contains("Cancelled. No changes were made."));
+        assertTrue(output.contains("Enter 1, 2, or 3:"));
+        assertTrue(output.contains("Enter 1, 2, or 3. No changes were made."));
 
         Storage storage = new Storage(tempDir);
         assertEquals(1, storage.loadActivities().getRecords().size());
@@ -212,7 +252,7 @@ class UniEnableTest {
                         + "topic add c/ACADEMIC n/CS2113\n"
                         + "order set input\n"
                         + "reset all\n"
-                        + "y\n"
+                        + "1\n"
                         + "bye\n");
 
         String secondRunOutput = runWithInput("list\ntopic list c/ACADEMIC\norder view\nbye\n");
@@ -224,11 +264,12 @@ class UniEnableTest {
 
     @Test
     public void run_resetAllPreservesAccessibilityData() {
-        // "Facility and connection reference data will be kept." must be true, not just claimed.
+        // "Facility, connection, and academic-calendar reference data will be kept." must be
+        // true, not just claimed.
         String firstRunOutput = runWithInput("facility list\nbye\n");
 
         runWithInput("add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
-                + "energy/4 sensory/3\nreset all\ny\nbye\n");
+                + "energy/4 sensory/3\nreset all\n1\nbye\n");
 
         String secondRunOutput = runWithInput("facility list\nbye\n");
 

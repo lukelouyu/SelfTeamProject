@@ -207,6 +207,30 @@ public class TopicManager {
         }
     }
 
+    /**
+     * Removes every topic not referenced by one of the supplied retained activities. Used by
+     * reset's "keep class schedule" option so a topic left with zero retained activities using
+     * it does not linger in the registry.
+     *
+     * @param retainedActivities the activities that will remain after reset
+     */
+    public void retainTopicsUsedBy(List<Activity> retainedActivities) {
+        for (ActivityCategory category : ActivityCategory.values()) {
+            topicsByCategory.get(category).removeIf(topic ->
+                    !isTopicUsedBy(retainedActivities, category, topic.getName()));
+        }
+    }
+
+    private boolean isTopicUsedBy(List<Activity> activities, ActivityCategory category, String topicName) {
+        for (Activity activity : activities) {
+            if (activity.getCategory() == category && activity.getTopic() != null
+                    && activity.getTopic().equalsIgnoreCase(topicName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Topic findTopic(ActivityCategory category, String name) {
         for (Topic topic : topicsByCategory.get(category)) {
             if (topic.getName().equalsIgnoreCase(name)) {

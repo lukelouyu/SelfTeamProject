@@ -5,16 +5,19 @@ import java.util.Scanner;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.Confirmable;
 import seedu.unienable.command.Confirmation;
+import seedu.unienable.command.MenuConfirmable;
+import seedu.unienable.command.MenuOutcome;
 import seedu.unienable.exception.UniEnableException;
 import seedu.unienable.ui.Ui;
 
 /**
- * Decides whether a dispatched command needs a y/n confirmation before it may execute, and
- * carries out that confirmation: showing the command-specific preview, reading the next input
- * line as the answer, and reporting cancellation. Any command opts into this generically by
- * implementing {@link Confirmable}; a command that does not implement it proceeds without asking.
- * Adding a new confirmable command never requires changing this class - each command supplies its
- * own {@link Confirmation} via {@link Confirmable#getConfirmation()}.
+ * Decides whether a dispatched command needs confirmation before it may execute, and carries out
+ * that confirmation: showing the command-specific preview, reading the next input line as the
+ * answer, and reporting cancellation. Any command opts into a plain y/n confirmation generically
+ * by implementing {@link Confirmable}; a command needing a numbered menu with more than one
+ * meaningful choice (e.g. reset's three options) implements {@link MenuConfirmable} instead. A
+ * command implementing neither proceeds without asking. Adding a new confirmable command - of
+ * either shape - never requires changing this class.
  */
 public class CommandConfirmationHandler {
     private final Ui ui;
@@ -36,13 +39,17 @@ public class CommandConfirmationHandler {
      * whether execution should proceed.
      *
      * @param command the dispatched command, not yet executed
-     * @return true if the command needs no confirmation (or is not {@link Confirmable} at all),
-     *     or the user answered "y"/"Y" to a y/n prompt; false if the command was cancelled
-     *     outright, or the user answered anything else (including EOF) to a y/n prompt
+     * @return true if the command needs no confirmation (or implements neither confirmation
+     *     interface), or the answer selected proceeding (y/n's "y", or a menu's non-cancelling
+     *     choice); false if the command was cancelled outright, or the answer meant cancel or was
+     *     unrecognised (including EOF)
      * @throws UniEnableException if building the command's confirmation preview fails, e.g. it
      *     references an activity ID that does not exist
      */
     public boolean confirmIfNeeded(Command command) throws UniEnableException {
+        if (command instanceof MenuConfirmable) {
+            return confirmMenu((MenuConfirmable) command);
+        }
         if (!(command instanceof Confirmable)) {
             return true;
         }
@@ -64,6 +71,21 @@ public class CommandConfirmationHandler {
             return true;
         }
         ui.showFramed("Cancelled. No changes were made.");
+        return false;
+    }
+
+    private boolean confirmMenu(MenuConfirmable command) throws UniEnableException {
+        String prompt = command.getMenuPrompt();
+        if (prompt == null) {
+            return true;
+        }
+        ui.showFramed(prompt);
+        String answer = scanner.hasNextLine() ? scanner.nextLine().trim() : "";
+        MenuOutcome outcome = command.applyMenuAnswer(answer);
+        if (outcome.isProceed()) {
+            return true;
+        }
+        ui.showFramed(outcome.getMessage());
         return false;
     }
 }

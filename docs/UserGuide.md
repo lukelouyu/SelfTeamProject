@@ -1,7 +1,8 @@
 # UniEnable — User Guide
 
-**Status:** v1.0 — the commands below are implemented and match the running application's actual
-output. Section 15 lists what's planned for a future v2.0 release and is explicitly **not**
+**Status:** v1.0, plus two early v2.0 features (recurring class sessions and a redesigned `reset
+all`) — the commands below are implemented and match the running application's actual output.
+Section 15 lists what's still planned for a future v2.0 release and is explicitly **not**
 implemented yet.
 
 ## 1. Introduction
@@ -96,9 +97,11 @@ accessibility information, or medical advice.
 | Activities | `delete ID` | v1.0 |
 | Activities | `mark ID` / `unmark ID` | v1.0 |
 | Activities | `next` | v1.0 |
-| General | `reset all` | v1.0 |
+| Activities | `recur TASK_ID week WEEK_SPEC` | v2.0 |
+| General | `reset all` (3-option menu) | v2.0 |
 | Topics | `topic add/list/rename/delete ...` | v1.0 |
 | Accessibility | `facility list/view/find ...` | v1.0 |
+| Accessibility | `facility validate` / `connection validate` | v1.0 |
 | Accessibility | `connection list/view/find ...` | v1.0 |
 | Dashboard, timetable, preferences, recommendation, route, export | various | **Coming soon (v2.0)** |
 
@@ -403,25 +406,35 @@ soonest. Completed and overdue activities are never selected.
 reset all
 ```
 
-Clears every activity and user-created topic, resets your saved default order back to
-`chronological`, and resets the next activity ID back to `[1]`. Facility and connection reference
-data (the read-only accessibility dataset) is always kept.
+`reset all` is the only accepted form; `reset`, `reset all extra`, and any other option after
+`reset` are rejected. Instead of a single yes/no question, it shows a preview of exactly what's
+currently stored and a menu with three explicit choices — nothing is deleted until you type a
+number:
 
 ```text
 ____________________________________________________________
-Reset all user data?
+Reset user data
 
-Activities to delete: 3
-Topics to delete   : 1
-Default order      : reset to chronological
+Activities      : 24
+Class schedules : 6
+Other activities: 18
+Topics          : 3
 
-Facility and connection reference data will be kept.
-This action cannot be undone.
-Continue? (y/n)
+[1] Delete all user data
+[2] Delete other activities but keep class schedules
+[3] Do not delete anything
+
+Facility, connection, and academic-calendar reference data will be kept.
+Enter 1, 2, or 3:
 ____________________________________________________________
 ```
 
-After `y`:
+"Class schedules" counts the same fixed lecture/tutorial/lab/section-teaching activities that
+`recur` (Section 6.12) can build on — see Section 6.12 for the exact eligibility rule. Facility,
+connection, and `data/academic-calendar.txt` reference data are always kept, whichever choice you
+pick; they are never counted or affected by this menu.
+
+**Option `1` — delete all user data:**
 
 ```text
 ____________________________________________________________
@@ -430,10 +443,105 @@ Your next activity will use ID [1].
 ____________________________________________________________
 ```
 
-`reset all` is the only accepted form; `reset`, `reset all extra`, and any other option after
-`reset` are rejected. If there is nothing to reset (no activities, no topics, and the default
-order is already chronological), the confirmation prompt is skipped and the reset succeeds
-immediately.
+Clears every activity (including every class-schedule occurrence created by `recur`) and every
+user-created topic, resets your saved default order back to `chronological`, and resets the next
+activity ID back to `[1]`.
+
+**Option `2` — delete other activities but keep class schedules:**
+
+```text
+____________________________________________________________
+Reset complete. Kept 6 class-schedule activities and deleted 18 other activities.
+Your next activity will use ID [25].
+____________________________________________________________
+```
+
+Keeps every activity eligible under the same rule `recur` uses (Section 6.12), with its original
+ID, note, and completion status unchanged, and deletes everything else. Only the topics still
+referenced by a kept activity survive; the next activity ID continues from the highest kept ID
+plus one, so kept IDs are never reused.
+
+**Option `3` — do not delete anything:**
+
+```text
+____________________________________________________________
+Cancelled. No changes were made.
+____________________________________________________________
+```
+
+Entering anything other than `1`, `2`, or `3` — including a blank line or the end of input —
+cancels the same way, with a message telling you to enter `1`, `2`, or `3`. If there is nothing to
+reset at all (no activities, no topics, and the default order is already chronological), the menu
+is skipped entirely and the reset succeeds immediately as if you had picked option `1`.
+
+### 6.12 Create Recurring Class Sessions: `recur`
+
+```text
+recur TASK_ID week WEEK_SPEC
+```
+
+`WEEK_SPEC` is one or more week numbers or inclusive ranges, separated by semicolons — for
+example `1 to 6; 7 to 13` or `3;7;9;11`. Week numbers, whitespace around `;`/`to`, and the word
+`to` itself are all case-insensitive and flexible; zero/negative numbers, a reversed range (e.g.
+`5 to 3`), blank items, commas, hyphens, duplicate or overlapping weeks, and trailing text are all
+rejected. There is no fixed maximum week number in the application itself — every week you list is
+checked against `data/academic-calendar.txt` (see Section 11), so what's valid depends entirely on
+what that file defines for the target activity's academic year and semester.
+
+Only a `FIXED` activity in the `ACADEMIC` category is eligible, and only if its description
+contains one of these whole-word, case-insensitive session terms: `lecture`/`lec`,
+`tutorial`/`tut`, `lab`/`laboratory`, or `section teaching`/`sectional teaching`/`sec` (a substring
+like the "lab" inside "collaboration" does not count). This is the exact same rule `reset all`'s
+"keep class schedules" option (Section 6.11) uses.
+
+Example:
+
+```text
+add n/CG3207 Lecture c/ACADEMIC date/2026-08-14 type/FIXED from/16:00 to/18:00 energy/2 sensory/2
+recur 1 week 1 to 6; 7 to 13
+```
+
+Output — a preview listing every date to be created and every date skipped, before anything is
+changed:
+
+```text
+____________________________________________________________
+Create recurring sessions from activity [1]?
+
+Source       : CG3207 Lecture
+Calendar     : AY2026/2027 SEM1
+Day and time : FRIDAY, 16:00 -> 18:00
+Weeks        : 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+
+To create:
+Week 2 | 2026-08-14 | Activity [2]
+...
+
+Skipped:
+Week 1 | 2026-08-14 | source activity [1]
+
+12 new activities will be created.
+Continue? (y/n)
+____________________________________________________________
+```
+
+A requested date is skipped, not created, for three reasons: it's the original activity's own
+week (always included automatically — you never need to list it yourself); an activity with the
+same description, date, and timing already exists (so running the same `recur` command again
+creates nothing new); or `data/academic-calendar.txt` lists it as a no-class date. If **any** other
+target date would overlap an existing fixed activity, the entire command is rejected before the
+preview is even shown — never a partial batch. If every requested week turns out to be the source,
+already existing, or a no-class date, `recur` reports that there is nothing new to create and
+skips the confirmation prompt entirely.
+
+After `y`, every planned session is added as its own ordinary, independent activity with its own
+permanent ID, starting incomplete regardless of the source activity's own completion status, and
+copying the source's description, category, topic, timing, ratings, and note. From that point on,
+`mark`, `unmark`, `edit`, and `delete` (Sections 6.7–6.9) affect only the one occurrence you target
+— there is no linked series to keep in sync.
+
+If `data/academic-calendar.txt` is missing or cannot be parsed, `recur` reports the problem and
+every other command keeps working normally (see Section 11).
 
 ## 7. Topic Commands
 
@@ -659,7 +767,7 @@ guide NUMBER
 `guide` alone shows an 11-item numbered menu. `guide TOPIC` shows one topic's text directly.
 Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`,
 `list`, `edit`, `delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`,
-`topic`, `facility`, `connection`, `storage`. Topics for v2.0-only features (`timetable`,
+`recur`, `topic`, `facility`, `connection`, `storage`. Topics for v2.0-only features (`timetable`,
 `recommend`, `route`, `export`) are still listed but end with `(Coming soon in a future
 release.)` where the underlying command isn't built yet; `dashboard` explains that completion
 tracking itself is already available (see `completion`) while the aggregate dashboard view is
@@ -697,7 +805,8 @@ data/
 ├── topics.txt
 ├── facilities.txt
 ├── connections.txt
-└── settings.txt
+├── settings.txt
+└── academic-calendar.txt
 ```
 
 `activities.txt` and `topics.txt` are your saved planning data, created empty on first run.
@@ -705,6 +814,16 @@ data/
 they don't already exist — an existing file (including one you've edited manually) is never
 overwritten. `settings.txt` stores your saved default activity order (see `order set` in Section
 6); a missing or malformed file safely falls back to the documented `chronological` default.
+
+`academic-calendar.txt` is different from every file above: it is a reference file you (or your
+school) maintain yourself, listing each semester's teaching weeks and no-class dates. UniEnable
+never creates, repairs, or overwrites it — if it's missing, only `recur` (Section 6.12) is
+affected; every other command keeps working. It's read once, the first time you use `recur` in a
+run, not at startup, and any edit you make while the application is running only takes effect the
+next time you start it. `reset all` (Section 6.11) never touches it, no matter which option you
+choose. If you want to plan for a new academic year or add a week the file doesn't yet have, edit
+the file yourself and restart — no application update is needed. See the release download for the
+exact record format and a worked example.
 
 The application only saves activities, topics, and settings after a command that actually changes
 them (`add`, `edit`, `delete`, `mark`, `unmark`, `order set`, `reset all`, and the `topic`
@@ -728,6 +847,12 @@ instead of silently loading bad data:
   both match a known facility's name in `facilities.txt`.
 - `facilities.txt` — unique facility IDs and unique facility names (facilities are looked up by
   name, so a duplicate name would otherwise make that lookup ambiguous).
+- `academic-calendar.txt` — validated separately, only when `recur` first needs it (not at
+  startup): schema version, field counts, real calendar dates, non-blank fields, non-negative week
+  numbers, a matching `SOURCE` record for every week/no-class entry, unique academic-year/
+  semester/week combinations, unique no-class dates, and non-overlapping instructional week
+  ranges. Any problem disables `recur` only and names the exact malformed line number — every
+  other command keeps working normally.
 
 If you'd rather check a hand-edited `facilities.txt`/`connections.txt` without restarting the
 application, `facility validate`/`connection validate` (Sections 8.7–8.8) run the exact same
@@ -764,6 +889,15 @@ Edits and renames change stored information non-trivially and show a before/afte
 catch a mistake before it's saved. Marking/unmarking is immediately reversible with the opposite
 command, so no confirmation is needed.
 
+**Will `recur` or `reset all` ever delete or repair `data/academic-calendar.txt`?**
+No. Neither command, nor anything else in UniEnable, creates, repairs, or overwrites that file —
+it's entirely yours to maintain. `reset all` always leaves it untouched, whichever of the three
+options you pick.
+
+**If I run `recur` twice by mistake, will I get duplicate sessions?**
+No. The second run recognises every session it already created (same description, date, and
+timing) and reports that there is nothing new to create instead of adding a duplicate.
+
 **Is the accessibility dataset official or live?**
 No. It's a small, sample local reference dataset digitised from a real campus map, with
 estimated (not measured) distances. See the disclaimer in every facility/connection command's
@@ -794,6 +928,7 @@ delete ID
 mark ID
 unmark ID
 next
+recur TASK_ID week WEEK_SPEC
 reset all
 
 topic add c/CATEGORY n/TOPIC

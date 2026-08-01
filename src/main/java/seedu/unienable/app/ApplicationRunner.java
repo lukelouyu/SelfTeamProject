@@ -3,6 +3,7 @@ package seedu.unienable.app;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,6 +19,7 @@ import seedu.unienable.command.activity.MarkCommand;
 import seedu.unienable.command.activity.OrderSetCommand;
 import seedu.unienable.command.activity.UnmarkCommand;
 import seedu.unienable.command.general.ResetCommand;
+import seedu.unienable.command.recur.RecurCommand;
 import seedu.unienable.command.topic.TopicAddCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;
 import seedu.unienable.command.topic.TopicRenameCommand;
@@ -48,6 +50,7 @@ public class ApplicationRunner {
 
     private final Path dataDirectory;
     private final InputStream input;
+    private final Storage suppliedStorage;
 
     private Ui ui;
     private Scanner scanner;
@@ -63,12 +66,28 @@ public class ApplicationRunner {
     /**
      * Creates an ApplicationRunner for one run of the application.
      *
-     * @param dataDirectory the directory containing (or to create) the five data files
+     * @param dataDirectory the directory containing (or to create) application data files and,
+     *     when recur is used, the externally supplied academic-calendar.txt
      * @param input the source of command-line input, e.g. System.in; never closed by this class
      */
     public ApplicationRunner(Path dataDirectory, InputStream input) {
+        this(dataDirectory, input, null);
+    }
+
+    /**
+     * Creates a runner with an injectable storage coordinator, for tests that need to observe or
+     * force a storage failure (e.g. to verify recur/reset's in-memory rollback) without touching
+     * the real filesystem. Production callers use {@link #ApplicationRunner(Path, InputStream)}.
+     *
+     * @param dataDirectory application data directory
+     * @param input source of command-line input
+     * @param suppliedStorage storage coordinator to use instead of constructing one from
+     *     dataDirectory, or null to construct one normally
+     */
+    ApplicationRunner(Path dataDirectory, InputStream input, Storage suppliedStorage) {
         this.dataDirectory = dataDirectory;
         this.input = input;
+        this.suppliedStorage = suppliedStorage;
     }
 
     /**
@@ -83,7 +102,7 @@ public class ApplicationRunner {
         ui.showWelcome();
 
         scanner = new Scanner(input);
-        storage = new Storage(dataDirectory);
+        storage = suppliedStorage == null ? new Storage(dataDirectory) : suppliedStorage;
         activityManager = new ActivityManager();
         topicManager = new TopicManager(activityManager);
         confirmationHandler = new CommandConfirmationHandler(ui, scanner);
@@ -179,6 +198,7 @@ public class ApplicationRunner {
             if (!confirmationHandler.confirmIfNeeded(command)) {
                 return true;
             }
+            ApplicationStateSnapshot snapshot = needsFailureRollback(command) ? new ApplicationStateSnapshot() : null;
             CommandResult result = command.execute();
             if (result.isShouldExit()) {
                 return handleExit(result);
@@ -186,6 +206,9 @@ public class ApplicationRunner {
             if (mutatesState(command)) {
                 hasUnsavedChanges = true;
                 if (!trySave()) {
+                    if (snapshot != null) {
+                        snapshot.restore();
+                    }
                     return true;
                 }
             }
@@ -235,7 +258,38 @@ public class ApplicationRunner {
                 || command instanceof TopicAddCommand
                 || command instanceof TopicRenameCommand
                 || command instanceof TopicDeleteCommand
+                || command instanceof RecurCommand
                 || command instanceof ResetCommand;
+    }
+
+    /**
+     * Returns whether a failed save must roll back this command's complete in-memory batch, not
+     * just be reported. Every other mutating command changes at most one activity/topic, so a
+     * failed save leaving that one change in memory (until the next successful save or restart
+     * reloads from disk) is accepted, existing behaviour; recur can add many activities in one
+     * command and reset can rewrite the whole collection, so a failed save must not leave a
+     * partially-applied batch sitting in memory only.
+     *
+     * @param command the about-to-execute command
+     * @return true if a failed save after this command must restore the pre-command state
+     */
+    private boolean needsFailureRollback(Command command) {
+        return command instanceof RecurCommand || command instanceof ResetCommand;
+    }
+
+    /** Exact pre-command state used to roll back recur/reset when persistence fails. */
+    private final class ApplicationStateSnapshot {
+        private final List<Activity> activities = List.copyOf(activityManager.getAll());
+        private final List<Topic> topics = List.copyOf(topicManager.getAll());
+        private final int nextId = activityManager.getNextId();
+        private final ActivityOrder order = activityManager.getDefaultOrder();
+        private final boolean previouslyUnsaved = hasUnsavedChanges;
+
+        private void restore() {
+            activityManager.restoreState(activities, nextId, order);
+            topicManager.loadAll(topics);
+            hasUnsavedChanges = previouslyUnsaved;
+        }
     }
 
     /**

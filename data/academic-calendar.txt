@@ -1,0 +1,154 @@
+# NUS ACADEMIC CALENDAR - AY2026/2027
+# Transcribed from the NUS academic-calendar PDF dated 2026-07-30.
+#
+# Machine-readable records used by UniEnable:
+# FORMAT|schema-version
+# SOURCE|academic-year|source-title|source-date
+# WEEK|academic-year|semester|week-number|kind|start-date|end-date
+# NO_CLASS|academic-year|date|reason
+#
+# Java code must not contain any academic-year label, semester date, week limit, holiday,
+# or no-class rule from this file. To support a future academic year, append its SOURCE, WEEK,
+# and NO_CLASS records and restart UniEnable.
+
+FORMAT|1
+SOURCE|AY2026/2027|NUS Academic Calendar|2026-07-30
+
+# Semester 1 regular teaching weeks
+WEEK|AY2026/2027|SEM1|0|ORIENTATION|2026-08-03|2026-08-08
+WEEK|AY2026/2027|SEM1|1|INSTRUCTIONAL|2026-08-10|2026-08-14
+WEEK|AY2026/2027|SEM1|2|INSTRUCTIONAL|2026-08-17|2026-08-21
+WEEK|AY2026/2027|SEM1|3|INSTRUCTIONAL|2026-08-24|2026-08-28
+WEEK|AY2026/2027|SEM1|4|INSTRUCTIONAL|2026-08-31|2026-09-04
+WEEK|AY2026/2027|SEM1|5|INSTRUCTIONAL|2026-09-07|2026-09-11
+WEEK|AY2026/2027|SEM1|6|INSTRUCTIONAL|2026-09-14|2026-09-18
+WEEK|AY2026/2027|SEM1|7|INSTRUCTIONAL|2026-09-28|2026-10-03
+WEEK|AY2026/2027|SEM1|8|INSTRUCTIONAL|2026-10-05|2026-10-09
+WEEK|AY2026/2027|SEM1|9|INSTRUCTIONAL|2026-10-12|2026-10-16
+WEEK|AY2026/2027|SEM1|10|INSTRUCTIONAL|2026-10-19|2026-10-23
+WEEK|AY2026/2027|SEM1|11|INSTRUCTIONAL|2026-10-26|2026-10-30
+WEEK|AY2026/2027|SEM1|12|INSTRUCTIONAL|2026-11-02|2026-11-06
+WEEK|AY2026/2027|SEM1|13|INSTRUCTIONAL|2026-11-09|2026-11-13
+
+# Semester 2 regular teaching weeks
+WEEK|AY2026/2027|SEM2|1|INSTRUCTIONAL|2027-01-11|2027-01-15
+WEEK|AY2026/2027|SEM2|2|INSTRUCTIONAL|2027-01-18|2027-01-22
+WEEK|AY2026/2027|SEM2|3|INSTRUCTIONAL|2027-01-25|2027-01-29
+WEEK|AY2026/2027|SEM2|4|INSTRUCTIONAL|2027-02-01|2027-02-05
+WEEK|AY2026/2027|SEM2|5|INSTRUCTIONAL|2027-02-08|2027-02-12
+WEEK|AY2026/2027|SEM2|6|INSTRUCTIONAL|2027-02-15|2027-02-19
+WEEK|AY2026/2027|SEM2|7|INSTRUCTIONAL|2027-03-01|2027-03-06
+WEEK|AY2026/2027|SEM2|8|INSTRUCTIONAL|2027-03-08|2027-03-12
+WEEK|AY2026/2027|SEM2|9|INSTRUCTIONAL|2027-03-15|2027-03-19
+WEEK|AY2026/2027|SEM2|10|INSTRUCTIONAL|2027-03-22|2027-03-26
+WEEK|AY2026/2027|SEM2|11|INSTRUCTIONAL|2027-03-29|2027-04-02
+WEEK|AY2026/2027|SEM2|12|INSTRUCTIONAL|2027-04-05|2027-04-09
+WEEK|AY2026/2027|SEM2|13|INSTRUCTIONAL|2027-04-12|2027-04-16
+
+# Public and university holidays. The PDF states that there are no classes on public holidays.
+NO_CLASS|AY2026/2027|2026-08-09|National Day
+NO_CLASS|AY2026/2027|2026-08-10|National Day observed
+NO_CLASS|AY2026/2027|2026-10-09|NUS Well-Being Day
+NO_CLASS|AY2026/2027|2026-11-08|Deepavali
+NO_CLASS|AY2026/2027|2026-11-09|Deepavali observed
+NO_CLASS|AY2026/2027|2026-12-25|Christmas Day
+NO_CLASS|AY2026/2027|2027-01-01|New Year's Day
+NO_CLASS|AY2026/2027|2027-02-06|Chinese New Year - Day 1
+NO_CLASS|AY2026/2027|2027-02-07|Chinese New Year - Day 2
+NO_CLASS|AY2026/2027|2027-02-08|Chinese New Year observed
+NO_CLASS|AY2026/2027|2027-03-10|Hari Raya Puasa
+NO_CLASS|AY2026/2027|2027-03-11|NUS Well-Being Day
+NO_CLASS|AY2026/2027|2027-03-26|Good Friday
+NO_CLASS|AY2026/2027|2027-05-01|Labour Day
+NO_CLASS|AY2026/2027|2027-05-17|Hari Raya Haji
+NO_CLASS|AY2026/2027|2027-05-20|Vesak Day
+
+# -----------------------------------------------------------------------------
+# COMPLETE HUMAN-READABLE REFERENCE TRANSCRIBED FROM THE TWO-PAGE PDF
+# The lines below are comments: UniEnable preserves the information here for people to edit and
+# future features to adopt, while recurrence currently consumes only WEEK and NO_CLASS records.
+# -----------------------------------------------------------------------------
+
+# REGULAR SEMESTER AND VACATION PERIODS
+# Semester 1 regular semester: 18 weeks.
+# Orientation: 2026-08-03 to 2026-08-08.
+# First instructional period: 6 weeks, 2026-08-10 to 2026-09-18.
+# Recess: 2026-09-19 to 2026-09-27.
+# Second instructional period: 7 weeks, 2026-09-28 to 2026-11-13.
+# Reading period: 2026-11-14 to 2026-11-20.
+# Examination period: 2026-11-21 to 2026-12-05.
+# Vacation: 5 weeks, 2026-12-06 to 2027-01-10.
+#
+# Semester 2 regular semester: 17 weeks.
+# First instructional period: 6 weeks, 2027-01-11 to 2027-02-19.
+# Recess: 2027-02-20 to 2027-02-28.
+# Second instructional period: 7 weeks, 2027-03-01 to 2027-04-16.
+# Reading period: 2027-04-17 to 2027-04-23.
+# Examination period: 2027-04-24 to 2027-05-08.
+# Vacation: 12 weeks, 2027-05-09 to 2027-08-01.
+
+# MINI SEMESTERS
+# Mini Semester 1A: 8 weeks; instructional period 6 weeks, then reading and examination.
+# Mini Semester 1B: 9 weeks; instructional period 6 weeks, then reading and 2 examination weeks.
+# Mini Semester 2A: 8 weeks; instructional period 6 weeks, then reading and examination.
+# Mini Semester 2B: 9 weeks; instructional period 6 weeks, then reading and 2 examination weeks.
+
+# SPECIAL TERM
+# Special Term Part 1: 6 weeks, 2027-05-10 to 2027-06-19.
+# Special Term Part 2: 6 weeks, 2027-06-21 to 2027-07-31.
+
+# HOLIDAY NOTES
+# A public holiday falling on Sunday is observed on the following Monday.
+# Official class end time is 14:00 when Chinese New Year eve falls on a weekday.
+# Chinese New Year eve in this academic year is Friday, 2027-02-05.
+# Course instructors will advise on make-up classes, if any.
+# For current Singapore public holidays, check the Ministry of Manpower website.
+
+# SCHEDULE OF ACADEMIC-RELATED ACTIVITIES
+# Course Registration at Education Records System:
+# Check current information at https://www.nus.edu.sg/coursereg/.
+# The PDF records no CourseReg period for Special Term Part 1 or Part 2.
+#
+# "W" grade takes effect:
+# Semester 1: 2026-08-24 to 2026-09-27.
+# Mini Semester 1A: 2026-08-24 to 2026-08-30.
+# Mini Semester 1B: 2026-10-19 to 2026-10-25.
+# Semester 2: 2027-01-25 to 2027-02-28.
+# Mini Semester 2A: 2027-01-25 to 2027-01-31.
+# Mini Semester 2B: 2027-03-22 to 2027-03-28.
+# Special Term Part 1: 2027-05-24 to 2027-05-30.
+# Special Term Part 2: 2027-07-05 to 2027-07-11.
+#
+# "F" grade takes effect:
+# Semester 1: from 2026-09-28.
+# Mini Semester 1A: from 2026-08-31.
+# Mini Semester 1B: from 2026-10-26.
+# Semester 2: from 2027-03-01.
+# Mini Semester 2A: from 2027-02-01.
+# Mini Semester 2B: from 2027-03-29.
+# Special Term Part 1: from 2027-05-31.
+# Special Term Part 2: from 2027-07-12.
+#
+# Special Term Course Registration:
+# Check current information at
+# http://www.nus.edu.sg/registrar/academic-activities/special-term.
+#
+# Online Student Feedback Exercise:
+# Semester 1: 2026-10-23 to 2026-11-20.
+# Mini Semester 1A: 2026-09-11 to 2026-09-25.
+# Mini Semester 1B: 2026-10-23 to 2026-11-20.
+# Semester 2: 2027-03-26 to 2027-04-23.
+# Mini Semester 2A: 2027-02-12 to 2027-02-26.
+# Mini Semester 2B: 2027-03-26 to 2027-04-23.
+# Special Term Part 1: 2027-06-11 to 2027-06-17.
+# Special Term Part 2: 2027-07-23 to 2027-07-29.
+#
+# Commencement Ceremonies:
+# Check current information at http://www.nus.edu.sg/commencement.
+
+# MINDEF / MHA IN-CAMP TRAINING (ICT)
+# No compulsory academic programme is scheduled during the reserved ICT periods. Undergraduate
+# NSmen called up during a reserved period will not receive deferment for academic commitments.
+# Year 1: 2027-06-07 to 2027-08-01 (8 weeks).
+# Year 2: 2026-12-07 to 2027-01-03 (4 weeks), and 2027-06-21 to 2027-08-01 (6 weeks).
+# Year 3: 2027-06-21 to 2027-08-01 (6 weeks).

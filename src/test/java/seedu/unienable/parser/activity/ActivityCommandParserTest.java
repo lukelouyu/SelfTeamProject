@@ -1283,6 +1283,67 @@ class ActivityCommandParserTest {
     }
 
     @Test
+    public void parseList_bareNext_messageHasNoStrayTrailingSpace() {
+        // Regression test: "next" alone used to render as `Unknown list option "next "` (a
+        // literal trailing space baked into the string before the word, unconditionally
+        // appended even when there was no second word to report).
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "next"));
+
+        assertEquals("Unknown list option \"next\"; only \"next week\" is supported.", exception.getMessage());
+    }
+
+    @Test
+    public void parseList_bareThis_messageHasNoStrayTrailingSpace() {
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "this"));
+
+        assertEquals("Unknown list option \"this\"; only \"this week\" is supported.", exception.getMessage());
+    }
+
+    @Test
+    public void parseList_nextWeekCombinedWithToday_namesTheActualProblem() {
+        // Regression test: combining two relative-date phrases used to fall through to the
+        // generic "Unknown list option" message (since the leading phrase was already consumed,
+        // leaving only the second phrase's own keyword to report) instead of a specific message
+        // naming the real problem, unlike combining with date/ which already had one.
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "next week today"));
+
+        assertEquals("today, tomorrow, this week, next week, and overdue cannot be combined with each other.",
+                exception.getMessage());
+    }
+
+    @Test
+    public void parseList_thisWeekCombinedWithNextWeek_namesTheActualProblem() {
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "this week next week"));
+
+        assertEquals("today, tomorrow, this week, next week, and overdue cannot be combined with each other.",
+                exception.getMessage());
+    }
+
+    @Test
+    public void parseList_nextWeekExtra_stillGivesGenericMessageForNonRelativeTrailingText() {
+        // Unrelated trailing text (not another relative-date keyword) must still fall through to
+        // the generic message - only the two combined-relative-phrase cases above changed.
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, NOW, "next week extra"));
+
+        assertEquals("Unknown list option \"extra\".", exception.getMessage());
+    }
+
+    @Test
     public void parseList_overdue_matchesOnlyIncompletePastActivities() throws Exception {
         // FEATURE-01 (v1.0 manual release test, 2026-08-01): an incomplete activity whose
         // scheduled time has passed must appear; a completed one must not; an upcoming one must

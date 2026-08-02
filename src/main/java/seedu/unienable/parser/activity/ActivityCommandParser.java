@@ -288,7 +288,7 @@ public class ActivityCommandParser {
         } else if ("this".equalsIgnoreCase(words[0])) {
             if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
                 throw new InvalidCommandException(
-                        "Unknown list option \"this " + (words.length > 1 ? words[1] : "")
+                        "Unknown list option \"this" + (words.length > 1 ? " " + words[1] : "")
                                 + "\"; only \"this week\" is supported.");
             }
             LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
@@ -297,7 +297,7 @@ public class ActivityCommandParser {
         } else if ("next".equalsIgnoreCase(words[0])) {
             if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
                 throw new InvalidCommandException(
-                        "Unknown list option \"next " + (words.length > 1 ? words[1] : "")
+                        "Unknown list option \"next" + (words.length > 1 ? " " + words[1] : "")
                                 + "\"; only \"next week\" is supported.");
             }
             LocalDate nextMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusDays(7);
@@ -309,10 +309,21 @@ public class ActivityCommandParser {
         }
 
         if (!result.remainder.isEmpty() && !startsWithKnownMarker(result.remainder)) {
-            throw new InvalidCommandException(
-                    "Unknown list option \"" + result.remainder.split("\\s+", 2)[0] + "\".");
+            String nextWord = result.remainder.split("\\s+", 2)[0];
+            if (isRelativeDateWord(nextWord)) {
+                throw new InvalidCommandException("today, tomorrow, this week, next week, and overdue "
+                        + "cannot be combined with each other.");
+            }
+            throw new InvalidCommandException("Unknown list option \"" + nextWord + "\".");
         }
         return result;
+    }
+
+    /** Returns whether word is the leading word of one of list's own relative-date phrases. */
+    private boolean isRelativeDateWord(String word) {
+        return "today".equalsIgnoreCase(word) || "tomorrow".equalsIgnoreCase(word)
+                || "this".equalsIgnoreCase(word) || "next".equalsIgnoreCase(word)
+                || "overdue".equalsIgnoreCase(word);
     }
 
     private boolean startsWithKnownMarker(String text) {

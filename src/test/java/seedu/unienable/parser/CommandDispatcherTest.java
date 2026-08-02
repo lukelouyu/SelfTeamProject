@@ -32,6 +32,9 @@ import seedu.unienable.command.timetable.TimetableCommand;
 import seedu.unienable.command.activity.general.FindCommand;
 import seedu.unienable.command.general.GuideCommand;
 import seedu.unienable.command.general.ResetCommand;
+import seedu.unienable.command.preference.PreferenceResetCommand;
+import seedu.unienable.command.preference.PreferenceSetCommand;
+import seedu.unienable.command.preference.PreferenceViewCommand;
 import seedu.unienable.command.activity.general.ListCommand;
 import seedu.unienable.command.activity.general.MarkCommand;
 import seedu.unienable.command.activity.general.NextCommand;
@@ -49,6 +52,7 @@ import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
+import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.SensoryRating;
@@ -65,6 +69,7 @@ class CommandDispatcherTest {
     private final TopicManager topicManager = new TopicManager(activityManager);
     private final FacilityManager facilityManager = new FacilityManager(List.of());
     private final ConnectionManager connectionManager = new ConnectionManager(List.of());
+    private final PreferenceManager preferenceManager = new PreferenceManager();
     private CommandDispatcher dispatcher;
 
     @BeforeEach
@@ -72,8 +77,8 @@ class CommandDispatcherTest {
         // CommandDispatcher needs Storage, which in turn needs @TempDir's injected path - built
         // here rather than as a field initialiser, since @TempDir fields are only populated after
         // instance construction (field initialisers would still see tempDir as null).
-        dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager, connectionManager,
-                new Storage(tempDir));
+        dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager,
+                connectionManager, preferenceManager, new Storage(tempDir));
     }
 
     @Test
@@ -87,6 +92,13 @@ class CommandDispatcherTest {
     @Test
     public void dispatch_list_returnsListCommand() throws Exception {
         assertTrue(dispatcher.dispatch("list", NOW) instanceof ListCommand);
+    }
+
+    @Test
+    public void dispatch_preferenceCommands_returnExpectedCommandTypes() throws Exception {
+        assertTrue(dispatcher.dispatch("preference view", NOW) instanceof PreferenceViewCommand);
+        assertTrue(dispatcher.dispatch("preference set tomato/on", NOW) instanceof PreferenceSetCommand);
+        assertTrue(dispatcher.dispatch("preference reset", NOW) instanceof PreferenceResetCommand);
     }
 
     @Test

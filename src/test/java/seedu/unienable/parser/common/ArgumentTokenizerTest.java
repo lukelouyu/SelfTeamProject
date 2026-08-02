@@ -144,4 +144,12 @@ class ArgumentTokenizerTest {
         assertEquals("CG3207 lecture", tokens.get("n/"));
         assertEquals("ACADEMIC", tokens.get("c/"));
     }
+
+    @Test
+    public void tokenize_duplicateDeclaredMarker_throwsInsteadOfLastValueWinning() {
+        String args = "n/First n/Second";
+
+        assertThrows(InvalidCommandException.class, () -> ArgumentTokenizer.tokenize(args,
+                ArgumentMarker.required("n/")));
+    }
 }

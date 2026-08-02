@@ -166,6 +166,22 @@ class GuideCommandTest {
         CommandResult result = new GuideCommand("recommend").execute();
 
         assertTrue(result.getFeedback().endsWith("(Coming soon in a future release.)"));
+        assertTrue(result.getFeedback().contains("guide preference"));
+    }
+
+    @Test
+    public void execute_preferenceTopic_documentsGrammarDefaultsAndAdvisoryScope() {
+        String feedback = new GuideCommand("preference").execute().getFeedback();
+
+        assertTrue(feedback.startsWith("Global planning preferences"));
+        assertTrue(feedback.contains("preference view"));
+        assertTrue(feedback.contains("preference set start/HH:mm"));
+        assertTrue(feedback.contains("buffer/MINUTES"));
+        assertTrue(feedback.contains("tomato/on|off"));
+        assertTrue(feedback.contains("preference reset"));
+        assertTrue(feedback.contains("start 08:00, end 20:00, buffer 15 minutes, tomato off"));
+        assertTrue(feedback.contains("advisory"));
+        assertTrue(feedback.contains("does not yet recommend or reschedule"));
     }
 
     @Test

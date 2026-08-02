@@ -28,6 +28,8 @@ import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ActivityOrder;
+import seedu.unienable.model.preference.PreferenceProfile;
+import seedu.unienable.model.preference.TomatoSuggestion;
 
 class StorageTest {
     @TempDir
@@ -144,18 +146,52 @@ class StorageTest {
     }
 
     @Test
-    public void saveAll_normalCase_savesActivitiesTopicsAndSettingsTogether() throws Exception {
+    public void saveAll_normalCase_savesAllFourUserStateFilesTogether() throws Exception {
         Storage storage = new Storage(tempDir);
         FixedActivity fixed = new FixedActivity(1, "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), null, null);
         List<Topic> topics = List.of(new Topic(ActivityCategory.ACADEMIC, "CG3207"));
 
-        storage.saveAll(List.of(fixed), topics, ActivityOrder.INPUT);
+        PreferenceProfile preferences = PreferenceProfile.of(LocalTime.of(7, 30),
+                LocalTime.of(21, 0), 25, TomatoSuggestion.ON);
+
+        storage.saveAll(List.of(fixed), topics, ActivityOrder.INPUT, preferences);
 
         assertEquals(1, storage.loadActivities().getRecords().size());
         assertEquals(1, storage.loadTopics().getRecords().size());
         assertEquals(ActivityOrder.INPUT, storage.loadSettings().getRecords().get(0));
+        assertEquals(preferences, storage.loadPreferences().getRecords().get(0));
+    }
+
+    @Test
+    public void saveAll_preferencesCommitFails_earlierFilesAreRolledBack() throws Exception {
+        write("activities.txt", "FIXED|1|Old activity|ACADEMIC|2026-08-15|09:00|10:00|2|2|INCOMPLETE||");
+        write("topics.txt");
+        write("settings.txt", "DEFAULT_ORDER|CHRONOLOGICAL");
+        Path preferencesPath = tempDir.resolve("preferences.txt");
+        Files.createDirectory(preferencesPath);
+        Files.writeString(preferencesPath.resolve("blocker.txt"), "x");
+        Storage storage = new Storage(tempDir);
+        FixedActivity newActivity = new FixedActivity(2, "New activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 16), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null);
+        PreferenceProfile proposed = PreferenceProfile.of(LocalTime.of(7, 0),
+                LocalTime.of(19, 0), 30, TomatoSuggestion.ON);
+
+        assertThrows(StorageException.class,
+                () -> storage.saveAll(List.of(newActivity), List.of(), ActivityOrder.INPUT, proposed));
+
+        List<Activity> activitiesOnDisk = storage.loadActivities().getRecords();
+        assertEquals(1, activitiesOnDisk.size());
+        assertEquals("Old activity", activitiesOnDisk.get(0).getDescription());
+        assertEquals(ActivityOrder.CHRONOLOGICAL, storage.loadSettings().getRecords().get(0));
+        assertTrue(Files.isDirectory(preferencesPath));
+        assertTrue(Files.exists(preferencesPath.resolve("blocker.txt")));
+        assertFalse(Files.exists(tempDir.resolve("activities.txt.tmp")));
+        assertFalse(Files.exists(tempDir.resolve("activities.txt.bak")));
+        assertFalse(Files.exists(tempDir.resolve("preferences.txt.tmp")));
+        assertFalse(Files.exists(tempDir.resolve("preferences.txt.bak")));
     }
 
     @Test

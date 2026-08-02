@@ -8,6 +8,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,7 @@ import seedu.unienable.exception.StorageException;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityOrder;
+import seedu.unienable.model.preference.PreferenceProfile;
 import seedu.unienable.storage.Storage;
 import seedu.unienable.testutil.recur.RecurrenceTestData;
 
@@ -339,6 +341,115 @@ class ApplicationRunnerTest {
     }
 
     @Test
+    public void preferenceView_isReadOnlyAndDoesNotCreatePreferenceFile() throws Exception {
+        SaveCallCountingStorage storage = new SaveCallCountingStorage(dataDirectory);
+
+        String output = run("preference view\nbye\n", storage);
+
+        assertEquals(0, storage.saveCallCount);
+        assertFalse(Files.exists(dataDirectory.resolve("preferences.txt")));
+        assertTrue(output.contains("Preferred daily start: 08:00"));
+        assertTrue(output.contains("Tomato suggestion: OFF"));
+    }
+
+    @Test
+    public void preferenceSet_confirmedPersistsAndReloadsOnRestart() throws Exception {
+        String setInput = String.join("\n",
+                "preference set tomato/on buffer/30 end/21:00 start/07:30",
+                "y",
+                "bye") + "\n";
+
+        String setOutput = run(setInput, new Storage(dataDirectory));
+        String restartOutput = run("preference view\nbye\n", new Storage(dataDirectory));
+
+        assertTrue(setOutput.contains("Preference profile updated."));
+        assertEquals(List.of(
+                "PREFERRED_START|07:30",
+                "PREFERRED_END|21:00",
+                "MINIMUM_BUFFER|30",
+                "TOMATO_SUGGESTION|ON"),
+                Files.readAllLines(dataDirectory.resolve("preferences.txt")));
+        assertTrue(restartOutput.contains("Preferred daily start: 07:30"));
+        assertTrue(restartOutput.contains("Preferred daily end: 21:00"));
+        assertTrue(restartOutput.contains("Minimum buffer: 30 minutes"));
+        assertTrue(restartOutput.contains("Tomato suggestion: ON"));
+    }
+
+    @Test
+    public void preferenceSet_cancelledMakesNoChangeAndDoesNotSave() throws Exception {
+        SaveCallCountingStorage storage = new SaveCallCountingStorage(dataDirectory);
+        String input = String.join("\n",
+                "preference set tomato/on",
+                "n",
+                "preference view",
+                "bye") + "\n";
+
+        String output = run(input, storage);
+
+        assertEquals(0, storage.saveCallCount);
+        assertFalse(Files.exists(dataDirectory.resolve("preferences.txt")));
+        assertTrue(output.contains("Cancelled. No changes were made."));
+        assertTrue(output.contains("Tomato suggestion: OFF"));
+    }
+
+    @Test
+    public void malformedPreferenceFile_warnsAndLoadsWholeDefaultProfile() throws Exception {
+        Files.createDirectories(dataDirectory);
+        Files.writeString(dataDirectory.resolve("preferences.txt"), String.join("\n",
+                "PREFERRED_START|07:00",
+                "PREFERRED_END|21:00",
+                "MINIMUM_BUFFER|30",
+                "TOMATO_SUGGESTION|MAYBE"));
+
+        String output = run("preference view\nbye\n", new Storage(dataDirectory));
+
+        assertTrue(output.contains("preferences.txt"));
+        assertTrue(output.contains("all defaults were loaded"));
+        assertTrue(output.contains("Preferred daily start: 08:00"),
+                "one malformed field must discard the otherwise valid custom fields");
+        assertTrue(output.contains("Preferred daily end: 20:00"));
+        assertTrue(output.contains("Minimum buffer: 15 minutes"));
+        assertTrue(output.contains("Tomato suggestion: OFF"));
+    }
+
+    @Test
+    public void preferenceSet_saveFails_rollsBackProfileAndShowsNoFalseSuccess() throws Exception {
+        String input = String.join("\n",
+                "preference set tomato/on start/07:00",
+                "y",
+                "preference view",
+                "bye") + "\n";
+
+        String output = run(input, alwaysFailing(dataDirectory));
+
+        assertFalse(output.contains("Preference profile updated."));
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("Preferred daily start: 08:00"));
+        assertTrue(output.contains("Tomato suggestion: OFF"));
+    }
+
+    @Test
+    public void resetAll_optionsApplyApprovedPreferenceRules() throws Exception {
+        String input = String.join("\n",
+                "preference set tomato/on",
+                "y",
+                "reset all",
+                "2",
+                "preference view",
+                "reset all",
+                "1",
+                "preference view",
+                "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+
+        int retainedView = output.indexOf("Tomato suggestion: ON", output.indexOf("Reset complete."));
+        int resetView = output.indexOf("Tomato suggestion: OFF", retainedView + 1);
+        assertTrue(retainedView > 0, "reset option 2 must retain custom preferences");
+        assertTrue(resetView > retainedView, "reset option 1 must restore default preferences");
+    }
+
+    @Test
     public void resetAll_nothingToReset_doesNotInvokeSave() throws Exception {
         String input = String.join("\n", "reset all", "bye") + "\n";
         SaveCallCountingStorage storage = new SaveCallCountingStorage(dataDirectory);
@@ -375,11 +486,11 @@ class ApplicationRunnerTest {
         }
 
         @Override
-        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
-                throws StorageException {
+        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order,
+                PreferenceProfile preferences) throws StorageException {
             if (remainingSuccesses > 0) {
                 remainingSuccesses--;
-                super.saveAll(activities, topics, order);
+                super.saveAll(activities, topics, order, preferences);
                 return;
             }
             throw new StorageException("simulated disk failure");
@@ -395,13 +506,13 @@ class ApplicationRunnerTest {
         }
 
         @Override
-        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
-                throws StorageException {
+        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order,
+                PreferenceProfile preferences) throws StorageException {
             if (!hasFailedOnce) {
                 hasFailedOnce = true;
                 throw new StorageException("simulated disk failure");
             }
-            super.saveAll(activities, topics, order);
+            super.saveAll(activities, topics, order, preferences);
         }
     }
 
@@ -414,10 +525,10 @@ class ApplicationRunnerTest {
         }
 
         @Override
-        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
-                throws StorageException {
+        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order,
+                PreferenceProfile preferences) throws StorageException {
             saveCallCount++;
-            super.saveAll(activities, topics, order);
+            super.saveAll(activities, topics, order, preferences);
         }
     }
 

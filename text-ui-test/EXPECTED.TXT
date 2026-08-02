@@ -161,7 +161,8 @@ Sample local accessibility reference data. Distances are estimates and may be in
 ____________________________________________________________
 ____________________________________________________________
 Data files and storage
-Application data (activities, topics, and your saved default order)
+Application data (activities, topics, your saved default order, and
+global planning preferences)
 is stored under data/. Do not edit data files while the application runs.
 
 data/academic-calendar.txt is different: it is a reference file you or
@@ -214,9 +215,33 @@ Timetable is read-only. It does not schedule flexible activities, create
 recommendations, infer buffers, or change any stored data.
 ____________________________________________________________
 ____________________________________________________________
+Global planning preferences
+Format: preference view
+        preference set start/HH:mm [end/HH:mm] [buffer/MINUTES] [tomato/on|off]
+        preference reset
+
+Stores one global profile for future planning features. Fields supplied to
+preference set may appear in any order; omitted fields retain their current
+values. start must be before end, buffer must be from 0 to 1440 minutes,
+and tomato controls advisory Tomato/Pomodoro suggestions only.
+
+Defaults: start 08:00, end 20:00, buffer 15 minutes, tomato off.
+
+Examples:
+  preference view
+  preference set start/07:30 end/21:00 buffer/20 tomato/on
+  preference set tomato/off
+  preference reset
+
+Changes and reset require y/n confirmation. These settings are advisory
+planning inputs only; this release does not yet recommend or reschedule
+activities.
+____________________________________________________________
+____________________________________________________________
 Recommended timetable
 Use recommend PERIOD [PREFERENCE_OVERRIDES].
 Review the plan before choosing whether to adopt it.
+Global planning preferences are available now; see guide preference.
 (Coming soon in a future release.)
 ____________________________________________________________
 ____________________________________________________________
@@ -260,14 +285,14 @@ always kept, whichever choice you pick.
 
 Choices:
   [1] Delete all user data - every activity and topic is cleared,
-      the saved default order resets to chronological, and the
+      saved default order and preference profile reset to defaults, and the
       next activity ID restarts at [1].
   [2] Delete other activities but keep class schedules - keeps
       every fixed lecture/tutorial/lab/section-teaching activity
       (the same activities recur can build on - see guide recur)
       with its original ID, note, and completion status, deletes
       everything else, and keeps only the topics still used by a
-      kept activity.
+      kept activity. Your preference profile is retained.
   [3] Do not delete anything - cancels with no change.
 
 Example:
@@ -452,7 +477,8 @@ Sample local accessibility reference data. Distances are estimates and may be in
 ____________________________________________________________
 ____________________________________________________________
 Data files and storage
-Application data (activities, topics, and your saved default order)
+Application data (activities, topics, your saved default order, and
+global planning preferences)
 is stored under data/. Do not edit data files while the application runs.
 
 data/academic-calendar.txt is different: it is a reference file you or
@@ -618,6 +644,7 @@ ____________________________________________________________
 Recommended timetable
 Use recommend PERIOD [PREFERENCE_OVERRIDES].
 Review the plan before choosing whether to adopt it.
+Global planning preferences are available now; see guide preference.
 (Coming soon in a future release.)
 ____________________________________________________________
 ____________________________________________________________
@@ -664,7 +691,8 @@ Each export creates a timestamped historical record.
 ____________________________________________________________
 ____________________________________________________________
 Data files and storage
-Application data (activities, topics, and your saved default order)
+Application data (activities, topics, your saved default order, and
+global planning preferences)
 is stored under data/. Do not edit data files while the application runs.
 
 data/academic-calendar.txt is different: it is a reference file you or
@@ -2932,12 +2960,14 @@ Activities      : 28
 Class schedules : 9
 Other activities: 19
 Topics          : 3
+Preferences     : Default
 
 [1] Delete all user data
 [2] Delete other activities but keep class schedules
 [3] Do not delete anything
 
 Facility, connection, and academic-calendar reference data will be kept.
+Option 1 resets preferences; options 2 and 3 retain them.
 Enter 1, 2, or 3:
 ____________________________________________________________
 ____________________________________________________________
@@ -3200,6 +3230,385 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: Unexpected text after the timetable period - use at most one mode.
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: preference requires view, set, or reset.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: "preference view" does not take any arguments.
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: preference set requires at least one field.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown option "bogus/value".
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: start/ value is required.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: time must be in 24-hour HH:mm format.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: preferred start must be before preferred end.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: buffer must be a whole number from 0 to 1440.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: buffer must be a whole number from 0 to 1440.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: tomato must be on or off.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Duplicate option "tomato/".
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Duplicate option "start/".
+____________________________________________________________
+____________________________________________________________
+Proposed preference changes:
+Preferred daily start | Old: 08:00 | New: 07:30
+Preferred daily end | Old: 20:00 | New: 21:00
+Minimum buffer | Old: 15 minutes | New: 30 minutes
+Tomato suggestion | Old: OFF | New: ON
+Apply these preference changes? (y/n)
+____________________________________________________________
+____________________________________________________________
+Cancelled. No changes were made.
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Proposed preference changes:
+Tomato suggestion | Old: OFF | New: ON
+Apply these preference changes? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile updated.
+
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Proposed preference changes:
+Preferred daily start | Old: 08:00 | New: 07:30
+Preferred daily end | Old: 20:00 | New: 21:00
+Minimum buffer | Old: 15 minutes | New: 30 minutes
+Apply these preference changes? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile updated.
+
+Preference profile
+
+Preferred daily start: 07:30
+Preferred daily end: 21:00
+Minimum buffer: 30 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 07:30
+Preferred daily end: 21:00
+Minimum buffer: 30 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+No preference changes were requested.
+____________________________________________________________
+____________________________________________________________
+Reset preference profile to defaults:
+Preferred daily start | Old: 07:30 | New: 08:00
+Preferred daily end | Old: 21:00 | New: 20:00
+Minimum buffer | Old: 30 minutes | New: 15 minutes
+Tomato suggestion | Old: ON | New: OFF
+Reset these preferences? (y/n)
+____________________________________________________________
+____________________________________________________________
+Cancelled. No changes were made.
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 07:30
+Preferred daily end: 21:00
+Minimum buffer: 30 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Reset user data
+
+Activities      : 3
+Class schedules : 2
+Other activities: 1
+Topics          : 0
+Preferences     : Custom
+
+[1] Delete all user data
+[2] Delete other activities but keep class schedules
+[3] Do not delete anything
+
+Facility, connection, and academic-calendar reference data will be kept.
+Option 1 resets preferences; options 2 and 3 retain them.
+Enter 1, 2, or 3:
+____________________________________________________________
+____________________________________________________________
+Reset complete. Kept 2 class-schedule activities and deleted 1 other activity.
+Your next activity will use ID [3].
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 07:30
+Preferred daily end: 21:00
+Minimum buffer: 30 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Reset user data
+
+Activities      : 2
+Class schedules : 2
+Other activities: 0
+Topics          : 0
+Preferences     : Custom
+
+[1] Delete all user data
+[2] Delete other activities but keep class schedules
+[3] Do not delete anything
+
+Facility, connection, and academic-calendar reference data will be kept.
+Option 1 resets preferences; options 2 and 3 retain them.
+Enter 1, 2, or 3:
+____________________________________________________________
+____________________________________________________________
+Cancelled. No changes were made.
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 07:30
+Preferred daily end: 21:00
+Minimum buffer: 30 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Reset preference profile to defaults:
+Preferred daily start | Old: 07:30 | New: 08:00
+Preferred daily end | Old: 21:00 | New: 20:00
+Minimum buffer | Old: 30 minutes | New: 15 minutes
+Tomato suggestion | Old: ON | New: OFF
+Reset these preferences? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile reset to defaults.
+
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Proposed preference changes:
+Tomato suggestion | Old: OFF | New: ON
+Apply these preference changes? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile updated.
+
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Reset user data
+
+Activities      : 2
+Class schedules : 2
+Other activities: 0
+Topics          : 0
+Preferences     : Custom
+
+[1] Delete all user data
+[2] Delete other activities but keep class schedules
+[3] Do not delete anything
+
+Facility, connection, and academic-calendar reference data will be kept.
+Option 1 resets preferences; options 2 and 3 retain them.
+Enter 1, 2, or 3:
+____________________________________________________________
+____________________________________________________________
+All user data has been reset.
+Your next activity will use ID [1].
+____________________________________________________________
+____________________________________________________________
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Preference profile already uses all defaults.
+____________________________________________________________
+____________________________________________________________
+Proposed preference changes:
+Preferred daily start | Old: 08:00 | New: 09:00
+Apply these preference changes? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile updated.
+
+Preference profile
+
+Preferred daily start: 09:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Proposed preference changes:
+Preferred daily end | Old: 20:00 | New: 21:00
+Minimum buffer | Old: 15 minutes | New: 30 minutes
+Apply these preference changes? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile updated.
+
+Preference profile
+
+Preferred daily start: 09:00
+Preferred daily end: 21:00
+Minimum buffer: 30 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Proposed preference changes:
+Preferred daily end | Old: 21:00 | New: 18:00
+Minimum buffer | Old: 30 minutes | New: 20 minutes
+Tomato suggestion | Old: OFF | New: ON
+Apply these preference changes? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile updated.
+
+Preference profile
+
+Preferred daily start: 09:00
+Preferred daily end: 18:00
+Minimum buffer: 20 minutes
+Tomato suggestion: ON
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Proposed preference changes:
+Tomato suggestion | Old: ON | New: OFF
+Apply these preference changes? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile updated.
+
+Preference profile
+
+Preferred daily start: 09:00
+Preferred daily end: 18:00
+Minimum buffer: 20 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Reset preference profile to defaults:
+Preferred daily start | Old: 09:00 | New: 08:00
+Preferred daily end | Old: 18:00 | New: 20:00
+Minimum buffer | Old: 20 minutes | New: 15 minutes
+Reset these preferences? (y/n)
+____________________________________________________________
+____________________________________________________________
+Preference profile reset to defaults.
+
+Preference profile
+
+Preferred daily start: 08:00
+Preferred daily end: 20:00
+Minimum buffer: 15 minutes
+Tomato suggestion: OFF
+
+These preferences apply to every day.
 ____________________________________________________________
 ____________________________________________________________
 Your data has been saved.

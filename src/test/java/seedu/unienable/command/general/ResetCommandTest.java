@@ -14,13 +14,20 @@ import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.MenuOutcome;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
+import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ActivityOrder;
+import seedu.unienable.model.preference.PreferenceProfile;
+import seedu.unienable.model.preference.TomatoSuggestion;
 
 class ResetCommandTest {
+    private ResetCommand newCommand(ActivityManager activityManager, TopicManager topicManager) {
+        return new ResetCommand(activityManager, topicManager, new PreferenceManager());
+    }
+
     private static FixedActivity newFixedActivity(int id, String description, ActivityCategory category,
             LocalTime start, LocalTime end) throws Exception {
         return new FixedActivity(id, description, category, LocalDate.of(2026, 8, 15), start, end,
@@ -32,7 +39,7 @@ class ResetCommandTest {
         ActivityManager activityManager = new ActivityManager();
         TopicManager topicManager = new TopicManager(activityManager);
 
-        assertFalse(new ResetCommand(activityManager, topicManager).hasAnythingToReset());
+        assertFalse(newCommand(activityManager, topicManager).hasAnythingToReset());
     }
 
     @Test
@@ -41,7 +48,7 @@ class ResetCommandTest {
         activityManager.setDefaultOrder(ActivityOrder.INPUT);
         TopicManager topicManager = new TopicManager(activityManager);
 
-        assertTrue(new ResetCommand(activityManager, topicManager).hasAnythingToReset());
+        assertTrue(newCommand(activityManager, topicManager).hasAnythingToReset());
     }
 
     @Test
@@ -50,7 +57,7 @@ class ResetCommandTest {
         TopicManager topicManager = new TopicManager(activityManager);
         topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
 
-        assertTrue(new ResetCommand(activityManager, topicManager).hasAnythingToReset());
+        assertTrue(newCommand(activityManager, topicManager).hasAnythingToReset());
     }
 
     @Test
@@ -65,7 +72,7 @@ class ResetCommandTest {
         topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
         activityManager.setDefaultOrder(ActivityOrder.INPUT);
 
-        CommandResult result = new ResetCommand(activityManager, topicManager).execute();
+        CommandResult result = newCommand(activityManager, topicManager).execute();
 
         assertEquals(0, activityManager.size());
         assertTrue(topicManager.getAll().isEmpty());
@@ -83,7 +90,7 @@ class ResetCommandTest {
         topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
         topicManager.add(ActivityCategory.CCA, "Computing Club");
 
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
 
         assertEquals(1, command.getActivityCount());
         assertEquals(2, command.getTopicCount());
@@ -98,7 +105,7 @@ class ResetCommandTest {
         activityManager.add(newFixedActivity(activityManager.getNextId(), "Team meeting",
                 ActivityCategory.WORK_INTERNSHIP, LocalTime.of(11, 0), LocalTime.of(12, 0)));
 
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
 
         assertEquals(1, command.getClassScheduleCount());
         assertEquals(1, command.getOtherActivityCount());
@@ -109,7 +116,7 @@ class ResetCommandTest {
         ActivityManager activityManager = new ActivityManager();
         TopicManager topicManager = new TopicManager(activityManager);
 
-        assertNull(new ResetCommand(activityManager, topicManager).getMenuPrompt());
+        assertNull(newCommand(activityManager, topicManager).getMenuPrompt());
     }
 
     @Test
@@ -122,18 +129,56 @@ class ResetCommandTest {
                 ActivityCategory.WORK_INTERNSHIP, LocalTime.of(11, 0), LocalTime.of(12, 0)));
         topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
 
-        String prompt = new ResetCommand(activityManager, topicManager).getMenuPrompt();
+        String prompt = newCommand(activityManager, topicManager).getMenuPrompt();
 
         assertEquals("Reset user data\n\n"
                 + "Activities      : 2\n"
                 + "Class schedules : 1\n"
                 + "Other activities: 1\n"
-                + "Topics          : 1\n\n"
+                + "Topics          : 1\n"
+                + "Preferences     : Default\n\n"
                 + "[1] Delete all user data\n"
                 + "[2] Delete other activities but keep class schedules\n"
                 + "[3] Do not delete anything\n\n"
                 + "Facility, connection, and academic-calendar reference data will be kept.\n"
+                + "Option 1 resets preferences; options 2 and 3 retain them.\n"
                 + "Enter 1, 2, or 3:", prompt);
+    }
+
+    @Test
+    public void resetAll_optionOneResetsPreferences_optionTwoRetainsThem() throws Exception {
+        ActivityManager activityManager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(activityManager);
+        PreferenceManager preferenceManager = new PreferenceManager();
+        PreferenceProfile custom = PreferenceProfile.of(LocalTime.of(9, 0),
+                LocalTime.of(18, 0), 20, TomatoSuggestion.ON);
+        preferenceManager.setProfile(custom);
+
+        ResetCommand keep = new ResetCommand(activityManager, topicManager, preferenceManager);
+        keep.applyMenuAnswer("2");
+        keep.execute();
+        assertEquals(custom, preferenceManager.getProfile());
+
+        ResetCommand clear = new ResetCommand(activityManager, topicManager, preferenceManager);
+        clear.applyMenuAnswer("1");
+        clear.execute();
+        assertEquals(PreferenceProfile.defaults(), preferenceManager.getProfile());
+    }
+
+    @Test
+    public void resetAll_onlyCustomPreferencesExists_menuShownAndOptionThreeChangesNothing() {
+        ActivityManager activityManager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(activityManager);
+        PreferenceManager preferenceManager = new PreferenceManager();
+        PreferenceProfile custom = PreferenceProfile.of(LocalTime.of(9, 0),
+                LocalTime.of(18, 0), 20, TomatoSuggestion.ON);
+        preferenceManager.setProfile(custom);
+        ResetCommand command = new ResetCommand(activityManager, topicManager, preferenceManager);
+
+        assertTrue(command.hasAnythingToReset());
+        assertTrue(command.getMenuPrompt().contains("Preferences     : Custom"));
+        assertFalse(command.applyMenuAnswer("3").isProceed());
+        assertEquals(custom, preferenceManager.getProfile());
     }
 
     @Test
@@ -142,7 +187,7 @@ class ResetCommandTest {
         TopicManager topicManager = new TopicManager(activityManager);
         activityManager.add(newFixedActivity(activityManager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalTime.of(9, 0), LocalTime.of(10, 0)));
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
 
         MenuOutcome outcome = command.applyMenuAnswer("1");
         command.execute();
@@ -155,7 +200,7 @@ class ResetCommandTest {
     public void applyMenuAnswer_two_selectsKeepClassScheduleAndProceeds() {
         ActivityManager activityManager = new ActivityManager();
         TopicManager topicManager = new TopicManager(activityManager);
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
 
         assertTrue(command.applyMenuAnswer("2").isProceed());
     }
@@ -164,7 +209,7 @@ class ResetCommandTest {
     public void applyMenuAnswer_three_cancelsWithMessage() {
         ActivityManager activityManager = new ActivityManager();
         TopicManager topicManager = new TopicManager(activityManager);
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
 
         MenuOutcome outcome = command.applyMenuAnswer("3");
 
@@ -176,7 +221,7 @@ class ResetCommandTest {
     public void applyMenuAnswer_invalidText_cancelsWithEnterOneTwoThreeMessage() {
         ActivityManager activityManager = new ActivityManager();
         TopicManager topicManager = new TopicManager(activityManager);
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
 
         MenuOutcome outcome = command.applyMenuAnswer("bogus");
 
@@ -190,7 +235,7 @@ class ResetCommandTest {
         // be treated the same as any other unrecognised answer, not silently mapped to "3".
         ActivityManager activityManager = new ActivityManager();
         TopicManager topicManager = new TopicManager(activityManager);
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
 
         MenuOutcome outcome = command.applyMenuAnswer("");
 
@@ -212,7 +257,7 @@ class ResetCommandTest {
         activityManager.add(new FixedActivity(activityManager.getNextId(), "CG3207 Tutorial",
                 ActivityCategory.ACADEMIC, LocalDate.of(2026, 8, 16), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(2), SensoryRating.of(2), "CG3207", null));
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
         command.applyMenuAnswer("2");
 
         CommandResult result = command.execute();
@@ -236,7 +281,7 @@ class ResetCommandTest {
         TopicManager topicManager = new TopicManager(activityManager);
         activityManager.add(newFixedActivity(activityManager.getNextId(), "Doctor appointment",
                 ActivityCategory.OTHERS, LocalTime.of(9, 0), LocalTime.of(10, 0)));
-        ResetCommand command = new ResetCommand(activityManager, topicManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
         command.applyMenuAnswer("2");
 
         command.execute();

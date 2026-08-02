@@ -39,7 +39,7 @@ public class Topic {
      * @param name the new topic name
      */
     public void setName(String name) {
-        logger.log(Level.INFO, "Renaming topic under " + category + " from '" + this.name + "' to '" + name + "'.");
+        logger.log(Level.INFO, "Renamed a topic under " + category + ".");
         this.name = name;
     }
 

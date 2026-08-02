@@ -54,8 +54,7 @@ public class FlexibleActivity extends Activity {
 
     /** Sets the earliest allowed start time. */
     public void setEarliestStart(LocalTime earliestStart) {
-        logger.log(Level.INFO, "Updating earliest start for activity [" + getId() + "] from '"
-                + this.earliestStart + "' to '" + earliestStart + "'.");
+        logger.log(Level.INFO, "Updated earliest start for activity [" + getId() + "].");
         this.earliestStart = earliestStart;
     }
 
@@ -66,8 +65,7 @@ public class FlexibleActivity extends Activity {
 
     /** Sets the latest allowed end time. */
     public void setLatestEnd(LocalTime latestEnd) {
-        logger.log(Level.INFO, "Updating latest end for activity [" + getId() + "] from '"
-                + this.latestEnd + "' to '" + latestEnd + "'.");
+        logger.log(Level.INFO, "Updated latest end for activity [" + getId() + "].");
         this.latestEnd = latestEnd;
     }
 
@@ -78,8 +76,7 @@ public class FlexibleActivity extends Activity {
 
     /** Sets the required duration in minutes. */
     public void setDurationMinutes(int durationMinutes) {
-        logger.log(Level.INFO, "Updating duration for activity [" + getId() + "] from '"
-                + this.durationMinutes + "' to '" + durationMinutes + "'.");
+        logger.log(Level.INFO, "Updated duration for activity [" + getId() + "].");
         this.durationMinutes = durationMinutes;
     }
 

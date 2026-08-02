@@ -62,8 +62,7 @@ public abstract class Activity {
 
     /** Sets the activity description. */
     public void setDescription(String description) {
-        logger.log(Level.INFO, "Updating description for activity [" + id + "] from '"
-                + this.description + "' to '" + description + "'.");
+        logFieldUpdate("description");
         this.description = description;
     }
 
@@ -74,8 +73,7 @@ public abstract class Activity {
 
     /** Sets the fixed top-level category. */
     public void setCategory(ActivityCategory category) {
-        logger.log(Level.INFO, "Updating category for activity [" + id + "] from '"
-                + this.category + "' to '" + category + "'.");
+        logFieldUpdate("category");
         this.category = category;
     }
 
@@ -86,8 +84,7 @@ public abstract class Activity {
 
     /** Sets the activity date. */
     public void setDate(LocalDate date) {
-        logger.log(Level.INFO, "Updating date for activity [" + id + "] from '"
-                + this.date + "' to '" + date + "'.");
+        logFieldUpdate("date");
         this.date = date;
     }
 
@@ -98,8 +95,7 @@ public abstract class Activity {
 
     /** Sets the energy-demand rating. */
     public void setEnergyRating(EnergyRating energyRating) {
-        logger.log(Level.INFO, "Updating energy rating for activity [" + id + "] from '"
-                + this.energyRating + "' to '" + energyRating + "'.");
+        logFieldUpdate("energy rating");
         this.energyRating = energyRating;
     }
 
@@ -110,8 +106,7 @@ public abstract class Activity {
 
     /** Sets the sensory-load rating. */
     public void setSensoryRating(SensoryRating sensoryRating) {
-        logger.log(Level.INFO, "Updating sensory rating for activity [" + id + "] from '"
-                + this.sensoryRating + "' to '" + sensoryRating + "'.");
+        logFieldUpdate("sensory rating");
         this.sensoryRating = sensoryRating;
     }
 
@@ -122,8 +117,7 @@ public abstract class Activity {
 
     /** Sets the optional topic name, or null to clear it. */
     public void setTopic(String topic) {
-        logger.log(Level.INFO, "Updating topic for activity [" + id + "] from '"
-                + this.topic + "' to '" + topic + "'.");
+        logFieldUpdate("topic");
         this.topic = topic;
     }
 
@@ -134,9 +128,18 @@ public abstract class Activity {
 
     /** Sets the optional preparation note, or null to clear it. */
     public void setNote(String note) {
-        logger.log(Level.INFO, "Updating note for activity [" + id + "] from '"
-                + this.note + "' to '" + note + "'.");
+        logFieldUpdate("note");
         this.note = note;
+    }
+
+    /**
+     * Logs that a field on this activity was updated, identifying it by ID and field name only -
+     * not the old/new values, which may be arbitrary user-entered text (description, note).
+     *
+     * @param fieldName the name of the field that changed
+     */
+    private void logFieldUpdate(String fieldName) {
+        logger.log(Level.INFO, "Updated " + fieldName + " for activity [" + id + "].");
     }
 
     /** Returns the completion status. */

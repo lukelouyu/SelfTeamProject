@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.classes.Facility;
@@ -20,6 +22,8 @@ import seedu.unienable.model.enums.ActivityOrder;
  * or save everything through one entry point instead of wiring up each file path separately.
  */
 public class Storage {
+    private static final Logger LOGGER = Logger.getLogger(Storage.class.getName());
+
     private final Path activitiesFile;
     private final Path topicsFile;
     private final Path facilitiesFile;
@@ -319,7 +323,12 @@ public class Storage {
         } catch (IOException e) {
             // Best-effort: if the destination itself is now unwritable/inaccessible (the same
             // underlying condition that likely caused the original commit failure), there is no
-            // further recovery this method can perform.
+            // further recovery this method can perform. Logged at SEVERE rather than WARNING -
+            // unlike an ordinary save failure (disk left exactly as it was), this means the
+            // on-disk rollback itself did not complete, so destination's actual content is no
+            // longer guaranteed to match either the old or the attempted new state.
+            LOGGER.log(Level.SEVERE, "On-disk rollback failed for " + destination
+                    + " - its content may no longer match either the old or the attempted new state", e);
         }
     }
 

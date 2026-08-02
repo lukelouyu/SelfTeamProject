@@ -9,7 +9,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -48,6 +53,51 @@ class ApplicationRunnerTest {
 
     private static FailAfterStorage alwaysFailing(Path dataDirectory) {
         return new FailAfterStorage(dataDirectory, 0);
+    }
+
+    @Test
+    public void mutatingCommandSaveFailure_logsRecordWithThrowable() throws Exception {
+        RecordingHandler handler = new RecordingHandler();
+        Logger.getLogger("").addHandler(handler);
+        try {
+            String input = String.join("\n",
+                    "add n/Task c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                    "bye") + "\n";
+
+            run(input, alwaysFailing(dataDirectory));
+
+            boolean loggedWithThrowable = handler.records.stream()
+                    .anyMatch(record -> record.getLevel().intValue() >= Level.WARNING.intValue()
+                            && record.getThrown() != null);
+            assertTrue(loggedWithThrowable,
+                    "a forced save failure must log a record at WARNING or above with the exception attached");
+        } finally {
+            Logger.getLogger("").removeHandler(handler);
+        }
+    }
+
+    @Test
+    public void normalSuccessfulCommands_produceNoWarningOrSevereLogRecords() throws Exception {
+        RecordingHandler handler = new RecordingHandler();
+        Logger.getLogger("").addHandler(handler);
+        try {
+            String input = String.join("\n",
+                    "add n/Task c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                    "mark 1",
+                    "list",
+                    "bye") + "\n";
+
+            String output = run(input, new Storage(dataDirectory));
+
+            assertTrue(output.contains("Got it. Activity [1] has been added"),
+                    "test setup: the add must actually have succeeded");
+            boolean anyNoisyRecord = handler.records.stream()
+                    .anyMatch(record -> record.getLevel().intValue() >= Level.WARNING.intValue());
+            assertFalse(anyNoisyRecord,
+                    "normal successful commands must not produce WARNING/SEVERE log records");
+        } finally {
+            Logger.getLogger("").removeHandler(handler);
+        }
     }
 
     @Test
@@ -368,6 +418,24 @@ class ApplicationRunnerTest {
                 throws StorageException {
             saveCallCount++;
             super.saveAll(activities, topics, order);
+        }
+    }
+
+    /** Captures every LogRecord published to it, for tests to inspect after a run completes. */
+    private static final class RecordingHandler extends Handler {
+        private final List<LogRecord> records = new ArrayList<>();
+
+        @Override
+        public void publish(LogRecord record) {
+            records.add(record);
+        }
+
+        @Override
+        public void flush() {
+        }
+
+        @Override
+        public void close() {
         }
     }
 }

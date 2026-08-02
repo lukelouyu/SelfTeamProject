@@ -48,6 +48,7 @@ import seedu.unienable.ui.Ui;
  * threading dependencies through long parameter lists.
  */
 public class ApplicationRunner {
+    private static final Logger LOGGER = Logger.getLogger(ApplicationRunner.class.getName());
     private static final String EXIT_WITHOUT_SAVE_MESSAGE =
             "Your latest changes could not be saved.\nBye! Take care and see you again.";
 
@@ -96,11 +97,20 @@ public class ApplicationRunner {
     /**
      * Runs the full application: shows the welcome message, loads saved data, then processes
      * commands until "bye" or the input stream ends. If startup data loading fails, shows the
-     * error and returns without starting the command loop.
+     * error and returns without starting the command loop. Always releases this run's log file
+     * handle before returning (even on an early return or an uncaught exception), so the data
+     * directory - including the log file - is free to be deleted or reopened immediately after.
      */
     public void run() {
-        suppressJdkLoggingFromLeakingIntoCliOutput();
+        LoggingConfig.configure(dataDirectory);
+        try {
+            runInternal();
+        } finally {
+            LoggingConfig.shutdown();
+        }
+    }
 
+    private void runInternal() {
         ui = new Ui();
         ui.showWelcome();
 
@@ -117,15 +127,6 @@ public class ApplicationRunner {
         dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager, connectionManager,
                 storage);
         runCommandLoop();
-    }
-
-    /**
-     * Suppresses the JVM's default console log handler. Activity/Topic mutations log at INFO for
-     * internal diagnostics; without this, those records would interleave with the framed CLI
-     * output on stderr.
-     */
-    private void suppressJdkLoggingFromLeakingIntoCliOutput() {
-        Logger.getLogger("").setLevel(Level.WARNING);
     }
 
     /**
@@ -150,15 +151,32 @@ public class ApplicationRunner {
             connectionManager = new ConnectionManager(connectionLoad.getRecords());
             activityManager.setDefaultOrder(settingsLoad.getRecords().get(0));
 
-            ui.showLoadWarnings("activities.txt", activityLoad.getWarnings());
-            ui.showLoadWarnings("topics.txt", topicLoad.getWarnings());
-            ui.showLoadWarnings("facilities.txt", facilityLoad.getWarnings());
-            ui.showLoadWarnings("connections.txt", connectionLoad.getWarnings());
-            ui.showLoadWarnings("settings.txt", settingsLoad.getWarnings());
+            showAndLogLoadWarnings("activities.txt", activityLoad.getWarnings());
+            showAndLogLoadWarnings("topics.txt", topicLoad.getWarnings());
+            showAndLogLoadWarnings("facilities.txt", facilityLoad.getWarnings());
+            showAndLogLoadWarnings("connections.txt", connectionLoad.getWarnings());
+            showAndLogLoadWarnings("settings.txt", settingsLoad.getWarnings());
             return true;
         } catch (UniEnableException e) {
+            LOGGER.log(Level.WARNING, "Storage load failure during startup", e);
             showStartupError(e);
             return false;
+        }
+    }
+
+    /**
+     * Shows a data file's partial-load warnings on the CLI, and separately logs how many records
+     * were skipped (a count only, not the warning text itself, which can echo back raw file
+     * content) so a malformed data file is diagnosable from the log without waiting for a user
+     * report.
+     *
+     * @param fileName the data file the warnings came from
+     * @param warnings the warnings produced while loading it
+     */
+    private void showAndLogLoadWarnings(String fileName, List<String> warnings) {
+        ui.showLoadWarnings(fileName, warnings);
+        if (!warnings.isEmpty()) {
+            LOGGER.warning(fileName + ": " + warnings.size() + " malformed record(s) skipped on load.");
         }
     }
 
@@ -198,6 +216,9 @@ public class ApplicationRunner {
      *     end the application (e.g. "bye")
      */
     private boolean processCommand(String line) {
+        assert dispatcher != null && confirmationHandler != null && activityManager != null
+                && topicManager != null && ui != null
+                : "processCommand requires run() to have completed its setup first";
         try {
             Command command = dispatcher.dispatch(line, LocalDateTime.now());
             if (!confirmationHandler.confirmIfNeeded(command)) {
@@ -220,6 +241,16 @@ public class ApplicationRunner {
             return true;
         } catch (UniEnableException e) {
             ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());
+            return true;
+        } catch (RuntimeException e) {
+            // Last-resort catch at the application boundary: nothing here currently reaches this
+            // (e.g. ApplicationStateSnapshot.restore()'s IllegalArgumentException path is
+            // unreachable given atomic snapshot capture, see its Javadoc), but without this catch
+            // a genuinely unexpected internal bug would crash the whole command loop with no
+            // diagnostic trail beyond an uncaught stack trace on stderr, instead of a logged
+            // record and a graceful message.
+            LOGGER.log(Level.SEVERE, "Unexpected internal error while processing command: " + line, e);
+            ui.showFramed("[Error] An unexpected internal error occurred. Enter guide for help.");
             return true;
         }
     }
@@ -367,6 +398,7 @@ public class ApplicationRunner {
             return true;
         } catch (StorageException e) {
             hasUnsavedChanges = true;
+            LOGGER.log(Level.WARNING, "Storage save failure", e);
             ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());
             return false;
         }

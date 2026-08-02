@@ -24,9 +24,10 @@ class GuideCommandTest {
                 + "8. Accessible connections\n"
                 + "9. CSV export\n"
                 + "10. Data files and storage\n"
-                + "11. Return\n"
+                + "11. Accessible routes\n"
+                + "12. Return\n"
                 + "\n"
-                + "Enter a number from 1 to 11.", result.getFeedback());
+                + "Enter a number from 1 to 12.", result.getFeedback());
     }
 
     @Test
@@ -161,9 +162,27 @@ class GuideCommandTest {
 
     @Test
     public void execute_v2OnlyTopic_appendsComingSoonNote() {
-        CommandResult result = new GuideCommand("route").execute();
+        CommandResult result = new GuideCommand("timetable").execute();
 
         assertTrue(result.getFeedback().endsWith("(Coming soon in a future release.)"));
+    }
+
+    @Test
+    public void execute_routeTopic_isAvailableAndHasRouteExamples() {
+        CommandResult result = new GuideCommand("route").execute();
+        String feedback = result.getFeedback();
+
+        assertTrue(feedback.startsWith("Accessible routes"));
+        assertTrue(!feedback.contains("Coming soon"));
+        assertTrue(feedback.contains("route from/AS6 to/AS8"));
+        assertTrue(feedback.contains("route from/AS1 to/AS1"));
+        assertTrue(feedback.contains("Format: route from/FACILITY to/FACILITY"));
+        assertTrue(feedback.contains("Sample local accessibility reference data."));
+    }
+
+    @Test
+    public void execute_routeTopicIsCaseInsensitive() {
+        assertTrue(new GuideCommand("ROUTE").execute().getFeedback().startsWith("Accessible routes"));
     }
 
     @Test
@@ -454,7 +473,7 @@ class GuideCommandTest {
 
     @Test
     public void execute_everyNumberedMenuMapping_resolvesToItsAdvertisedTopic() {
-        // Every numbered menu item from 1-10 must resolve to a real, distinct topic (never
+        // Every numbered menu item from 1-11 must resolve to a real, distinct topic (never
         // falling back to the "No guide topic named" error), and the topic text it shows must
         // start with the same subject the main menu line advertises for that number.
         assertTrue(new GuideCommand("1").execute().getFeedback().startsWith("Getting started"));
@@ -467,6 +486,20 @@ class GuideCommandTest {
         assertTrue(new GuideCommand("8").execute().getFeedback().startsWith("Accessible connections"));
         assertTrue(new GuideCommand("9").execute().getFeedback().startsWith("CSV exports"));
         assertTrue(new GuideCommand("10").execute().getFeedback().startsWith("Data files and storage"));
+        assertTrue(new GuideCommand("11").execute().getFeedback().startsWith("Accessible routes"));
+    }
+
+    @Test
+    public void execute_menuNumberEleven_resolvesToRoute() {
+        CommandResult result = new GuideCommand("11").execute();
+
+        assertTrue(result.getFeedback().startsWith("Accessible routes"));
+    }
+
+    @Test
+    public void execute_menuNumberElevenAgreesWithItsOwnKeyword() {
+        assertEquals(new GuideCommand("11").execute().getFeedback(),
+                new GuideCommand("route").execute().getFeedback());
     }
 
     @Test
@@ -484,8 +517,8 @@ class GuideCommandTest {
     }
 
     @Test
-    public void execute_menuNumberEleven_returnsWithoutShowingATopic() {
-        CommandResult result = new GuideCommand("11").execute();
+    public void execute_menuNumberTwelve_returnsWithoutShowingATopic() {
+        CommandResult result = new GuideCommand("12").execute();
 
         assertEquals("Returning to the command prompt.", result.getFeedback());
     }
@@ -493,7 +526,7 @@ class GuideCommandTest {
     @Test
     public void execute_menuNumberOutOfRangeBelow_showsFallbackMessage() {
         // "0" is deliberately not treated as a menu number, matching CommandDispatcher's dispatch
-        // table which also only recognises "1" through "11" as bare commands.
+        // table which also only recognises "1" through "12" as bare commands.
         CommandResult result = new GuideCommand("0").execute();
 
         assertEquals("No guide topic named \"0\". Enter guide to see the list of topics.",
@@ -502,9 +535,9 @@ class GuideCommandTest {
 
     @Test
     public void execute_menuNumberOutOfRangeAbove_showsFallbackMessage() {
-        CommandResult result = new GuideCommand("12").execute();
+        CommandResult result = new GuideCommand("13").execute();
 
-        assertEquals("No guide topic named \"12\". Enter guide to see the list of topics.",
+        assertEquals("No guide topic named \"13\". Enter guide to see the list of topics.",
                 result.getFeedback());
     }
 }

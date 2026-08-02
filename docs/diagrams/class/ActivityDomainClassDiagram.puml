@@ -1,0 +1,69 @@
+@startuml
+title Activity Domain Model
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+abstract class Activity {
+  - id : int
+  - description : String
+  - category : ActivityCategory
+  - date : LocalDate
+  - energyRating : EnergyRating
+  - sensoryRating : SensoryRating
+  - topic : String
+  - note : String
+  - status : CompletionStatus
+  {abstract} + getScheduleType() : ScheduleType
+  + mark() : void
+  + unmark() : void
+  + isComplete() : boolean
+}
+
+class FixedActivity {
+  - startTime : LocalTime
+  - endTime : LocalTime
+  + getStartTime() : LocalTime
+  + getEndTime() : LocalTime
+  + getScheduleType() : ScheduleType
+}
+
+class FlexibleActivity {
+  - earliestStart : LocalTime
+  - latestEnd : LocalTime
+  - durationMinutes : int
+  + getEarliestStart() : LocalTime
+  + getLatestEnd() : LocalTime
+  + getDurationMinutes() : int
+  + getScheduleType() : ScheduleType
+}
+
+class EnergyRating <<value object>>
+class SensoryRating <<value object>>
+enum ActivityCategory
+enum CompletionStatus
+enum ScheduleType
+
+Activity <|-- FixedActivity
+Activity <|-- FlexibleActivity
+Activity *-- EnergyRating
+Activity *-- SensoryRating
+Activity --> ActivityCategory
+Activity --> CompletionStatus
+Activity ..> ScheduleType
+
+note right of FixedActivity
+  Constructor assertion:
+  endTime is after startTime
+end note
+
+note right of FlexibleActivity
+  Constructor assertions:
+  latestEnd is after earliestStart;
+  duration fits inside the window
+end note
+
+@enduml

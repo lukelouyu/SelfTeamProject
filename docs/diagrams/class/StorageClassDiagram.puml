@@ -1,0 +1,84 @@
+@startuml
+title Storage Components
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+class Storage <<facade>> {
+  - activityStorage : ActivityStorage
+  - topicStorage : TopicStorage
+  - facilityStorage : FacilityStorage
+  - connectionStorage : ConnectionStorage
+  - settingsStorage : SettingsStorage
+  + prepareDataFiles() : void
+  + loadActivities(validTopics : List<Topic>) : LoadResult<Activity>
+  + loadTopics() : LoadResult<Topic>
+  + loadFacilities() : LoadResult<Facility>
+  + loadConnections(knownFacilities : List<Facility>) : LoadResult<Connection>
+  + loadSettings() : LoadResult<ActivityOrder>
+  + saveAll(activities : List<Activity>, topics : List<Topic>, order : ActivityOrder) : void
+}
+
+class ActivityStorage {
+  + load(filePath : Path, validTopics : List<Topic>) : LoadResult<Activity>
+  + save(filePath : Path, activities : List<Activity>) : void
+}
+class TopicStorage
+class FacilityStorage
+class ConnectionStorage
+class SettingsStorage
+class AcademicCalendarStorage <<separate, read-only>> {
+  + load(filePath : Path) : AcademicCalendar
+}
+class "LoadResult<T>" as LoadResult
+
+class Activity
+class Topic
+class Facility
+class Connection
+enum ActivityOrder
+class AcademicCalendar
+
+class "activities.txt" as ActivitiesFile <<file>>
+class "topics.txt" as TopicsFile <<file>>
+class "settings.txt" as SettingsFile <<file>>
+class "facilities.txt" as FacilitiesFile <<file>>
+class "connections.txt" as ConnectionsFile <<file>>
+class "academic-calendar.txt" as CalendarFile <<file>>
+
+Storage *-- ActivityStorage
+Storage *-- TopicStorage
+Storage *-- FacilityStorage
+Storage *-- ConnectionStorage
+Storage *-- SettingsStorage
+Storage ..> LoadResult
+ActivityStorage ..> Activity
+ActivityStorage ..> Topic
+TopicStorage ..> Topic
+FacilityStorage ..> Facility
+ConnectionStorage ..> Connection
+SettingsStorage ..> ActivityOrder
+ActivityStorage --> ActivitiesFile
+TopicStorage --> TopicsFile
+SettingsStorage --> SettingsFile
+FacilityStorage --> FacilitiesFile : reads
+ConnectionStorage --> ConnectionsFile : reads
+AcademicCalendarStorage --> CalendarFile : reads
+AcademicCalendarStorage ..> AcademicCalendar
+
+note bottom of Storage
+  saveAll stages and commits activities, topics,
+  and settings together. If a later file commit fails,
+  prior file states are restored.
+end note
+
+note bottom of ActivityStorage
+  Independently validates IDs, duplicates, and
+  fixed overlaps while accepting persisted records.
+  It does not depend on ActivityConflictChecker.
+end note
+
+@enduml

@@ -1,0 +1,71 @@
+@startuml
+title Accessibility Reference Model
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+class FacilityManager <<read-only>> {
+  - facilities : List<Facility>
+  + list() : List<Facility>
+  + findByName(name : String) : Facility
+  + findByFeature(type : FacilityFeature.Type, status : AccessibilityStatus) : List<Facility>
+}
+
+class ConnectionManager <<read-only>> {
+  - connections : List<Connection>
+  + list() : List<Connection>
+  + findById(id : int) : Connection
+}
+
+class Facility <<immutable>> {
+  - id : String
+  - name : String
+  - description : String
+  - features : List<FacilityFeature>
+}
+
+class FacilityFeature <<immutable>> {
+  - type : Type
+  - status : AccessibilityStatus
+  - notes : String
+}
+
+class Connection <<immutable>> {
+  - id : int
+  - from : String
+  - to : String
+  - distanceInMetres : int
+  - accessibility : AccessibilityStatus
+  - type : TraversalType
+  - shelter : ShelterStatus
+  - knownBarrier : String
+  - notes : String
+}
+
+enum "FacilityFeature.Type" as FeatureType
+enum AccessibilityStatus {
+  YES
+  NO
+  UNKNOWN
+}
+enum TraversalType
+enum ShelterStatus
+
+FacilityManager "1" o-- "0..*" Facility
+ConnectionManager "1" o-- "0..*" Connection
+Facility "1" *-- "0..*" FacilityFeature
+FacilityFeature --> FeatureType
+FacilityFeature --> AccessibilityStatus
+Connection --> AccessibilityStatus
+Connection --> TraversalType
+Connection --> ShelterStatus
+
+note bottom
+  Facility and connection records are loaded once
+  for lookup. v1.0 commands do not modify them.
+end note
+
+@enduml

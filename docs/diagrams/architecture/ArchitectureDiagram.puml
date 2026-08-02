@@ -1,0 +1,74 @@
+@startuml
+title UniEnable Architecture
+
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+actor User
+
+package "Application" {
+  [UniEnable] as Entry
+  [ApplicationRunner] as Runner
+  [CommandConfirmationHandler] as Confirm
+}
+
+package "User interface" {
+  [Ui and formatters] as UI
+}
+
+package "Command processing" {
+  [CommandDispatcher] as Dispatcher
+  [Domain parsers] as Parsers
+  [Commands] as Commands
+}
+
+package "Business logic" {
+  [ActivityManager] as ActivityLogic
+  [TopicManager] as TopicLogic
+  [FacilityManager] as FacilityLogic
+  [ConnectionManager] as ConnectionLogic
+  [RecurrencePlanner] as RecurLogic
+}
+
+package "Domain model" {
+  [Activities and topics] as ActivityModel
+  [Recurrence model] as RecurModel
+  [Accessibility records] as AccessModel
+}
+
+package "Persistence" {
+  [Storage] as Storage
+  [AcademicCalendarStorage] as CalendarStorage
+  database "Local text files" as Files
+}
+
+User --> Entry : starts
+Entry --> Runner
+Runner --> UI
+Runner --> Confirm
+Confirm --> UI
+Runner --> Dispatcher
+Dispatcher --> Parsers
+Parsers --> Commands : creates
+Commands --> ActivityLogic
+Commands --> TopicLogic
+Commands --> FacilityLogic
+Commands --> ConnectionLogic
+Parsers --> RecurLogic
+ActivityLogic --> ActivityModel
+TopicLogic --> ActivityModel
+RecurLogic --> ActivityLogic
+RecurLogic --> RecurModel
+FacilityLogic --> AccessModel
+ConnectionLogic --> AccessModel
+Runner --> Storage
+Storage --> ActivityModel
+Storage --> AccessModel
+Storage --> Files
+CalendarStorage --> Files : reads only
+Parsers --> CalendarStorage
+UI --> User : output
+
+@enduml

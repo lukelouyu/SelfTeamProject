@@ -1,8 +1,7 @@
 # UniEnable — User Guide
 
-**Status:** v1.0, plus two early v2.0 features (recurring class sessions and a redesigned `reset
-all`) — the commands below are implemented and match the running application's actual output.
-Section 15 lists what's still planned for a future v2.0 release and is explicitly **not**
+**Status:** v1.0. Every command in Sections 5–14, including recurring class sessions and the
+three-option `reset all`, is implemented. Section 15 lists future work that is explicitly **not**
 implemented yet.
 
 ## 1. Introduction
@@ -18,7 +17,8 @@ v1.0 combines:
 - category and topic organisation;
 - user-entered energy-demand and sensory-load ratings;
 - a deterministic "next relevant activity" lookup; and
-- read-only local facility and accessible-route reference information.
+- read-only local facility and accessible-route reference information; and
+- academic-calendar recurrence plus a three-option reset workflow.
 
 The application works fully offline. It does not provide real-time navigation, live
 accessibility information, or medical advice.
@@ -26,8 +26,9 @@ accessibility information, or medical advice.
 ## 2. Quick Start
 
 1. Install Java 17 or later.
-2. Place the executable JAR in a folder where the application may create its `data` folder.
-3. Open a terminal in that folder.
+2. Extract the UniEnable release ZIP. Keep `unienable.jar` beside the supplied `data` folder,
+   which contains `academic-calendar.txt`.
+3. Open a terminal in the extracted folder.
 4. Run:
 
    ```text
@@ -97,8 +98,8 @@ accessibility information, or medical advice.
 | Activities | `delete ID` | v1.0 |
 | Activities | `mark ID` / `unmark ID` | v1.0 |
 | Activities | `next` | v1.0 |
-| Activities | `recur TASK_ID week WEEK_SPEC` | v2.0 |
-| General | `reset all` (3-option menu) | v2.0 |
+| Activities | `recur TASK_ID week WEEK_SPEC` | v1.0 |
+| General | `reset all` (3-option menu) | v1.0 |
 | Topics | `topic add/list/rename/delete ...` | v1.0 |
 | Accessibility | `facility list/view/find ...` | v1.0 |
 | Accessibility | `facility validate` / `connection validate` | v1.0 |
@@ -139,10 +140,14 @@ Required fields: `n/`, `c/`, `date/`, `type/FIXED`, `from/`, `to/`, `energy/`, `
 Optional: `topic/`, `note/`.
 
 The application rejects the activity when a required field is missing or invalid, the end time
-is not later than the start time, an exact duplicate exists (same description/date/timing), or it
-overlaps another fixed activity on the same date. If `topic/` is supplied, that topic must already
-exist under the given category (create it first with `topic add`) — otherwise the activity is
-rejected with a "does not exist" error rather than silently accepting an unregistered topic name.
+is not later than the start time, an exact duplicate exists, or it overlaps another fixed activity
+on the same date. Fixed activities are exact scheduling duplicates when their descriptions match
+exactly (including letter case), and their date, start, and end are the same. Category, topic,
+note, ratings, completion, and ID do not make otherwise identical scheduling details distinct.
+Two fixed activities are accepted when one starts exactly when the other ends. If `topic/` is
+supplied, that topic must already exist under the given category (create it first with `topic add`)
+— otherwise the activity is rejected with a "does not exist" error rather than silently accepting
+an unregistered topic name.
 
 ### 6.2 Add a Flexible Activity: `add`
 
@@ -174,6 +179,13 @@ ____________________________________________________________
 
 `dur/` must be a positive whole number of minutes that fits inside the `earliest/`–`latest/`
 window. As with a fixed activity, a supplied `topic/` must already exist under the given category.
+Flexible windows may overlap each other and may overlap fixed activities. However, an exact
+flexible scheduling duplicate is rejected: description (including letter case), date, earliest
+start, latest end, and duration must not all match an existing flexible activity.
+
+Conflict checks include completed activities. Marking an activity complete therefore does not
+free its time or allow an exact scheduling duplicate. When an activity is both an exact duplicate
+and an overlap, the duplicate error is reported first.
 
 ### 6.3 List Activities: `list`
 
@@ -486,7 +498,8 @@ example `1 to 6; 7 to 13` or `3;7;9;11`. Week numbers, whitespace around `;`/`to
 `5 to 3`), blank items, commas, hyphens, duplicate or overlapping weeks, and trailing text are all
 rejected. There is no fixed maximum week number in the application itself — every week you list is
 checked against `data/academic-calendar.txt` (see Section 11), so what's valid depends entirely on
-what that file defines for the target activity's academic year and semester.
+what that file defines for the target activity's academic year and semester. The specification
+must include the instructional week containing the source activity; omitting it is rejected.
 
 Only a `FIXED` activity in the `ACADEMIC` category is eligible, and only if its description
 contains one of these whole-word, case-insensitive session terms: `lecture`/`lec`,
@@ -514,7 +527,7 @@ Day and time : FRIDAY, 16:00 -> 18:00
 Weeks        : 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
 
 To create:
-Week 2 | 2026-08-14 | Activity [2]
+Week 2 | 2026-08-21 | Activity [2]
 ...
 
 Skipped:
@@ -525,14 +538,15 @@ Continue? (y/n)
 ____________________________________________________________
 ```
 
-A requested date is skipped, not created, for three reasons: it's the original activity's own
-week (always included automatically — you never need to list it yourself); an activity with the
-same description, date, and timing already exists (so running the same `recur` command again
-creates nothing new); or `data/academic-calendar.txt` lists it as a no-class date. If **any** other
-target date would overlap an existing fixed activity, the entire command is rejected before the
-preview is even shown — never a partial batch. If every requested week turns out to be the source,
-already existing, or a no-class date, `recur` reports that there is nothing new to create and
-skips the confirmation prompt entirely.
+A requested date is skipped, not created, for three reasons: it is the original activity's own
+week (which you must include in `WEEK_SPEC`); a fixed activity with the same description, date,
+start, and end already exists (so running the same `recur` command again creates nothing new); or
+`data/academic-calendar.txt` lists it as a no-class date. If **any** other target date would
+conflict with an existing activity, the entire command is rejected before the preview is shown —
+never a partial batch. After confirmation, all planned sessions are checked together once more;
+if that final check fails, none is added and no activity ID is consumed. If every requested week
+turns out to be the source, already existing, or a no-class date, `recur` reports that there is
+nothing new to create and skips the confirmation prompt entirely.
 
 After `y`, every planned session is added as its own ordinary, independent activity with its own
 permanent ID, starting incomplete regardless of the source activity's own completion status, and
@@ -826,15 +840,17 @@ the file yourself and restart — no application update is needed. See the relea
 exact record format and a worked example.
 
 The application only saves activities, topics, and settings after a command that actually changes
-them (`add`, `edit`, `delete`, `mark`, `unmark`, `order set`, `reset all`, and the `topic`
-commands) — read-only commands such as `list`, `find`, `view`, and `next` never write to disk.
+them: `add`, `edit`, `delete`, `mark`, `unmark`, `order set`, `recur`, `reset all`, `topic add`,
+`topic rename`, and `topic delete`. `topic list` and other read-only commands such as `list`,
+`find`, `view`, and `next` never write to disk.
 `settings.txt` is therefore created the first time you run any such data-changing command, not
 only when you first use `order set`; `reset all` also writes it, since it resets the saved default
 order back to `chronological`. Activities, topics, and settings are always saved together as one
 unit: if any of the three files cannot be written, none of them are updated, so a failure never
 leaves the files disagreeing with each other on disk. If a save ever fails (for example, a
-read-only or locked file), the application reports the storage error instead of a false success
-message, and `bye` will say so plainly rather than claiming your data was saved.
+read-only or locked file), the application restores activities, topics, IDs, and ordering to how
+they were before that command. It reports the storage error instead of a false success message,
+and `bye` will say so plainly rather than claiming your data was saved.
 
 Every data file is validated line-by-line when the application starts, not just parsed for shape.
 A line that fails validation is skipped with a warning (see `[Warning] Partial data loaded` below)

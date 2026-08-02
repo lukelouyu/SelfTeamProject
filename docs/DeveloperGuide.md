@@ -1,503 +1,429 @@
-# Developer Guide
+# UniEnable Developer Guide
 
-## Acknowledgements
+## 1. Introduction
 
-- Built from the [se-education.org](https://se-education.org) `Duke` project template (Gradle
-  build setup, Checkstyle configuration, text-UI-test harness, and this Developer/User Guide
-  skeleton).
-- Architecture follows the AB3 (`se-edu/addressbook-level3`) convention of separating UI, logic,
-  model, and storage responsibilities, adapted for a CLI-only, single-user application.
-- The bundled `facilities.txt`/`connections.txt` sample dataset is digitised from a real NUS FASS
-  accessible-route campus map (source PDF kept outside this repo).
-- No other third-party libraries are used; the application depends only on the JDK 17 standard
-  library and JUnit 5 for testing.
+UniEnable is a single-user, offline Java 17 command-line application for planning activities and
+consulting local accessibility reference data. This guide describes the implemented v1.0 system at
+commit `e44f660`, with emphasis on its activity-conflict refactor, recurrence workflow, persistence
+guarantees, and read-only accessibility features.
 
-## Design & implementation
+The project began from the se-education.org Duke template. Its Gradle setup, Checkstyle rules, and
+text-UI harness follow that ecosystem; the application design and domain behaviour described here
+are UniEnable-specific. Production code uses only the JDK. JUnit 5 is used for tests.
 
-### Architecture
+## 2. Setting up and getting started
 
-UniEnable is a single-user CLI application: it reads one line of input at a time, turns it into a
-`Command` object, executes it, and prints the result, saving activity/topic data after every
-mutating command.
+Prerequisites:
 
-```mermaid
-flowchart TB
-    Entry["UniEnable<br/>(main/run entry point)"]
-    Runner["app.ApplicationRunner<br/>(startup, run loop, persistence)"]
-    Confirm["app.CommandConfirmationHandler<br/>(y/n confirmation)"]
-    UI["ui.Ui<br/>(console I/O, framing)"]
-    Dispatcher["parser.CommandDispatcher"]
-    Parsers["parser.activity / .topic / .accessibility / .common<br/>(one parser class per domain)"]
-    Commands["command.activity / .topic / .accessibility / .general / .recur<br/>(one Command class per user action)"]
-    Logic["logic.ActivityManager / TopicManager / FacilityManager / ConnectionManager<br/>logic.recur.RecurrencePlanner / ClassSchedulePolicy"]
-    Model["model.classes / model.enums / model.recur<br/>(Activity, Topic, EnergyRating, AcademicCalendar, ...)"]
-    Accessibility["accessibility.classes / .enums<br/>(Facility, Connection - read-only reference data)"]
-    Storage["storage.*Storage / storage.recur.AcademicCalendarStorage<br/>(pipe-delimited text-file persistence)"]
+- JDK 17;
+- Git;
+- an IDE with Gradle support, or a terminal.
 
-    Entry --> Runner
-    Runner --> UI
-    Runner --> Confirm
-    Confirm --> UI
-    Runner --> Dispatcher
-    Dispatcher --> Parsers
-    Parsers --> Commands
-    Commands --> Logic
-    Logic --> Model
-    Logic --> Accessibility
-    Runner --> Storage
-    Storage --> Model
-    Storage --> Accessibility
-```
-
-Each box above is a package-level component:
-
-| Component | Responsibility |
-|---|---|
-| `UniEnable` | The application's sole public entry point (`main`, and the `run(Path, InputStream)` test seam that end-to-end tests call directly). Delegates immediately to `app.ApplicationRunner`; holds no other logic, since Gradle and the Shadow JAR need this exact class name as the main class. |
-| `app` | `ApplicationRunner` coordinates one full run: configuring startup (suppressing JDK logging, showing the welcome message), loading and populating stored data, running the read-execute-print command loop, and persisting activities/topics/settings after every executed command. `CommandConfirmationHandler` owns the confirmation step for any command that needs one, including EOF-as-cancel handling - a plain y/n via `Confirmable`, or a numbered menu with more than one outcome via `MenuConfirmable` (see Design considerations). Both hold their dependencies (UI, scanner, storage, managers, dispatcher) as fields rather than passing them through parameter lists. |
-| `ui` | All console output framing (`Ui`) and activity-to-text formatting (`MessageFormatter`). `Ui` also formats the partial-load-warning block (`showLoadWarnings`); `ApplicationRunner` decides *when* to call it, but not what the warning text looks like. `ui.recur.RecurrenceFormatter` formats `recur`'s preview/no-op/success text, kept separate from `MessageFormatter` since it formats a *plan* (source, calendar week, to-create/skipped lists), not a single activity. No parsing or business logic. |
-| `parser` | Turns one command line into a `Command` object. `CommandDispatcher` routes by command word to a domain-specific parser (`ActivityCommandParser`, `TopicCommandParser`, `FacilityCommandParser`, `ConnectionCommandParser`, `parser.recur.RecurCommandParser`), which all share small utilities in `parser.common` (`FieldParser`, `DateTimeParser`, `RatingParser`, and `ArgumentTokenizer`/`ArgumentMarker` - see below). `parser.recur.WeekSpecificationParser` is `RecurCommandParser`'s own private-to-the-package helper for the `WEEK_SPEC` grammar (`1 to 6; 7 to 13`) - not shared with any other command, since no other v1.0/v2.0 command has this grammar shape yet. |
-| `command` | One class per user action, each holding just the data it needs and an `execute()` method. Commands never parse raw text themselves. `command.activity` and `command.accessibility` are further split by responsibility, not just by domain: `command.activity.crud` (`AddCommand`, `DeleteCommand`, `EditCommand`, `ViewCommand`) vs. `command.activity.general` (`FindCommand`, `ListCommand`, `MarkCommand`, `NextCommand`, `OrderSetCommand`, `OrderViewCommand`, `UnmarkCommand`); `command.accessibility.facility` / `.connection` (four commands each) vs. `command.accessibility.common` (`AccessibilityDisclaimer`, `ValidationReportFormatter` - shared by both, named to match `parser.common`'s existing convention for cross-sibling helpers). `command.topic` and `command.recur` stay flat (4 and 1 classes respectively - too few to justify sub-packages). A command that needs a plain y/n confirmation implements `Confirmable`; a command whose confirmation is a numbered menu with more than one meaningful outcome (currently only `ResetCommand`) implements `MenuConfirmable` instead (see Design considerations). |
-| `logic` | In-memory managers: `ActivityManager` (CRUD, duplicate/overlap validation, sorting, "next relevant activity", plus the atomic-batch and rollback support `recur`/`reset` need - see Design considerations), `TopicManager` (topic CRUD scoped per category, cascading rename/delete-guard, plus `retainTopicsUsedBy` for reset's "keep class schedules" option), `FacilityManager`/`ConnectionManager` (read-only lookups over the loaded accessibility dataset), plus `ActivityFilter` (a small value object bundling list/find's filter criteria). `logic.graph` (see Design considerations) is a preparatory addition, not used by any v1.0 command. `logic.recur.RecurrencePlanner` builds a complete, side-effect-free `RecurrencePlan` from calendar reference data before any activity is touched; `logic.recur.ClassSchedulePolicy` is the single shared eligibility rule `recur` and reset's "keep class schedules" option both call, so the two features can never silently disagree about what counts as a class session. |
-| `model` | Mutable domain objects for user data: `Activity` (abstract base), `FixedActivity`/`FlexibleActivity`, `Topic`, `EnergyRating`/`SensoryRating` (validated 1-5 value objects), and enums (`ActivityCategory`, `ActivityOrder`, `CompletionStatus`, `ScheduleType`). `model.recur` holds the recurrence feature's own domain objects - `AcademicCalendar`/`AcademicWeek`/`NoClassDate` (an immutable snapshot of the external calendar file) and `RecurrencePlan` (an immutable, side-effect-free planning result, with nested `PlannedOccurrence`/`SkippedOccurrence`) - immutable throughout, unlike the mutable `Activity` hierarchy, since all of it is either read-only reference data or a disposable one-shot planning result. |
-| `accessibility` | Immutable domain objects for the read-only reference dataset: `Facility`, `FacilityFeature`, `Connection`, and their enums (`AccessibilityStatus`, `ShelterStatus`, `TraversalType`). Immutable because, unlike activities, this data is never edited in-app. |
-| `storage` | Loads/saves the pipe-delimited text files: `ActivityStorage`, `TopicStorage`, `SettingsStorage` (read-write), `FacilityStorage`, `ConnectionStorage` (read-only, from `data/facilities.txt`/`data/connections.txt`), all wrapped by the top-level `Storage` facade. `LoadResult<T>` pairs successfully loaded records with per-line warnings for malformed ones; `SettingsStorage` falls back to the documented default order with a warning rather than failing to start. `storage.recur.AcademicCalendarStorage` is a separate, strictly-validating, read-only loader for `data/academic-calendar.txt` - never wrapped by the `Storage` facade's own read-write model, since this file is never created, repaired, or written by the application (see Design considerations). |
-| `exception` | A flat hierarchy under `UniEnableException`, each subtype naming a category shown in `[Error] <category>: <message>` (e.g. `MissingInputException` -> "Missing input", `InvalidActivityException` -> "Invalid input"). Kept flat rather than per-domain, since the categories are about the *kind* of problem, not which feature raised it. Reused as-is by `recur` - no new exception types were introduced for the feature. |
-
-### A representative flow: editing an activity
-
-`edit` is a good example because it touches every layer and exercises the confirmation step.
-Editing activity `1`'s duration (`edit 1 dur/60`) proceeds as follows:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Runner as ApplicationRunner
-    participant Confirm as CommandConfirmationHandler
-    participant Dispatcher as CommandDispatcher
-    participant Parser as ActivityCommandParser
-    participant Manager as ActivityManager
-    participant Cmd as EditCommand
-    participant Storage
-
-    User->>Runner: "edit 1 dur/60"
-    Runner->>Dispatcher: dispatch(input, now)
-    Dispatcher->>Parser: parseEdit(activityManager, topicManager, "1 dur/60")
-    Parser->>Manager: getById(1)
-    Manager-->>Parser: old Activity
-    Note over Parser: builds a complete new Activity,<br/>validating every changed field first
-    Parser-->>Dispatcher: EditCommand(1, newActivity)
-    Dispatcher-->>Runner: EditCommand
-    Runner->>Confirm: confirmIfNeeded(command)
-    Confirm->>Cmd: getConfirmation()
-    Cmd->>Manager: getById(1)
-    Manager-->>Cmd: old Activity
-    Note over Cmd: builds diff via MessageFormatter;<br/>returns Confirmation.ask(diff + prompt)
-    Cmd-->>Confirm: Confirmation
-    Confirm->>User: show diff, "Save changes? (y/n)"
-    User->>Confirm: "y"
-    Confirm-->>Runner: true
-    Runner->>Cmd: execute()
-    Cmd->>Manager: replace(1, newActivity)
-    Manager-->>Cmd: (validated, replaced)
-    Cmd-->>Runner: CommandResult
-    Runner->>Storage: saveActivities(activityManager.getAll())
-    Runner->>User: framed feedback
-```
-
-The key design point: the parser builds a *complete, fully-validated* replacement `Activity`
-before `EditCommand` ever touches the manager. If any supplied field fails validation (e.g. an
-out-of-range energy rating), the parser throws before `EditCommand` is even constructed, so the
-stored activity is never touched — this is what makes edit (and add, delete, topic rename/delete)
-atomic: a rejected request always leaves prior state completely unchanged.
-
-### A second flow: creating recurring class sessions
-
-`recur` is the other representative flow: it shows the menu-style confirmation shape, a
-multi-file external read, and a batch mutation instead of a single-activity one. Running
-`recur 1 week 1 to 6; 7 to 13` against a fixed `CG3207 Lecture` proceeds as follows:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Runner as ApplicationRunner
-    participant Confirm as CommandConfirmationHandler
-    participant Dispatcher as CommandDispatcher
-    participant Parser as RecurCommandParser
-    participant CalStorage as AcademicCalendarStorage
-    participant Planner as RecurrencePlanner
-    participant Manager as ActivityManager
-    participant Cmd as RecurCommand
-    participant Storage
-
-    User->>Runner: "recur 1 week 1 to 6; 7 to 13"
-    Runner->>Dispatcher: dispatch(input, now)
-    Dispatcher->>Parser: parse(activityManager, "1 week 1 to 6; 7 to 13")
-    Parser->>Manager: getById(1)
-    Manager-->>Parser: source FixedActivity
-    Note over Parser: checks ClassSchedulePolicy.isClassSchedule(source)
-    Parser->>Parser: WeekSpecificationParser.parse("1 to 6; 7 to 13")
-    Parser->>CalStorage: load(academicCalendarFile) [first recur call only; cached after]
-    CalStorage-->>Parser: AcademicCalendar
-    Parser->>Planner: plan(source, weeks, calendar, activityManager)
-    Note over Planner: side-effect-free: resolves each target week's<br/>matching weekday, skips source/existing/no-class,<br/>preflights conflicts via activityManager.checkNoConflicts()
-    Planner-->>Parser: RecurrencePlan
-    Parser-->>Dispatcher: RecurCommand(activityManager, plan)
-    Dispatcher-->>Runner: RecurCommand
-    Runner->>Confirm: confirmIfNeeded(command)
-    Confirm->>Cmd: getConfirmation()
-    Cmd-->>Confirm: Confirmation.ask(preview) via RecurrenceFormatter
-    Confirm->>User: show preview, "Continue? (y/n)"
-    User->>Confirm: "y"
-    Confirm-->>Runner: true
-    Runner->>Cmd: execute()
-    Cmd->>Manager: addAllAtomically(plannedActivities)
-    Note over Manager: validates every candidate's ID and<br/>conflicts against existing + same-batch<br/>activities before mutating anything
-    Manager-->>Cmd: (validated, all added)
-    Cmd-->>Runner: CommandResult
-    Runner->>Storage: saveAll(activities, topics, order)
-    Runner->>User: framed success feedback
-```
-
-Two points this flow highlights that the edit flow above doesn't:
-
-- **Planning is fully separated from mutation.** `RecurrencePlanner.plan()` never calls
-  `ActivityManager.add`/`addAllAtomically` — it only *reads* the manager (via
-  `checkNoConflicts`/`getAll`/`getNextId`) to preflight every occurrence, then returns an immutable
-  `RecurrencePlan`. Nothing is added until `RecurCommand.execute()` runs, after confirmation.
-- **The batch is atomic end to end, including against save failure.** `addAllAtomically` validates
-  every candidate's expected ID and conflicts (against existing activities *and* earlier
-  candidates in the same batch) before the stored list or next-ID counter changes at all. If the
-  in-memory batch succeeds but the subsequent disk save fails, `ApplicationRunner` goes one step
-  further than every other mutating command: for `RecurCommand`/`ResetCommand` specifically (see
-  `needsFailureRollback` in Design considerations), it restores the exact pre-command in-memory
-  snapshot, so a save failure never leaves a partially-applied batch sitting in memory only.
-
-### Design considerations
-
-- **v1.0 parsing stays on `FieldParser`; a declarative `ArgumentTokenizer` exists alongside it,
-  not in place of it.** Every v1.0 command parser still calls the small stateless `FieldParser`
-  (`extractField`/`indexOfMarker`) directly, exactly as before — this bullet's original tradeoff
-  (self-contained, easy-to-follow parsers, at the cost of sharp edges like markers that are
-  trailing substrings of each other, e.g. `c/` inside `topic/`, needing an explicit boundary rule
-  cross-checked in `FieldParserTest.indexOfMarker_noKnownMarkerIsMistakenlyMatchedInsideAnother`)
-  still holds for all of v1.0. Technical-debt hardening added `parser.common.ArgumentTokenizer` +
-  `ArgumentMarker` as a **declarative alternative** for v2.0 commands with more complex grammars
-  (`recommend`, `route`): a per-command marker registry (each marker declared `required`/
-  `optional`) tokenized in one pass, reusing `FieldParser`'s own boundary rule so matching stays
-  consistent, plus three things `FieldParser` callers previously had to hand-implement themselves:
-  required-field checking, fail-fast rejection of an undeclared marker-shaped token anywhere in
-  the input (not just leading text), and basic double-quote support so a value may contain spaces
-  or another marker's prefix text (e.g. `n/"CG3207 lecture"`, `note/"see c/o front desk"`).
-  `ArgumentTokenizerTest` proves field-by-field equivalence with `FieldParser.extractField` for
-  representative v1.0 argument strings. No existing parser calls it yet — adopting it for a given
-  v1.0 command is a deliberate future migration, not a side effect of it existing.
-- **Blank optional fields are treated as absent, not as stored empty strings.** Free-text optional
-  fields (`topic/`, `note/`, and `find`'s `k/`) run through a `blankToNull`-style normalisation so
-  that `topic/   ` (whitespace only) behaves identically to omitting `topic/` entirely — both for
-  storage and for "at least one filter is required" gates. This was fixed in three separate places
-  after the same class of bug appeared repeatedly (add/edit's `topic/`/`note/`, `list`/`find`'s
-  `topic/` filter, `connection find`'s `from/`/`to/`, and `find`'s `k/`), which is why it is called
-  out explicitly here rather than left implicit: any new optional free-text field should apply the
-  same normalisation from the start.
-- **Storage delimiter is unescaped by design, so user input is validated against it up front.**
-  `activities.txt`/`topics.txt` use `|` as a field delimiter with no escaping mechanism. Rather
-  than escaping it, the parser layer rejects any `n/`, `topic/`, `note/`, or topic-name value
-  containing `|` before the activity/topic is ever created — this avoids a command reporting
-  success and then permanently failing to persist on every subsequent save.
-- **Cross-field validation lives in the parser layer, not in model constructors.** For example,
-  `FixedActivity`'s "end after start" and `FlexibleActivity`'s "duration fits window" checks are
-  performed by `ActivityCommandParser` before construction, not inside the model classes. This
-  keeps the model classes simple data holders and keeps all user-facing validation messages in one
-  place.
-- **An activity's topic is validated against `TopicManager`, not stored as a free-floating
-  string.** `ActivityCommandParser.parseAdd`/`parseEdit` take a `TopicManager` and reject a
-  non-null `topic/` that does not exist under the activity's resulting category, before the
-  activity is built. This closes off two related failure modes that a plain string field would
-  otherwise allow: referencing a topic that was never created, and an edit that changes category
-  silently stranding the activity's existing topic outside the category it is registered under.
-  The check runs during parsing, so a rejected request never reaches `confirmIfNeeded()`.
-- **Confirmation is generic via a `Confirmable` interface, not a per-command `instanceof` chain.**
-  `CommandConfirmationHandler.confirmIfNeeded()` previously named `DeleteCommand`, `EditCommand`,
-  `TopicRenameCommand`, `TopicDeleteCommand`, and `ResetCommand` individually in an `instanceof`
-  chain — readable at four or five branches, but every new confirmable command (v2.0's
-  `recommend` "adopt this recommendation?" step, or `RecurCommand`'s confirmation) would have
-  meant editing this class again, violating OCP. Technical-debt hardening replaced this with
-  `command.Confirmable` (an interface with one method, `getConfirmation()`) and
-  `command.Confirmation` (an immutable three-outcome value: `proceed()` — execute with no prompt,
-  e.g. `reset all` with nothing to reset; `cancel(message)` — cancel with no prompt and a custom
-  message, e.g. edit with no changed fields; or `ask(prompt)` — show the prompt and read y/n). The
-  handler now only checks `instanceof Confirmable` generically; each of the five existing
-  commands implements `getConfirmation()` itself, reusing the manager reference it already holds
-  to build its own preview — no prompt text, ordering, or EOF/y/n behaviour changed for any
-  existing command. `CommandConfirmationHandlerTest` proves this with a locally-defined test
-  command that has no relationship to any real command class, demonstrating that a brand-new
-  confirmable command works without the handler ever changing.
-- **Every confirmation-requiring command validates before prompting, via a side-effect-free
-  preflight check.** `delete`/`edit` validate that the target activity exists before showing the
-  y/n prompt (`ActivityManager.getById()`, called from the parser); `edit` additionally preflights
-  duplicate/overlap conflicts via `ActivityManager.checkNoConflicts()`; `topic rename`/`topic
-  delete` preflight existence, duplicate-name, and still-in-use conditions via
-  `TopicManager.checkCanRename()`/`checkCanDelete()`. Each preflight check is a thin wrapper that
-  the corresponding mutating method (`replace()`, `rename()`, `delete()`) also calls internally,
-  so the same validation runs again at execution time as defensive protection against state
-  changes between the two calls. Any new confirmation flow should follow this pattern: validate
-  everything that would cause a rejection in the parser layer, before a `Command` is ever returned
-  for `confirmIfNeeded()` to act on. `RecurCommandParser` follows the same pattern one level
-  further: it builds the entire `RecurrencePlan` - including every conflict check - during
-  parsing, so a plan that would fail never even reaches `confirmIfNeeded()`.
-- **A second confirmation shape, `MenuConfirmable`, sits alongside `Confirmable` rather than
-  replacing it.** `reset all`'s redesign from a plain y/n into three explicit outcomes (delete
-  all, keep class schedules, cancel) doesn't fit `Confirmable`'s `Confirmation` value, which only
-  ever leads to one `execute()` behaviour. Rather than stretching `Confirmation` to carry a
-  selectable outcome, `command.MenuConfirmable` adds a second, independent one-method-plus-one-method
-  interface (`getMenuPrompt()` / `applyMenuAnswer(rawAnswer)` returning a `MenuOutcome`) that
-  `CommandConfirmationHandler` also checks via `instanceof`, exactly like `Confirmable` - so a
-  future menu-driven command needs neither interface's existing implementers nor the handler
-  itself to change. `ResetCommand` is the only command implementing it so far;
-  `applyMenuAnswer` mutates the command's own `Selection` field so a later `execute()` call knows
-  which of the two mutating outcomes to perform.
-- **`AcademicCalendarStorage` loads and validates its file once per run, lazily, and caches
-  whatever it got - success or failure.** `RecurCommandParser` holds the cached
-  `AcademicCalendar`/`StorageException` as instance state and only calls
-  `AcademicCalendarStorage.load()` the first time `recur` is actually used, not at application
-  startup - so a missing or malformed `academic-calendar.txt` never blocks any other command, and
-  every `recur` call within the same run sees a consistent snapshot even if the file is edited
-  mid-run (edits only take effect after a restart, matching the "reference data you maintain
-  yourself" model). `AcademicCalendarStorage` itself never creates, repairs, or rewrites the file
-  under any circumstance, including from `reset all`.
-- **`ClassSchedulePolicy` is the single source of truth for "is this a class session?", shared by
-  two otherwise-unrelated features.** Both `recur` (which activities can be recurred) and `reset
-  all`'s "keep class schedules" option (which activities survive) need the identical answer to
-  "is this activity a fixed lecture/tutorial/lab/section-teaching session?" - a
-  `FIXED` `ACADEMIC` activity whose description contains one of a fixed set of whole-word,
-  case-insensitive session terms, matched with a regex negative-lookaround so `lab` doesn't match
-  inside `collaboration`. Keeping this in one class rather than duplicating the rule in
-  `RecurCommandParser` and `ResetCommand` independently means the two features structurally cannot
-  drift apart on what counts as a class.
-- **`RecurrencePlanner` resolves each target week's matching weekday from the calendar record
-  itself, never by adding seven days repeatedly.** `AcademicWeek.findDate(DayOfWeek)` scans that
-  week's own inclusive date range for the requested weekday. This is deliberate: recess, reading,
-  and examination gaps between instructional weeks mean a fixed seven-day stride would land on the
-  wrong calendar date across a semester boundary (e.g. the source prompt's Semester 1 gap between
-  week 6 ending and week 7 starting). Every generated occurrence's ID is assigned sequentially in
-  chronological week order, and `ActivityManager.addAllAtomically()` (used by both `recur` and
-  nowhere else) validates every candidate's expected consecutive ID and every conflict - against
-  existing activities and against earlier candidates in the same batch - before mutating the
-  stored list or the next-ID counter at all, so a rejection partway through a batch can never leave
-  a partial series added.
-- **A save failure after `recur`/`reset` rolls back the in-memory batch, not just the disk
-  write.** Every other mutating command changes at most one activity/topic, so the existing
-  behaviour - report the storage error, leave that one change sitting in memory until the next
-  successful save or restart - was already acceptable. `recur` can add many activities in one
-  command and `reset` can rewrite the entire collection, so `ApplicationRunner` captures an
-  `ApplicationStateSnapshot` (activities, topics, next ID, default order) immediately before
-  executing a command that `needsFailureRollback()` (currently `RecurCommand`/`ResetCommand`
-  only), and restores it if the subsequent save fails - so a storage failure never leaves a
-  partially-applied batch visible only in memory.
-- **Three-state accessibility values.** `AccessibilityStatus`/`ShelterStatus` are `YES`/`NO`/
-  `UNKNOWN`, not a boolean, so that "no information recorded" is never conflated with "confirmed
-  not accessible" — a direct requirement from the project's accessibility principles.
-- **The accessibility domain is immutable and entirely separate from activities.** `Facility` and
-  `Connection` are read-only reference data loaded once at startup from external text files;
-  activities never reference them. This keeps the "activities don't store locations, routes are a
-  separate lookup" requirement structurally enforced rather than just documented.
-- **`logic.graph.AccessibilityGraph` is a read-only, non-breaking prep layer for v2.0's `route`
-  command.** `FacilityManager` and `ConnectionManager` stay completely independent in v1.0, by
-  design (previous bullet) — but v2.0 needs Dijkstra-based shortest-path lookups over both
-  together, and building that from scratch when v2.0 lands would risk duplicating data or
-  destabilising the v1.0 loading path. `AccessibilityGraph` is built once, at the point something
-  chooses to construct it, from an already-loaded `FacilityManager`/`ConnectionManager` (nodes =
-  facilities, edges = two-way, distance-weighted connections); `getShortestPath(from, to)` runs a
-  standard lazy-deletion Dijkstra (valid since every stored connection distance is a positive
-  whole number, enforced at load time by `ConnectionStorage`) and returns the ordered facility
-  names plus total distance, or `null` if no path exists. **Not referenced by any v1.0 command,
-  `CommandDispatcher`, or `ApplicationRunner`** — v2.0's `route` command will be the first caller.
-  `AccessibilityGraphTest` verifies both a small synthetic graph and the real bundled NUS FASS
-  dataset, with two paths checked by hand against the dataset's own connection notes.
-- **`facility validate`/`connection validate` re-run existing load-time checks on demand, and
-  change nothing.** `facilities.txt`/`connections.txt` are human-editable, but the only integrity
-  check used to run once at startup as an easy-to-miss warning; fixing a mistake meant noticing
-  the warning, then restarting to see if the fix worked. Both new commands just call
-  `Storage.loadFacilities()`/`loadConnections()` again on demand and report the returned
-  `LoadResult`'s warnings (or "no issues found") — the exact same validation `FacilityStorage`/
-  `ConnectionStorage` already perform, not a second implementation of it. Deliberately read-only:
-  neither command writes to disk or replaces the already-loaded `FacilityManager`/
-  `ConnectionManager`, matching the "validation only, no silent repair" requirement for
-  accessibility-critical data. `CommandDispatcher` now holds a `Storage` reference (previously
-  only `ApplicationRunner` did) so these commands can re-read the raw files without duplicating
-  `Storage`'s path-resolution logic — the only wiring change this required outside the two new
-  command classes and their parser methods. `facility reset-default` (this item's explicitly
-  optional stretch goal, restoring the bundled defaults with confirmation) was not implemented in
-  this pass.
-
-## Product scope
-
-### Target user profile
-
-UniEnable serves two equally important personas, both entering an unfamiliar university,
-internship, or entry-level work routine, both able to type comfortably and both preferring
-predictable CLI interaction over a GUI:
-
-- **Sam**, a tertiary student with ASD or ADHD, who can become overwhelmed by dense schedules,
-  benefits from concise default output with optional detail, needs to retrieve "what's next"
-  without reading a full day's itinerary, and needs specific (not vague) error messages.
-- **Jordan**, a tertiary student who uses a wheelchair, who needs advance accessibility
-  information (step-free entrances, lifts, ramps, rest points), a way to look up accessible routes
-  between known facilities, and clear warnings when the local dataset is incomplete. Wheelchair use
-  does not imply any difficulty typing or using a keyboard.
-
-### Value proposition
-
-Tertiary students with ASD or ADHD, and wheelchair users, entering unfamiliar routines often need
-to weigh scheduling, sensory demands, recovery time, and accessible travel separately, making it
-hard to build a practical daily plan around individual needs. UniEnable helps by combining
-concise, preference-aware daily scheduling with separate, locally maintained accessibility and
-route reference information, entirely offline in a fast CLI.
-
-## User Stories
-
-Priorities: `***` must have, `**` should have, `*` nice to have. Selected v1.0 stories (the
-complete v1.0/v2.0 list lives in the team's prioritised user-story backlog, maintained outside
-this repository):
-
-| Priority | As a ... | I want to ... | So that I can ... |
-|---|---|---|---|
-| `***` | student managing an unfamiliar routine | add an activity with its essential scheduling information | include it in my daily itinerary |
-| `***` | student managing multiple commitments | view activities in input, time, or chronological order | review my activities in the sequence that best matches my planning needs |
-| `***` | student managing multiple commitments | find activities using keywords and narrow results by category, topic, or date | retrieve relevant activities without scanning my entire itinerary |
-| `***` | student | change one or more details of an existing activity while keeping other details unchanged | update my itinerary with less typing |
-| `***` | student | remove an activity whenever I consider it obsolete | reduce unnecessary schedule information and cognitive load |
-| `***` | student | mark an activity as completed or change it back to incomplete | distinguish finished activities from unfinished ones |
-| `***` | student | organise each activity under a fixed category | maintain a consistent structure for my commitments |
-| `***` | student | view my next relevant activity in a concise format | know what to do next without reading my entire itinerary |
-| `***` | student | record an activity's energy demand, sensory load, and optional notes | understand its demands when planning |
-| `***` | student who uses a wheelchair | view pre-recorded accessibility information for known facilities | prepare for possible barriers |
-| `***` | student who uses a wheelchair | view pre-recorded accessibility and distance information for connections | prepare for travel using locally maintained reference data |
-| `**` | student | create and manage optional topics within a fixed category | organise related commitments at a level meaningful to me |
-| `**` | student with a recurring weekly class | turn one lecture/tutorial/lab/section-teaching session into the whole semester's worth of sessions in one command, following my school's actual teaching-week calendar (including recess) | avoid manually re-entering the same class dozens of times and still manage each occurrence (mark, edit, delete) independently afterwards |
-| `**` | student clearing out a semester | choose whether resetting keeps my recurring class schedule or wipes everything, instead of only ever being able to delete everything | avoid having to re-create my whole timetable after clearing out one-off tasks |
-
-## Non-Functional Requirements
-
-- Java 17, primarily object-oriented design.
-- CLI as the sole interaction mode; single-user, offline operation with no dependency on a private
-  remote server, external APIs, or a DBMS.
-- Platform-independent behaviour on Windows, Linux, and macOS.
-- Local, human-editable text-file storage; no installer required; ships as a standalone executable
-  JAR.
-- Fast startup and response, suitable for users who prefer direct keyboard interaction over a
-  mouse-driven interface.
-
-## Glossary
-
-- **Activity** - A user-recorded item on the itinerary: either *fixed* (a confirmed start/end
-  time) or *flexible* (an earliest-start/latest-end window plus a required duration).
-- **Category** - One of four fixed top-level groupings (`ACADEMIC`, `CCA`, `WORK_INTERNSHIP`,
-  `OTHERS`) every activity belongs to.
-- **Topic** - An optional, user-created grouping within a category (e.g. a specific module or
-  workplace); at most one per activity, one level deep.
-- **Energy rating / Sensory rating** - A user-entered `1`-`5` planning value describing expected
-  energy demand or sensory load; self-reported, not a medical assessment.
-- **Facility** - A read-only reference record for a physical location (e.g. a building), including
-  its accessibility features (lifts, ramps, step-free entrances, etc.).
-- **Connection** - A read-only, weighted, two-way link between two facilities, carrying a distance
-  in metres, a traversal type, and an accessibility status.
-- **Accessibility status** - One of `YES`/`NO`/`UNKNOWN`; `UNKNOWN` is never treated as
-  accessible.
-- **Academic calendar** - The externally maintained `data/academic-calendar.txt` reference file:
-  one or more academic years, each with numbered teaching weeks and no-class dates. The sole
-  authority `recur` uses to resolve week numbers to real dates; UniEnable never creates, repairs,
-  or embeds any of its contents.
-- **Class schedule** - A `FIXED` `ACADEMIC` activity whose description contains a lecture/
-  tutorial/lab/section-teaching session term (see `ClassSchedulePolicy`); the shared eligibility
-  rule for both `recur` and `reset all`'s "keep class schedules" option.
-- **Recurring session / occurrence** - One activity created by `recur` from a class-schedule
-  source. Each occurrence is an ordinary, independent `FixedActivity` with its own permanent ID -
-  there is no linked series object, so marking, editing, or deleting one occurrence never affects
-  any other.
-
-## Instructions for manual testing
-
-These instructions cover exploratory manual testing on top of the automated suites described
-below; they assume familiarity with the [User Guide](UserGuide.md)'s command reference.
-
-### Automated tests (run these first)
+Clone the repository and import it as a Gradle project. Useful commands are:
 
 ```bash
-./gradlew clean test checkstyleMain checkstyleTest
-bash text-ui-test/runtest.sh
+./gradlew clean check
+./gradlew javadoc
+./gradlew run
 ./gradlew releaseZip
 ```
 
-- `./gradlew test` runs the full JUnit suite (see the test report for the current pass count;
-  avoid quoting a specific number here, since it will drift as tests are added).
-- `text-ui-test/runtest.sh` (or `.bat` on Windows) rebuilds the JAR, feeds it the scripted
-  `text-ui-test/input.txt`, and diffs the output against `text-ui-test/EXPECTED.TXT`; it exercises
-  the full v1.0 and v2.0-so-far command surface end-to-end, including many boundary cases and
-  error paths (see the script itself for exactly what it covers — it grows as new scenarios are
-  added, so treat any specific line count here as a snapshot, not a guarantee). It clears
-  `text-ui-test/data/` before each run for a deterministic starting state, then copies
-  `text-ui-test/academic-calendar-test.txt` in as `data/academic-calendar.txt` - a small synthetic
-  calendar fixture (not the real, date-bound `data/academic-calendar.txt`) so the recur scenarios
-  stay deterministic and don't expire as real time passes.
-- `./gradlew releaseZip` depends on `shadowJar` and produces
-  `build/distributions/unienable.zip`, containing `unienable.jar` plus
-  `data/academic-calendar.txt` at the top level - the exact layout described in the User Guide's
-  Quick Start. Verify the calendar file is absent from the jar itself (`jar tf
-  build/libs/unienable.jar | grep academic-calendar` should find nothing) but present in the zip
-  (`unzip -l build/distributions/unienable.zip`).
+On Windows, use `gradlew.bat`. The release task creates
+`build/distributions/unienable.zip`; the ZIP contains `unienable.jar` and
+`data/academic-calendar.txt`. Run the extracted JAR from the directory that contains that `data`
+folder.
 
-### Manual exploratory testing
+## 3. Architecture
 
-1. **Start from a clean slate.** Run the JAR from an empty working directory so `data/` is created
-   fresh:
-   ```bash
-   java -jar build/libs/unienable.jar
-   ```
-2. **Activity lifecycle.** Try `add` for both a `FIXED` and a `FLEXIBLE` activity, then `list`,
-   `view ID`, `find k/KEYWORD`, `edit ID FIELD/VALUE`, `mark ID`/`unmark ID`, and `delete ID`
-   (confirm with `y` and `n` on separate attempts to check both paths). See `guide add`/`guide
-   find` for ready-to-copy examples.
-3. **Validation and atomicity.** Deliberately submit an invalid edit (e.g. an out-of-range
-   `energy/` value, or a `from/`/`to/` pair with the end before the start) and confirm the
-   activity is completely unchanged afterwards (`view ID` again).
-4. **Topics.** `topic add`, assign an activity to it via `add ... topic/NAME`, `topic rename` it
-   (check the activity's topic updates too), then try `topic delete` while it is still in use
-   (should be rejected) and again after reassigning/removing the activity.
-5. **Accessibility reference data.** `facility list`, `facility view NAME`, `facility find
-   type/TYPE`, `connection list`, `connection view ID`, `connection find from/NAME`. This data is
-   read-only — there is no command that edits it. To test the malformed-data-file path, stop the
-   application, edit `data/facilities.txt` or `data/connections.txt` to add an invalid line (e.g.
-   an unknown feature type), and restart: the app should report a `[Warning] Partial data loaded`
-   message naming the file and line, then continue with the rest of the data loaded normally. Then
-   run `facility validate`/`connection validate` **without restarting** — they should report the
-   exact same issue(s) on demand, without modifying either file (check with `git diff` or a hash
-   of the file before/after).
-6. **Persistence.** After making changes, exit with `bye` and restart the JAR; confirm activities,
-   topics, and completion state survived.
-7. **The built-in guide.** Run `guide` and try both a menu number (`guide 2` or bare `2` right
-   after the menu) and a topic keyword (`guide add`) to confirm both resolve to the same topic.
-8. **Recurring class sessions.** Confirm `data/academic-calendar.txt` exists (release ZIP layout
-   above), then `add` a `FIXED` `ACADEMIC` activity whose description contains a session term
-   (e.g. `n/CG3207 Lecture`) dated inside one of that file's instructional weeks. Run `recur ID
-   week ...` with a sparse spec (e.g. `3;7;9`): check the preview lists the right dates and asks
-   `Continue? (y/n)`, answer `n` and confirm nothing was added (`list`), then repeat and answer `y`
-   and confirm every previewed date now exists as its own activity with its own ID. Run the exact
-   same `recur` command a third time and confirm it reports nothing new to create instead of
-   duplicating. Try `recur` on an activity that doesn't match the eligibility rule (wrong category,
-   or no session term in the description) and confirm it's rejected before any preview. Try a week
-   number the calendar file doesn't define, and a `WEEK_SPEC` that omits the source week, and
-   confirm each gets its own specific error. `mark`/`edit`/`delete` one generated occurrence and
-   confirm the others are unaffected. Then temporarily rename `data/academic-calendar.txt` and
-   restart: confirm `recur` now reports the file is missing while `add`/`list`/every other command
-   keeps working; rename it back and restart again to confirm `recur` recovers.
-9. **Three-option reset.** With a mix of class-schedule and other activities present, run `reset
-   all` and check the preview's four counts (activities, class schedules, other activities,
-   topics) match what `list`/`topic list` show. Test all three numbered choices in separate runs
-   (restart or re-`add` between them): `1` clears everything and restarts IDs at `[1]`; `2` keeps
-   only the class-schedule activities with their original IDs/notes/completion status and prunes
-   topics no longer referenced; `3`, a blank line, and an out-of-range number (e.g. `9`) each
-   cancel with no change. After any reset, confirm `data/academic-calendar.txt`,
-   `data/facilities.txt`, and `data/connections.txt` are byte-identical to before (`git diff` or a
-   checksum).
+The entry point delegates to `ApplicationRunner`, which owns startup, loading, the command loop,
+confirmation, saving, and shutdown. Parsing produces command objects; commands call managers;
+managers operate on domain objects; storage translates between domain objects and local text files.
+
+<p align="center"><img src="diagrams/architecture/ArchitectureDiagram.png" width="760" alt="UniEnable architecture diagram"></p>
+
+The academic calendar is deliberately outside the main `Storage` facade. It is a supplied,
+read-only recurrence resource loaded lazily by `RecurCommandParser`, whereas the facade coordinates
+application-owned files and the accessibility reference dataset.
+
+## 4. Main components
+
+| Component | Responsibility |
+|---|---|
+| `UniEnable` | Public entry point; delegates immediately to `ApplicationRunner`. |
+| `app` | Configures logging, loads state, runs the read-confirm-execute-save loop, restores failed mutations, and formats lifecycle errors. |
+| `ui` | Frames console output and formats activities and recurrence previews; it contains no business rules. |
+| `parser` | Routes a line through `CommandDispatcher`, validates syntax and values, and constructs a command. |
+| `command` | Represents one user action through `execute()`; confirmable commands also provide a prompt or menu. |
+| `logic` | Owns in-memory activity/topic state, read-only accessibility lookups, filters, conflict policy, and recurrence planning. |
+| `model` | Defines activities, topics, ratings, enums, academic-calendar records, and recurrence plans. |
+| `accessibility` | Defines immutable facility, feature, connection, and three-state accessibility records. |
+| `storage` | Loads validated text records and atomically saves activities, topics, and settings. |
+| `exception` | Provides user-facing checked exception categories such as invalid input, conflict, and storage error. |
+
+`ActivityManager` owns the activity list, permanent-ID counter, saved ordering, CRUD operations,
+queries, and atomic batch mutation. It delegates scheduling-conflict policy to
+`ActivityConflictChecker`. `TopicManager` owns topics and maintains their relationship to
+activities. `FacilityManager` and `ConnectionManager` expose immutable loaded records through
+read-only lookup operations.
+
+## 5. Activity model
+
+Every activity has a permanent ID, description, category, date, ratings, optional topic and note,
+and completion status. A `FixedActivity` has a start and end time. A `FlexibleActivity` has an
+earliest start, latest end, and required duration.
+
+<p align="center"><img src="diagrams/class/ActivityDomainClassDiagram.png" width="760" alt="Activity domain class diagram"></p>
+
+Activities are mutable because edits, completion changes, and topic renames update existing user
+state. Ratings are validated value objects. Constructor assertions protect the internal
+end-after-start and duration-fits-window invariants; callers validate untrusted input before
+construction, as described in Section 13.
+
+## 6. Command and parser design
+
+`CommandDispatcher.dispatch(input, now)` separates the first command word from its arguments and
+routes to a domain parser. Parsers validate raw text and construct complete command objects;
+commands never parse their own input. `now` is injected so date-sensitive parsing is deterministic
+in tests.
+
+Adding an activity illustrates the normal path. The parser obtains the next permanent ID,
+validates fields, and constructs the correct subtype. The command asks `ActivityManager` to add it,
+the manager delegates conflict policy, and `ApplicationRunner` saves before showing success.
+
+<p align="center"><img src="diagrams/sequence/AddActivitySequence.png" width="760" alt="Add activity sequence diagram"></p>
+
+Plain confirmations use `Confirmable`; the three-choice reset uses `MenuConfirmable`.
+`CommandConfirmationHandler` owns input handling for both shapes, keeping confirmation mechanics
+out of commands and the runner.
+
+## 7. Conflict validation
+
+`ActivityConflictChecker` is a package-private, final, stateless helper owned by
+`ActivityManager`. Its single package-visible operation receives a candidate, a permanent ID to
+exclude, and the list to inspect. The manager exposes a public facade for recurrence preflight and
+retains ownership of all mutation and ID rules.
+
+<p align="center"><img src="diagrams/class/ActivityConflictValidationClassDiagram.png" width="760" alt="Activity conflict validation class diagram"></p>
+
+Conflict rules are applied in this order:
+
+1. Check exact scheduling duplicates. Description comparison is exact and case-sensitive; the
+   date and schedule type must match. Fixed activities additionally compare start and end;
+   flexible activities compare earliest start, latest end, and duration. ID, category, topic,
+   note, ratings, and completion are ignored.
+2. If no duplicate exists and the candidate is fixed, find the first fixed activity on the same
+   date that overlaps in list order. The half-open predicate is
+   `existing.start < candidate.end && candidate.start < existing.end`.
+
+Consequently, adjacent fixed activities are accepted, flexible-window overlaps are accepted, and
+fixed/flexible pairs never overlap for this policy. Exact flexible duplicates are still rejected.
+Completed activities participate exactly like incomplete ones. Duplicate failure takes precedence
+over overlap failure.
+
+Edit validation excludes every activity whose permanent ID equals the supplied exclusion ID. This
+prevents an activity from conflicting with itself without relying on list position. For batches,
+`ActivityManager.addAllAtomically` also validates that candidate IDs begin at `nextId` and increase
+by one; permanent-ID validation therefore remains a manager responsibility.
+
+## 8. Editing activities
+
+`ActivityCommandParser.parseEdit` loads the current activity, merges supplied fields into a
+complete replacement object, validates type-specific requirements and topic membership, and calls
+`ActivityManager.checkNoConflicts(replacement, id)` before a confirmation is shown. A doomed edit
+therefore does not ask the user to approve it.
+
+After confirmation, `EditCommand.execute` calls `ActivityManager.replace`. `replace` finds the
+target by permanent ID and repeats the same conflict check immediately before replacing the list
+entry. This defensive execution-time validation protects against state changes between parsing and
+execution.
+
+<p align="center"><img src="diagrams/sequence/EditActivitySequence.png" width="760" alt="Edit activity sequence diagram"></p>
+
+Because the replacement is complete and no field of the stored object is changed before the
+manager accepts it, a validation failure leaves the previous activity unchanged. A later save
+failure is handled by the broader rollback mechanism in Section 10.
+
+## 9. Recurring activities
+
+`recur TASK_ID week WEEK_SPEC` is implemented in v1.0 for eligible fixed academic class sessions.
+The parser obtains the source activity, applies the shared class-schedule eligibility rule, parses
+the week specification, loads one cached academic-calendar snapshot, and asks
+`RecurrencePlanner` for a side-effect-free plan.
+
+<p align="center"><img src="diagrams/class/RecurrenceClassDiagram.png" width="760" alt="Recurrence class diagram"></p>
+
+The source must fall in an instructional week, and the requested weeks must include that source
+week. For each requested week, the planner finds the matching weekday from the calendar's own date
+range rather than adding seven-day offsets. It skips the source date, a no-class date, or the first
+existing fixed occurrence with the same description, date, start, and end. Generated copies retain
+the source metadata but start incomplete.
+
+Each remaining candidate is preflighted through `ActivityManager.checkNoConflicts`. The immutable
+`RecurrencePlan` records both planned and skipped occurrences so `RecurCommand` can present a full
+preview without changing state.
+
+<p align="center"><img src="diagrams/sequence/RecurrencePlanningSequence.png" width="760" alt="Recurrence planning sequence diagram"></p>
+
+After confirmation, `RecurCommand.execute` extracts the planned fixed activities and calls
+`ActivityManager.addAllAtomically`. The manager builds a temporary validated list. Candidate by
+candidate, it checks the expected permanent ID and conflicts against existing activities plus all
+earlier candidates in that batch. Only after every candidate passes does it append the complete
+batch and advance `nextId`.
+
+<p align="center"><img src="diagrams/sequence/RecurrenceExecutionSequence.png" width="760" alt="Recurrence execution sequence diagram"></p>
+
+This final revalidation is deliberate: the preview is informative, but execution remains safe if
+state changed after planning. Any failure leaves the real activity list and ID counter unchanged.
+
+## 10. Atomic mutation and rollback
+
+`ApplicationRunner` classifies these as state-changing commands: activity add, edit, delete, mark,
+unmark, `order set`, recurrence, topic add/rename/delete, and `reset all` when reset would actually
+change state. Before executing one, it captures deep copies of activities and topics plus the exact
+`nextId` and saved order.
+
+Success feedback is withheld until `Storage.saveAll` succeeds. If saving fails, the runner restores
+the snapshot through `ActivityManager.restoreState` and `TopicManager.loadAll`; the attempted
+command is therefore not left visible only in memory. The unsaved-change flag remains set so `bye`
+retries and cannot falsely claim that data was saved.
+
+<p align="center"><img src="diagrams/sequence/MutationRollbackSequence.png" width="760" alt="Mutation rollback sequence diagram"></p>
+
+There are two complementary rollback layers:
+
+- in-memory rollback in `ApplicationRunner` restores the pre-command object graph and counters;
+- file rollback in `Storage` restores the prior persisted files if a staged multi-file commit
+  fails partway through.
+
+## 11. Storage
+
+The `Storage` facade owns loaders for activities, topics, settings, facilities, and connections.
+Application-owned planning state is pipe-delimited in `activities.txt`, `topics.txt`, and
+`settings.txt`. `saveAll` stages all three temporary files, checks destinations, retains backups,
+and commits them as one operation; a later failure triggers restoration of earlier file states.
+
+<p align="center"><img src="diagrams/class/StorageClassDiagram.png" width="760" alt="Storage class diagram"></p>
+
+`ActivityStorage` treats persisted lines as untrusted. It validates each accepted record against
+earlier accepted records for duplicate IDs, exact scheduling duplicates, and fixed overlap, in
+addition to field, timing, rating, status, and topic-reference checks. Invalid lines become
+line-specific load warnings rather than entering the manager.
+
+Storage deliberately does not depend on `ActivityConflictChecker`. The checker is a logic-layer
+policy for proposed mutations, while storage is an independent trust boundary responsible for
+rejecting corrupt persisted records before `ActivityManager.loadAll` receives them. This avoids a
+storage-to-logic dependency and allows each boundary to report errors appropriate to its caller.
+
+`FacilityStorage` and `ConnectionStorage` load read-only reference files. The separate
+`AcademicCalendarStorage` strictly validates the supplied calendar only when recurrence first
+needs it; UniEnable never creates, repairs, or writes that file.
+
+## 12. Accessibility functionality
+
+Facilities contain immutable feature records. Connections are immutable two-way reference links
+with distance, traversal type, shelter status, accessibility status, and optional barrier/notes.
+`YES`, `NO`, and `UNKNOWN` are separate states so missing knowledge is never presented as confirmed
+accessibility.
+
+<p align="center"><img src="diagrams/class/AccessibilityClassDiagram.png" width="700" alt="Accessibility class diagram"></p>
+
+`FacilityManager` supports list, case-insensitive name lookup, and feature/status filtering.
+`ConnectionManager` supports list and permanent-ID lookup; connection commands perform their own
+documented filters. `facility validate` and `connection validate` rerun the same storage checks on
+demand without replacing loaded records or modifying either file. Route search is future work.
+
+## 13. Logging and assertions
+
+`LoggingConfig` removes default console handlers and attaches one append-mode `FileHandler` at
+`data/unienable.log`. It records `INFO` and above with `SimpleFormatter`; operational logs do not
+pollute the text UI. If file logging cannot be initialised, startup continues with application
+logging disabled. Shutdown detaches and closes the handler.
+
+Activity and topic mutations log at `INFO`. The runner logs startup/load warnings and save failures
+at `WARNING`, and unexpected runtime failures at `SEVERE`. A storage rollback failure is also
+`SEVERE` because the persisted state may need manual inspection.
+
+Java assertions protect programmer-only invariants:
+
+- `ApplicationRunner.processCommand` requires its collaborators to have been initialised;
+- a fixed activity's end must be after its start;
+- a flexible activity's latest end must be after its earliest start and its duration must fit.
+
+Assertions are not used for user or persisted input. Parsers and storage validate those inputs and
+raise checked domain exceptions or load warnings, so behaviour does not depend on whether `-ea` is
+enabled.
+
+## 14. Design considerations
+
+### Extracting conflict validation
+
+**Alternative 1: keep conflict validation in `ActivityManager`.** This keeps fewer classes and
+avoids one delegation, but combines collection ownership, IDs, queries, sorting, mutation, and
+scheduling policy in a growing manager. Focused policy tests must then construct the broader
+manager state.
+
+**Alternative 2: extract `ActivityConflictChecker`.** This introduces a small collaborator while
+keeping it package-private and stateless. The checker has one cohesive responsibility, and the
+manager remains the only public mutation boundary.
+
+**Chosen: Alternative 2.** Extraction improves single-responsibility separation and cohesion,
+reduces the manager's policy burden, and enables focused checker tests. Coupling stays narrow
+because only `ActivityManager` owns the checker; parsers and recurrence still call the manager
+facade. Existing duplicate precedence, overlap selection, messages, and manager behaviour are
+preserved.
+
+### Intentional predicate duplication
+
+Similar scheduling predicates exist at three boundaries: logic checks general mutations,
+recurrence identifies an already-generated occurrence before general preflight, and storage
+validates untrusted records independently. This creates a maintenance risk: a future rule change
+may require coordinated updates and boundary-specific tests. Consolidation was intentionally
+outside this refactor because recurrence's identical-occurrence skip has different semantics and
+storage must not depend on logic. A later change should first define one boundary-neutral policy
+contract and preserve each caller's distinct error and recovery behaviour.
+
+### Other decisions
+
+- Academic weeks are resolved from explicit calendar ranges so recess and other gaps do not break
+  recurrence dates.
+- Accessibility records remain separate from activities; activities do not store route state.
+- `reset all` and recurrence use the same class-schedule eligibility policy.
+- Preparatory graph and tokenisation utilities have no v1.0 command integration. They are not part
+  of the implemented user workflow.
+
+## 15. Testing
+
+The automated strategy has four layers:
+
+- unit tests for parsers, models, managers, the conflict checker, recurrence, and storage;
+- integration tests for `ApplicationRunner`, confirmations, persistence, and rollback;
+- the Gradle `check` lifecycle for JUnit and Checkstyle;
+- the Git Bash text-UI regression for end-to-end command/output compatibility.
+
+Conflict tests should cover both activity types, ignored metadata, completed activities,
+duplicate-before-overlap precedence, adjacency, permanent-ID exclusion, and first-overlap order.
+Recurrence tests should cover source-week inclusion, no-class and identical skips, planning
+preflight, final batch revalidation, candidate-to-candidate validation, IDs, and no partial
+mutation. Storage tests should independently exercise malformed records and three-file commit
+rollback. Runner tests should force save failures for each category of mutation.
+
+## 16. Product scope
+
+UniEnable serves tertiary students with ASD or ADHD and tertiary students who use wheelchairs as
+they prepare for unfamiliar university, internship, or entry-level work routines. It prioritises
+predictable keyboard interaction, concise output, local data ownership, energy/sensory planning,
+and explicit uncertainty in accessibility information.
+
+Implemented v1.0 scope includes activity and topic management, completion and ordering, next-item
+selection, academic-calendar recurrence, reset choices, read-only facility/connection lookup, and
+reference-file validation. CSV export, route search, a dashboard, a timetable, and recommendation
+features remain future work.
+
+## 17. User stories
+
+| Priority | As a ... | I want to ... | So that ... |
+|---|---|---|---|
+| Must | student managing an unfamiliar routine | record fixed and flexible activities | I can plan confirmed and movable work. |
+| Must | student sensitive to workload and environment | record energy and sensory ratings | I can anticipate an activity's demands. |
+| Must | student | see one next relevant activity | I need not scan a dense itinerary. |
+| Must | wheelchair user | inspect local facility and connection information | I can prepare for known barriers. |
+| Should | student with weekly classes | generate semester occurrences from a supplied calendar | I avoid repetitive entry while retaining independent activities. |
+| Should | student starting a new period | reset all data or retain class schedules | I can clear obsolete planning state safely. |
+
+## 18. Use cases
+
+### UC01: Add an activity
+
+**Main success scenario:** The user enters a valid `add` command. UniEnable validates the fields,
+checks conflicts, adds the activity, saves all planning state, and reports the new permanent ID.
+
+**Extensions:** Invalid fields or conflicts are reported without mutation. If saving fails, the
+addition is restored to the prior state and no success message is shown.
+
+### UC02: Edit an activity
+
+**Main success scenario:** The user supplies one or more changes. UniEnable builds and preflights a
+replacement, shows the actual differences, receives `y`, revalidates, replaces, saves, and reports
+success.
+
+**Extensions:** No effective change ends without confirmation. Invalid input or a conflict ends
+before confirmation. `n` cancels. A save failure restores the original activity.
+
+### UC03: Create recurring class sessions
+
+**Main success scenario:** The user selects an eligible source and weeks including its source
+week. UniEnable plans dates, shows planned/skipped occurrences, receives `y`, atomically inserts the
+batch, saves, and reports success.
+
+**Extensions:** Ineligible sources, calendar errors, missing source week, or conflicts reject the
+request without mutation. No new occurrences skips confirmation. `n` cancels. Final revalidation or
+saving failure leaves no partial batch.
+
+### UC04: Consult accessibility data
+
+The user lists, views, finds, or validates facilities/connections. UniEnable returns local
+reference data plus its disclaimer and never modifies the dataset.
+
+## 19. Non-functional requirements
+
+- The application must run on Java 17 and use primarily object-oriented design.
+- It must operate offline as a single-user CLI without a DBMS or private remote service.
+- Behaviour must be portable across Windows, Linux, and macOS terminals supported by Java 17.
+- User-owned data must remain in local, human-readable text files.
+- A release must be a ZIP containing the executable JAR and required external resources,
+  including `data/academic-calendar.txt`.
+- Normal commands should respond promptly for the intended personal dataset size.
+- User errors must be specific and must not terminate the command loop.
+- Unknown accessibility status must remain distinguishable from confirmed inaccessibility.
+
+## 20. Glossary
+
+- **Activity:** A fixed or flexible user planning item with a permanent ID.
+- **Exact scheduling duplicate:** Same exact description, date, type, and that type's timing fields.
+- **Half-open interval:** An interval whose end does not overlap another interval beginning at the
+  same instant; used for fixed activity conflicts.
+- **Topic:** An optional user-created grouping within one fixed category.
+- **Class schedule:** An eligible fixed academic lecture, tutorial, lab, or section-teaching
+  activity used by recurrence and the reset keep option.
+- **Occurrence:** One independent fixed activity planned from a recurrence source.
+- **Academic calendar:** The supplied read-only file mapping teaching weeks and no-class dates.
+- **Snapshot:** A deep in-memory copy used to restore state after a failed save.
+- **Reference data:** Facility, connection, and calendar information that commands do not mutate.
+
+## 21. Instructions for manual testing
+
+Build and extract the release ZIP, then run `java -jar unienable.jar` from its extracted root.
+Start with a separate test directory if existing personal data must be preserved.
+
+1. Add one fixed and one flexible activity; verify `list`, `view`, `find`, `order`, `mark`,
+   `unmark`, `edit`, and `delete` follow the User Guide.
+2. Add adjacent fixed activities and confirm acceptance. Try an overlapping fixed activity and an
+   exact duplicate and confirm rejection. Try overlapping flexible windows with different timing
+   details and confirm acceptance; try an exact flexible duplicate and confirm rejection. Repeat
+   conflict checks against a completed activity.
+3. Edit scheduling fields and inspect the before/after confirmation. Submit an invalid or
+   conflicting edit and confirm the prompt is not shown and the activity is unchanged.
+4. Create, list, rename, and delete topics. Verify a rename updates linked activities and an
+   in-use topic cannot be deleted.
+5. Use an eligible fixed academic class dated inside `academic-calendar.txt`. Run `recur` with a
+   week specification that includes the source week, cancel once, then confirm. Verify preview
+   dates, skipped source/no-class/identical occurrences, consecutive IDs, and independent editing
+   of generated activities. Confirm an omitted source week is rejected.
+6. Exercise all three `reset all` choices and confirm reference files are unchanged.
+7. Run every facility and connection list/view/find/validate command and verify the disclaimer.
+   Introduce a malformed reference line while the app is closed, restart, and confirm a warning;
+   restore the file afterward.
+8. Force a save failure in a disposable copy by making a planning-state destination unwritable.
+   Confirm the error is shown, the attempted mutation is absent from subsequent views, and `bye`
+   does not falsely claim it was saved.
+9. Restart after successful mutations and confirm activities, topics, completion, and default
+   order were persisted together.
+
+Before a release, also run:
+
+```bash
+./gradlew clean check --console=plain
+./gradlew javadoc --console=plain
+./gradlew releaseZip --console=plain
+bash text-ui-test/runtest.sh
+```

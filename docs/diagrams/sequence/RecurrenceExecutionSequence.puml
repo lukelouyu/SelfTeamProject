@@ -1,0 +1,47 @@
+@startuml
+title Executing a Recurrence Plan
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandConfirmationHandler as Confirmation
+participant RecurCommand as Command
+participant ActivityManager as Manager
+participant ActivityConflictChecker as Checker
+participant Storage
+participant Ui
+
+Runner -> Confirmation : confirmIfNeeded(command)
+Confirmation -> Command : getConfirmation()
+Command --> Confirmation : preview Confirmation
+Confirmation --> User : show planned and skipped dates
+User --> Confirmation : y
+Confirmation --> Runner : true
+Runner -> Runner : capture ApplicationStateSnapshot
+Runner -> Command : execute()
+Command -> Command : extract planned FixedActivity objects
+Command -> Manager : addAllAtomically(candidates)
+Manager -> Manager : copy existing activities to validated list
+loop each candidate in input order
+  Manager -> Manager : require expected permanent ID
+  Manager -> Checker : checkNoConflicts(candidate, -1, validated)
+  Checker --> Manager : accepted
+  Manager -> Manager : append to validated list only
+end
+Manager -> Manager : append whole batch; advance nextId
+Manager --> Command
+Command --> Runner : CommandResult
+Runner -> Storage : saveAll(activities, topics, order)
+Storage --> Runner : saved
+Runner -> Ui : showFramed(feedback)
+Ui --> User : success
+
+note over Manager,Checker
+  The final validation protects against state changes
+  since planning and includes earlier batch candidates.
+end note
+
+@enduml

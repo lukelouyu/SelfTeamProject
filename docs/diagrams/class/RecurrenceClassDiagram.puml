@@ -1,0 +1,82 @@
+@startuml
+title Recurrence Feature Classes
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+class RecurCommandParser {
+  - calendarStorage : AcademicCalendarStorage
+  - weekParser : WeekSpecificationParser
+  - classSchedulePolicy : ClassSchedulePolicy
+  - recurrencePlanner : RecurrencePlanner
+  - loadedCalendar : AcademicCalendar
+  + parse(activityManager : ActivityManager, arguments : String) : RecurCommand
+}
+
+class RecurrencePlanner {
+  + plan(source : FixedActivity, requestedWeeks : List<Integer>, calendar : AcademicCalendar, activityManager : ActivityManager) : RecurrencePlan
+}
+
+class RecurrencePlan <<immutable>> {
+  - source : FixedActivity
+  - sourceWeek : AcademicWeek
+  - requestedWeeks : List<Integer>
+  - occurrencesToCreate : List<PlannedOccurrence>
+  - skippedOccurrences : List<SkippedOccurrence>
+  + hasOccurrencesToCreate() : boolean
+}
+
+class PlannedOccurrence <<immutable>> {
+  - weekNumber : int
+  - activity : FixedActivity
+}
+
+class SkippedOccurrence <<immutable>> {
+  - weekNumber : int
+  - date : LocalDate
+  - reason : String
+}
+
+class RecurCommand {
+  - activityManager : ActivityManager
+  - plan : RecurrencePlan
+  + getConfirmation() : Confirmation
+  + execute() : CommandResult
+}
+
+class ActivityManager {
+  + getById(id : int) : Activity
+  + checkNoConflicts(candidate : Activity, excludeId : int) : void
+  + addAllAtomically(candidates : List<? extends Activity>) : void
+}
+
+class AcademicCalendarStorage
+class WeekSpecificationParser
+class ClassSchedulePolicy
+class AcademicCalendar
+class AcademicWeek
+class FixedActivity
+
+RecurCommandParser *-- AcademicCalendarStorage
+RecurCommandParser *-- WeekSpecificationParser
+RecurCommandParser *-- ClassSchedulePolicy
+RecurCommandParser *-- RecurrencePlanner
+RecurCommandParser ..> ActivityManager
+RecurCommandParser ..> AcademicCalendar
+RecurCommandParser ..> RecurCommand : creates
+RecurrencePlanner ..> ActivityManager
+RecurrencePlanner ..> AcademicCalendar
+RecurrencePlanner ..> FixedActivity : creates copies
+RecurrencePlanner ..> RecurrencePlan : creates
+RecurrencePlan *-- "0..*" PlannedOccurrence
+RecurrencePlan *-- "0..*" SkippedOccurrence
+RecurrencePlan --> AcademicWeek
+RecurrencePlan --> FixedActivity : source
+PlannedOccurrence --> FixedActivity
+RecurCommand --> ActivityManager
+RecurCommand --> RecurrencePlan
+
+@enduml

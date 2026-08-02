@@ -1,0 +1,54 @@
+@startuml
+title Activity Conflict Validation
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+class ActivityManager {
+  - activities : List<Activity>
+  - conflictChecker : ActivityConflictChecker
+  - nextId : int
+  + add(activity : Activity) : void
+  + replace(id : int, newActivity : Activity) : void
+  + checkNoConflicts(candidate : Activity, excludeId : int) : void
+  + addAllAtomically(candidates : List<? extends Activity>) : void
+  + getNextId() : int
+}
+
+class ActivityConflictChecker <<package-private, stateless>> {
+  ~ ActivityConflictChecker()
+  ~ checkNoConflicts(candidate : Activity, excludedActivityId : int, activitiesToCheck : List<? extends Activity>) : void
+  - isDuplicate(candidate : Activity, excludedActivityId : int, activitiesToCheck : List<? extends Activity>) : boolean
+  - findOverlap(candidate : FixedActivity, excludedActivityId : int, activitiesToCheck : List<? extends Activity>) : FixedActivity
+}
+
+abstract class Activity
+class FixedActivity
+class FlexibleActivity
+class DuplicateActivityException
+
+ActivityManager "1" *-- "1" ActivityConflictChecker
+ActivityManager "1" o-- "0..*" Activity
+ActivityConflictChecker ..> Activity
+ActivityConflictChecker ..> FixedActivity
+ActivityConflictChecker ..> FlexibleActivity
+ActivityConflictChecker ..> DuplicateActivityException : throws
+
+note bottom of ActivityConflictChecker
+  Checks exact scheduling duplicates first.
+  Then checks same-date fixed/fixed overlap using
+  existing.start < candidate.end and
+  candidate.start < existing.end.
+  The first overlap in list order is reported.
+end note
+
+note bottom of ActivityManager
+  Manager owns permanent IDs and mutation.
+  Batch candidates are validated against a
+  temporary list before the real list changes.
+end note
+
+@enduml

@@ -1,0 +1,50 @@
+@startuml
+title Editing an Activity
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandDispatcher as Dispatcher
+participant ActivityCommandParser as Parser
+participant ActivityManager as Manager
+participant ActivityConflictChecker as Checker
+participant EditCommand as Command
+participant CommandConfirmationHandler as Confirmation
+participant Storage
+participant Ui
+
+User -> Runner : edit 1 dur/60
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parseEdit(manager, topicManager, now, args)
+Parser -> Manager : getById(1)
+Manager --> Parser : current Activity
+Parser -> Parser : validate fields; build complete replacement
+Parser -> Manager : checkNoConflicts(replacement, 1)
+Manager -> Checker : checkNoConflicts(replacement, 1, activities)
+Checker --> Manager : accepted
+Manager --> Parser
+Parser --> Dispatcher : EditCommand
+Dispatcher --> Runner : command
+Runner -> Confirmation : confirmIfNeeded(command)
+Confirmation -> Command : getConfirmation()
+Command -> Manager : getById(1)
+Manager --> Command : current Activity
+Confirmation --> User : show diff and prompt
+User --> Confirmation : y
+Confirmation --> Runner : true
+Runner -> Runner : capture ApplicationStateSnapshot
+Runner -> Command : execute()
+Command -> Manager : replace(1, replacement)
+Manager -> Checker : checkNoConflicts(replacement, 1, activities)
+Checker --> Manager : accepted
+Manager -> Manager : replace at existing index
+Command --> Runner : CommandResult
+Runner -> Storage : saveAll(activities, topics, order)
+Storage --> Runner : saved
+Runner -> Ui : showFramed(feedback)
+Ui --> User : success
+
+@enduml

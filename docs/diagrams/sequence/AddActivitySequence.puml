@@ -1,0 +1,39 @@
+@startuml
+title Adding an Activity
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandDispatcher as Dispatcher
+participant ActivityCommandParser as Parser
+participant AddCommand as Command
+participant ActivityManager as Manager
+participant ActivityConflictChecker as Checker
+participant Storage
+participant Ui
+
+User -> Runner : add ...
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parseAdd(manager, topicManager, now, args)
+Parser -> Manager : getNextId()
+Manager --> Parser : nextId
+Parser -> Parser : validate fields and construct Activity
+Parser --> Dispatcher : AddCommand
+Dispatcher --> Runner : command
+Runner -> Runner : capture ApplicationStateSnapshot
+Runner -> Command : execute()
+Command -> Manager : add(activity)
+Manager -> Checker : checkNoConflicts(activity, -1, activities)
+Checker --> Manager : accepted
+Manager -> Manager : append activity; increment nextId
+Manager --> Command
+Command --> Runner : CommandResult
+Runner -> Storage : saveAll(activities, topics, order)
+Storage --> Runner : saved
+Runner -> Ui : showFramed(feedback)
+Ui --> User : success
+
+@enduml

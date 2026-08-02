@@ -59,15 +59,16 @@ unienable.zip
 
 To run it: unzip anywhere, `cd` into the extracted folder, and run `java -jar unienable.jar` from
 there (so the app's own `data/` directory resolves next to the calendar file already provided).
-`academic-calendar.txt` is never read, created, or modified by the JAR itself except by `recur`
-loading it — see the [User Guide](docs/UserGuide.md#11-data-storage) for the file format and how
-to extend it to a new academic year.
+`academic-calendar.txt` is a supplied, human-maintained resource. UniEnable reads it when `recur`
+is first used in a run, but never creates, repairs, or modifies it — see the
+[User Guide](docs/UserGuide.md#11-data-storage) for its lifecycle and how to extend it to a new
+academic year.
 
 ## Testing
 
 ### I/O redirection tests
 
-* To run _I/O redirection_ tests (aka _Text UI tests_), navigate to `text-ui-test` and run the `runtest(.bat/.sh)` script. It scripts most v1.0 and v2.0-so-far commands, boundary cases, and error paths end-to-end against a freshly built JAR, including `recur`, the three-option `reset all`, `facility validate`, and `connection validate`. The script copies a small synthetic `academic-calendar-test.txt` fixture into `data/academic-calendar.txt` before each run, so `recur` results stay deterministic instead of depending on the real, date-bound calendar. It deliberately does **not** cover `list today`/`list tomorrow`/`list this week`, since their result depends on the current date; those are covered by JUnit tests with an injected fixed `now` instead (see `ActivityCommandParserTest`).
+* To run _I/O redirection_ tests (aka _Text UI tests_), navigate to `text-ui-test` and run the `runtest(.bat/.sh)` script. It scripts the v1.0 command surface, boundary cases, and error paths end-to-end against a freshly built JAR, including `recur`, the three-option `reset all`, `facility validate`, and `connection validate`. The script copies a small synthetic `academic-calendar-test.txt` fixture into `data/academic-calendar.txt` before each run, so `recur` results stay deterministic instead of depending on the real, date-bound calendar. It deliberately does **not** cover `list today`/`list tomorrow`/`list this week`, since their result depends on the current date; those are covered by JUnit tests with an injected fixed `now` instead (see `ActivityCommandParserTest`).
 
 ### JUnit tests
 

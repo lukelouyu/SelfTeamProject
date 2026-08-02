@@ -1,0 +1,50 @@
+@startuml
+title Planning Recurring Activities
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandDispatcher as Dispatcher
+participant RecurCommandParser as Parser
+participant ActivityManager as Manager
+participant ClassSchedulePolicy as Policy
+participant WeekSpecificationParser as WeekParser
+participant AcademicCalendarStorage as CalendarStorage
+participant RecurrencePlanner as Planner
+participant ActivityConflictChecker as Checker
+
+User -> Runner : recur 1 week 1 to 6
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parse(manager, arguments)
+Parser -> Manager : getById(1)
+Manager --> Parser : source Activity
+Parser -> Policy : isClassSchedule(source)
+Policy --> Parser : true
+Parser -> WeekParser : parse("1 to 6")
+WeekParser --> Parser : requestedWeeks
+opt first recur command in this run
+  Parser -> CalendarStorage : load(calendarFile)
+  CalendarStorage --> Parser : AcademicCalendar
+end
+Parser -> Planner : plan(source, weeks, calendar, manager)
+Planner -> Planner : find source week; require it in request
+loop each requested week
+  Planner -> Planner : resolve matching weekday
+  alt source, no-class, or identical occurrence
+    Planner -> Planner : record SkippedOccurrence
+  else new occurrence
+    Planner -> Manager : checkNoConflicts(candidate, -1)
+    Manager -> Checker : checkNoConflicts(candidate, -1, activities)
+    Checker --> Manager : accepted
+    Manager --> Planner
+    Planner -> Planner : record PlannedOccurrence
+  end
+end
+Planner --> Parser : immutable RecurrencePlan
+Parser --> Dispatcher : RecurCommand(manager, plan)
+Dispatcher --> Runner : command ready for preview
+
+@enduml

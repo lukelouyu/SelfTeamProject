@@ -13,7 +13,7 @@ import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
  *
  * <p>The main menu's items can be selected either by their existing text keyword (e.g. "add") or
  * by the number shown next to them in the menu (e.g. "1"), both as the argument to "guide" and as
- * a bare top-level command entered right after the menu is displayed. Menu item 12 ("Return") is
+ * a bare top-level command entered right after the menu is displayed. Menu item 13 ("Return") is
  * not a topic; it's a no-op that acknowledges the selection instead of showing topic text.
  */
 public class GuideCommand extends Command {
@@ -30,12 +30,12 @@ public class GuideCommand extends Command {
      * unlike "activities"/"browse" they each get their own direct number (7 and 8) rather than
      * being folded into one combined overview. Item 11 ("Route search") was added as the next
      * available number when v2.0's {@code route} shipped, after items 1-10 which keep their
-     * original v1.0 numbers unchanged. Item 12 ("Return") is handled separately, not through this
-     * list, and moved from 11 to 12 solely because item 11 is now taken.
+     * original v1.0 numbers unchanged. Item 12 ("Text timetable") was added when v2.0's
+     * {@code timetable} shipped. Item 13 ("Return") is handled separately, not through this list.
      */
     private static final String[] MENU_NUMBER_TOPICS = {
         "getting-started", "activities", "browse", "topic", "dashboard",
-        "recommend", "facility", "connection", "export", "storage", "route",
+        "recommend", "facility", "connection", "export", "storage", "route", "timetable",
     };
 
     private static final String MAIN_MENU = "Application Guide\n\n"
@@ -50,8 +50,9 @@ public class GuideCommand extends Command {
             + "9. CSV export\n"
             + "10. Data files and storage\n"
             + "11. Accessible routes\n"
-            + "12. Return\n\n"
-            + "Enter a number from 1 to 12.";
+            + "12. Text timetable\n"
+            + "13. Return\n\n"
+            + "Enter a number from 1 to 13.";
 
     private static final Map<String, String> TOPICS = buildTopics();
 
@@ -71,7 +72,7 @@ public class GuideCommand extends Command {
         if (topic == null) {
             return new CommandResult(MAIN_MENU);
         }
-        if (topic.equals("12")) {
+        if (topic.equals("13")) {
             return new CommandResult(RETURN_MESSAGE);
         }
         String text = TOPICS.get(resolveMenuNumber(topic).toLowerCase(Locale.ROOT));
@@ -397,9 +398,24 @@ public class GuideCommand extends Command {
                 + "numbers are shown exactly as you entered them, as planning data only,\n"
                 + "never as a medical or performance judgement.");
         topics.put("timetable", "Text timetable\n"
-                + "Use timetable day/DATE or timetable week/START_DATE.\n"
-                + "Use timetable item/ID to inspect one entry."
-                + COMING_SOON_NOTE);
+                + "Format: timetable day/YYYY-MM-DD [detail]\n"
+                + "        timetable week/YYYY-MM-DD [compact|detail]\n"
+                + "        timetable this week [compact|detail]\n"
+                + "\n"
+                + "Shows fixed activities in chronological day sections. Weekly views cover\n"
+                + "Monday through Sunday. Flexible activities stay in a separate unscheduled\n"
+                + "section with their window and required duration; no time is invented for\n"
+                + "them. compact omits empty days for narrow terminals, while detail adds\n"
+                + "completion, category, rating, topic, and note information.\n"
+                + "\n"
+                + "Examples:\n"
+                + "  timetable day/2026-08-17\n"
+                + "  timetable day/2026-08-17 detail\n"
+                + "  timetable week/2026-08-19 compact\n"
+                + "  timetable this week detail\n"
+                + "\n"
+                + "Timetable is read-only. It does not schedule flexible activities, create\n"
+                + "recommendations, infer buffers, or change any stored data.");
         topics.put("recommend", "Recommended timetable\n"
                 + "Use recommend PERIOD [PREFERENCE_OVERRIDES].\n"
                 + "Review the plan before choosing whether to adopt it."

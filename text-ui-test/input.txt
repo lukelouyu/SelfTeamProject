@@ -28,6 +28,7 @@ guide 11
 guide 0
 guide 12
 guide 13
+guide 14
 guide
 1
 2
@@ -43,6 +44,7 @@ guide
 0
 12
 13
+14
 
 banana
 adds n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
@@ -412,5 +414,18 @@ dashboard 2099-06-01
 dashboard week
 dashboard date/2099-06-01 detail detail
 dashboard tomorrow extra
+
+timetable week/2099-06-01
+timetable week/2099-06-01 compact
+timetable week/2099-06-01 detail
+timetable day/2099-06-01
+timetable day/2099-06-01 detail
+timetable day/2099-06-02
+timetable
+timetable day/
+timetable day/2026-02-30
+timetable today
+timetable day/2099-06-01 compact
+timetable week/2099-06-01 compact detail
 
 bye

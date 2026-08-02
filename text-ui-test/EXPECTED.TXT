@@ -18,9 +18,10 @@ Application Guide
 9. CSV export
 10. Data files and storage
 11. Accessible routes
-12. Return
+12. Text timetable
+13. Return
 
-Enter a number from 1 to 12.
+Enter a number from 1 to 13.
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -193,9 +194,24 @@ never as a medical or performance judgement.
 ____________________________________________________________
 ____________________________________________________________
 Text timetable
-Use timetable day/DATE or timetable week/START_DATE.
-Use timetable item/ID to inspect one entry.
-(Coming soon in a future release.)
+Format: timetable day/YYYY-MM-DD [detail]
+        timetable week/YYYY-MM-DD [compact|detail]
+        timetable this week [compact|detail]
+
+Shows fixed activities in chronological day sections. Weekly views cover
+Monday through Sunday. Flexible activities stay in a separate unscheduled
+section with their window and required duration; no time is invented for
+them. compact omits empty days for narrow terminals, while detail adds
+completion, category, rating, topic, and note information.
+
+Examples:
+  timetable day/2026-08-17
+  timetable day/2026-08-17 detail
+  timetable week/2026-08-19 compact
+  timetable this week detail
+
+Timetable is read-only. It does not schedule flexible activities, create
+recommendations, infer buffers, or change any stored data.
 ____________________________________________________________
 ____________________________________________________________
 Recommended timetable
@@ -312,9 +328,10 @@ Application Guide
 9. CSV export
 10. Data files and storage
 11. Accessible routes
-12. Return
+12. Text timetable
+13. Return
 
-Enter a number from 1 to 12.
+Enter a number from 1 to 13.
 ____________________________________________________________
 ____________________________________________________________
 Add activities
@@ -471,10 +488,31 @@ ____________________________________________________________
 No guide topic named "0". Enter guide to see the list of topics.
 ____________________________________________________________
 ____________________________________________________________
+Text timetable
+Format: timetable day/YYYY-MM-DD [detail]
+        timetable week/YYYY-MM-DD [compact|detail]
+        timetable this week [compact|detail]
+
+Shows fixed activities in chronological day sections. Weekly views cover
+Monday through Sunday. Flexible activities stay in a separate unscheduled
+section with their window and required duration; no time is invented for
+them. compact omits empty days for narrow terminals, while detail adds
+completion, category, rating, topic, and note information.
+
+Examples:
+  timetable day/2026-08-17
+  timetable day/2026-08-17 detail
+  timetable week/2026-08-19 compact
+  timetable this week detail
+
+Timetable is read-only. It does not schedule flexible activities, create
+recommendations, infer buffers, or change any stored data.
+____________________________________________________________
+____________________________________________________________
 Returning to the command prompt.
 ____________________________________________________________
 ____________________________________________________________
-No guide topic named "13". Enter guide to see the list of topics.
+No guide topic named "14". Enter guide to see the list of topics.
 ____________________________________________________________
 ____________________________________________________________
 Application Guide
@@ -490,9 +528,10 @@ Application Guide
 9. CSV export
 10. Data files and storage
 11. Accessible routes
-12. Return
+12. Text timetable
+13. Return
 
-Enter a number from 1 to 12.
+Enter a number from 1 to 13.
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -661,10 +700,31 @@ ____________________________________________________________
 [Error] Invalid input: Unknown command "0". Enter guide for help.
 ____________________________________________________________
 ____________________________________________________________
+Text timetable
+Format: timetable day/YYYY-MM-DD [detail]
+        timetable week/YYYY-MM-DD [compact|detail]
+        timetable this week [compact|detail]
+
+Shows fixed activities in chronological day sections. Weekly views cover
+Monday through Sunday. Flexible activities stay in a separate unscheduled
+section with their window and required duration; no time is invented for
+them. compact omits empty days for narrow terminals, while detail adds
+completion, category, rating, topic, and note information.
+
+Examples:
+  timetable day/2026-08-17
+  timetable day/2026-08-17 detail
+  timetable week/2026-08-19 compact
+  timetable this week detail
+
+Timetable is read-only. It does not schedule flexible activities, create
+recommendations, infer buffers, or change any stored data.
+____________________________________________________________
+____________________________________________________________
 Returning to the command prompt.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: Unknown command "13". Enter guide for help.
+[Error] Invalid input: Unknown command "14". Enter guide for help.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: Unknown command "banana". Enter guide for help.
@@ -3005,6 +3065,141 @@ ____________________________________________________________
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: Unexpected text after the dashboard period - only a single trailing "detail" is accepted.
+____________________________________________________________
+____________________________________________________________
+Weekly Timetable
+Period: 2099-06-01 to 2099-06-07
+
+MONDAY | 2099-06-01
+  09:00-11:00  [F][1] Dashboard Test Lecture
+  13:00-14:00  [F][2] Dashboard Test Tutorial
+
+TUESDAY | 2099-06-02
+  No fixed activities.
+
+WEDNESDAY | 2099-06-03
+  No fixed activities.
+
+THURSDAY | 2099-06-04
+  No fixed activities.
+
+FRIDAY | 2099-06-05
+  No fixed activities.
+
+SATURDAY | 2099-06-06
+  No fixed activities.
+
+SUNDAY | 2099-06-07
+  No fixed activities.
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
+
+[F] Fixed activity | [U] Unscheduled flexible activity
+____________________________________________________________
+____________________________________________________________
+Weekly Timetable
+Period: 2099-06-01 to 2099-06-07
+
+MONDAY | 2099-06-01
+  09:00-11:00  [F][1] Dashboard Test Lecture
+  13:00-14:00  [F][2] Dashboard Test Tutorial
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
+____________________________________________________________
+____________________________________________________________
+Weekly Timetable
+Period: 2099-06-01 to 2099-06-07
+
+MONDAY | 2099-06-01
+  09:00-11:00  [F][1] Dashboard Test Lecture
+      Status: Incomplete | Category: ACADEMIC | Energy: 3/5 | Sensory: 2/5
+  13:00-14:00  [F][2] Dashboard Test Tutorial
+      Status: Incomplete | Category: ACADEMIC | Energy: 2/5 | Sensory: 2/5
+
+TUESDAY | 2099-06-02
+  No fixed activities.
+
+WEDNESDAY | 2099-06-03
+  No fixed activities.
+
+THURSDAY | 2099-06-04
+  No fixed activities.
+
+FRIDAY | 2099-06-05
+  No fixed activities.
+
+SATURDAY | 2099-06-06
+  No fixed activities.
+
+SUNDAY | 2099-06-07
+  No fixed activities.
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
+      Status: Incomplete | Category: OTHERS | Energy: 4/5 | Sensory: 5/5
+
+[F] Fixed activity | [U] Unscheduled flexible activity
+____________________________________________________________
+____________________________________________________________
+Daily Timetable
+Period: 2099-06-01
+
+MONDAY | 2099-06-01
+  09:00-11:00  [F][1] Dashboard Test Lecture
+  13:00-14:00  [F][2] Dashboard Test Tutorial
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
+
+[F] Fixed activity | [U] Unscheduled flexible activity
+____________________________________________________________
+____________________________________________________________
+Daily Timetable
+Period: 2099-06-01
+
+MONDAY | 2099-06-01
+  09:00-11:00  [F][1] Dashboard Test Lecture
+      Status: Incomplete | Category: ACADEMIC | Energy: 3/5 | Sensory: 2/5
+  13:00-14:00  [F][2] Dashboard Test Tutorial
+      Status: Incomplete | Category: ACADEMIC | Energy: 2/5 | Sensory: 2/5
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
+      Status: Incomplete | Category: OTHERS | Energy: 4/5 | Sensory: 5/5
+
+[F] Fixed activity | [U] Unscheduled flexible activity
+____________________________________________________________
+____________________________________________________________
+Daily Timetable
+Period: 2099-06-02
+
+TUESDAY | 2099-06-02
+  No fixed activities.
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  None in the selected period.
+
+[F] Fixed activity | [U] Unscheduled flexible activity
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: timetable requires day/YYYY-MM-DD, week/YYYY-MM-DD, or this week.
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: day/ requires a value in yyyy-MM-dd format.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown timetable option "today".
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: compact is only available for weekly timetables.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unexpected text after the timetable period - use at most one mode.
 ____________________________________________________________
 ____________________________________________________________
 Your data has been saved.

@@ -32,12 +32,14 @@ package "Business logic" {
   [RecurrencePlanner] as RecurLogic
   [AccessibleRouteGraphFactory] as RouteLogic
   [DashboardService] as DashboardLogic
+  [TimetableService] as TimetableLogic
 }
 
 package "Domain model" {
   [Activities and topics] as ActivityModel
   [Recurrence model] as RecurModel
   [Accessibility records] as AccessModel
+  [Timetable view model] as TimetableModel
 }
 
 package "Persistence" {
@@ -63,6 +65,9 @@ RouteLogic --> FacilityLogic
 RouteLogic --> ConnectionLogic
 Commands --> DashboardLogic
 DashboardLogic --> ActivityLogic
+Commands --> TimetableLogic
+TimetableLogic --> ActivityLogic
+TimetableLogic --> TimetableModel
 Parsers --> RecurLogic
 ActivityLogic --> ActivityModel
 TopicLogic --> ActivityModel

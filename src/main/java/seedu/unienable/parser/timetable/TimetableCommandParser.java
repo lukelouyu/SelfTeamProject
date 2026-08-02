@@ -19,7 +19,17 @@ public class TimetableCommandParser {
     private static final String DAY_MARKER = "day/";
     private static final String WEEK_MARKER = "week/";
 
-    /** Parses the text after {@code timetable}. */
+    /**
+     * Parses the text after {@code timetable}.
+     *
+     * @param activityManager manager the resulting command will read
+     * @param now injected current time used only for {@code this week}
+     * @param args text after the command word
+     * @return parsed timetable command
+     * @throws MissingInputException if a selector or marker value is absent
+     * @throws InvalidCommandException if the selector, mode, or trailing text is invalid
+     * @throws InvalidDateTimeException if a date is malformed or nonexistent
+     */
     public TimetableCommand parse(ActivityManager activityManager, LocalDateTime now, String args)
             throws MissingInputException, InvalidCommandException, InvalidDateTimeException {
         String trimmed = args.trim();

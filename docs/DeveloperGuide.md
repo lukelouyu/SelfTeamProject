@@ -393,7 +393,55 @@ date, using a far-future date so completion resolves to "not yet due" determinis
 wall clock, with no fixed-clock injection point), covered instead by `DashboardServiceTest`'s
 injected-`now` tests.
 
-## 14. Logging and assertions
+## 14. Read-only timetable
+
+`timetable day/YYYY-MM-DD [detail]`, `timetable week/YYYY-MM-DD [compact|detail]`, and
+`timetable this week [compact|detail]` build a deterministic view from `ActivityManager` without
+mutating or persisting anything. The normal `list` command remains unchanged.
+
+<p align="center"><img src="diagrams/class/TimetableClassDiagram.png" width="760" alt="Timetable class diagram"></p>
+
+Responsibilities follow the established command/parser/logic/model/formatter split:
+
+- `parser.timetable.TimetableCommandParser` validates exactly one period selector and optional
+  mode. It uses the existing strict `yyyy-MM-dd` parser and captures the injected `now` only for
+  `this week`.
+- `command.timetable.TimetableCommand` calls the service and formatter. It implements no
+  confirmation interface and is absent from `ApplicationRunner.mutatesState`, so execution does
+  not take a mutation snapshot or save.
+- `logic.timetable.TimetableService` resolves day and Monday-Sunday periods, selects activities,
+  sorts them, detects fixed-activity overlaps, and creates immutable projections.
+- `model.timetable.TimetablePeriod`, `TimetableEntry`, and `TimetableView` hold immutable calculated
+  output. They deliberately do not retain mutable `Activity` references.
+- `ui.timetable.TimetableFormatter` produces the normal, detail, and compact plain-text views.
+
+<p align="center"><img src="diagrams/sequence/TimetableSequence.png" width="760" alt="Timetable sequence diagram"></p>
+
+**Ordering and overlap rules.** Fixed activities sort by date, start time, then permanent ID.
+Flexible activities sort by date, earliest start, then permanent ID and remain in a separate
+unscheduled section. Overlap detection uses same-day half-open intervals, so adjacent activities
+do not overlap. Both members of every overlap pair are marked; identical starts never cause one
+entry to replace another.
+
+**Presentation decisions.** The historical `A1` display alias was rejected because activities
+already have permanent numeric IDs. Stateful `timetable compact`/`timetable details` commands were
+replaced by one-shot modifiers. An explicit `compact` modifier is the narrow-terminal fallback;
+automatic width detection was rejected because Java 17 has no reliable portable terminal-width
+API. A wide hour-cell grid was also rejected: arbitrary-minute boundaries, overlaps, and long
+descriptions would require truncation or terminal assumptions. Day-grouped chronological sections
+preserve every activity.
+
+**Feature boundary.** No `[R]` recommended placement or `[B]` buffer is fabricated. The current
+model has no adopted recommendation or buffer record, and flexible activities retain only a
+window plus duration. Later approved features may extend the immutable display projection after
+their persistence semantics are defined. The same-day activity invariant remains unchanged.
+
+Tests cover period boundaries, weekend inclusion, date/start/ID ordering, identical starts,
+nested overlaps, adjacency, immutable projections, every parser rejection, exact formatter text,
+restart consistency, zero file mutation, dispatcher and guide wiring, and Text-UI scenarios. The
+wall-clock-relative `this week` path is tested with injected time rather than the Text-UI harness.
+
+## 15. Logging and assertions
 
 `LoggingConfig` removes default console handlers and attaches one append-mode `FileHandler` at
 `data/unienable.log`. It records `INFO` and above with `SimpleFormatter`; operational logs do not
@@ -414,7 +462,7 @@ Assertions are not used for user or persisted input. Parsers and storage validat
 raise checked domain exceptions or load warnings, so behaviour does not depend on whether `-ea` is
 enabled.
 
-## 15. Design considerations
+## 16. Design considerations
 
 ### Extracting conflict validation
 
@@ -454,7 +502,7 @@ contract and preserve each caller's distinct error and recovery behaviour.
   the same hardening session, is no longer unused - v2.0's `route` is its first real caller, via
   `logic.route.AccessibleRouteGraphFactory` (Section 12).
 
-## 16. Testing
+## 17. Testing
 
 The automated strategy has four layers:
 
@@ -482,7 +530,7 @@ deterministic ordering - all in `docs/tasks/v2/dashboard/TEST_PLAN.md`, with `te
 restricted to `dashboard date/...` scenarios for the same real-wall-clock-determinism reason
 `list today`/`tomorrow`/`this week` are.
 
-## 17. Product scope
+## 18. Product scope
 
 UniEnable serves tertiary students with ASD or ADHD and tertiary students who use wheelchairs as
 they prepare for unfamiliar university, internship, or entry-level work routines. It prioritises
@@ -491,11 +539,12 @@ and explicit uncertainty in accessibility information.
 
 Implemented v1.0 scope includes activity and topic management, completion and ordering, next-item
 selection, academic-calendar recurrence, reset choices, read-only facility/connection lookup, and
-reference-file validation. v2.0 has so far added accessible route search (`route`, Section 12) and
-the accessible planning dashboard (`dashboard`, Section 13). CSV export, a timetable, recommendation
-preferences, and a schedule recommender remain future work.
+reference-file validation. v2.0 has added accessible route search (`route`, Section 12), the
+accessible planning dashboard (`dashboard`, Section 13), and the read-only timetable
+(`timetable`, Section 14). CSV export, recommendation preferences, and a schedule recommender
+remain future work.
 
-## 18. User stories
+## 19. User stories
 
 | Priority | As a ... | I want to ... | So that ... |
 |---|---|---|---|
@@ -507,8 +556,9 @@ preferences, and a schedule recommender remain future work.
 | Should | student starting a new period | reset all data or retain class schedules | I can clear obsolete planning state safely. |
 | Should | wheelchair user | find the shortest confirmed-accessible route between two facilities | I do not have to guess whether a shorter-looking path is actually usable. |
 | Should | student sensitive to workload and environment | see a summary of how full a day or week is | I can gauge my planning load without manually adding it up myself. |
+| Should | student planning a week | view fixed and unscheduled activities by day | I can scan my commitments without assigning invented times. |
 
-## 19. Use cases
+## 20. Use cases
 
 ### UC01: Add an activity
 
@@ -566,7 +616,17 @@ distributions. Every parser rejection (missing/invalid selector, malformed date,
 `detail`, unexpected trailing text) leaves all activity data unchanged - `dashboard` never
 mutates, saves, or prompts for confirmation.
 
-## 20. Non-functional requirements
+### UC07: View a timetable
+
+**Main success scenario:** The user selects a day, a date-containing week, or the current week.
+UniEnable displays every fixed activity chronologically and every flexible activity in a separate
+unscheduled section.
+
+**Extensions:** `compact` omits empty weekly days; `detail` adds stored metadata. Invalid selectors,
+dates, modes, or trailing text are rejected without mutation. Defensive overlap detection marks
+all affected fixed entries instead of omitting them.
+
+## 21. Non-functional requirements
 
 - The application must run on Java 17 and use primarily object-oriented design.
 - It must operate offline as a single-user CLI without a DBMS or private remote service.
@@ -578,7 +638,7 @@ mutates, saves, or prompts for confirmation.
 - User errors must be specific and must not terminate the command loop.
 - Unknown accessibility status must remain distinguishable from confirmed inaccessibility.
 
-## 21. Glossary
+## 22. Glossary
 
 - **Activity:** A fixed or flexible user planning item with a permanent ID.
 - **Exact scheduling duplicate:** Same exact description, date, type, and that type's timing fields.
@@ -598,7 +658,7 @@ mutates, saves, or prompts for confirmation.
 - **Completion-eligible:** An activity whose own scheduled time has fully passed as of the
   injected `now`; only eligible activities count toward `dashboard`'s completion percentage.
 
-## 22. Instructions for manual testing
+## 23. Instructions for manual testing
 
 Build and extract the release ZIP, then run `java -jar unienable.jar` from its extracted root.
 Start with a separate test directory if existing personal data must be preserved.

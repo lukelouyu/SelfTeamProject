@@ -1,0 +1,55 @@
+@startuml
+title Timetable Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+
+class CommandDispatcher
+class TimetableCommandParser {
+  + parse(activityManager, now, args) : TimetableCommand
+}
+class TimetableCommand {
+  + execute() : CommandResult
+}
+class TimetableService {
+  + resolveDay(date) : TimetablePeriod
+  + resolveWeek(date) : TimetablePeriod
+  + resolveThisWeek(now) : TimetablePeriod
+  + build(activityManager, period) : TimetableView
+}
+class ActivityManager {
+  + getAll() : List<Activity>
+}
+class TimetablePeriod <<immutable>>
+class TimetableEntry <<immutable>>
+class TimetableView <<immutable>>
+enum TimetableMode {
+  NORMAL
+  COMPACT
+  DETAIL
+}
+enum TimetableEntryType {
+  FIXED
+  UNSCHEDULED_FLEXIBLE
+}
+class TimetableFormatter {
+  + format(view, mode) : String
+}
+
+CommandDispatcher --> TimetableCommandParser
+TimetableCommandParser --> TimetableService : resolves period
+TimetableCommandParser --> TimetableCommand : creates
+TimetableCommand --> TimetableService : builds view
+TimetableCommand --> TimetableFormatter : formats
+TimetableCommand --> TimetableMode
+TimetableService --> ActivityManager : reads
+TimetableService --> TimetablePeriod
+TimetableService --> TimetableEntry : creates
+TimetableService --> TimetableView : creates
+TimetableEntry --> TimetableEntryType
+TimetableView "1" *-- "1" TimetablePeriod
+TimetableView "1" *-- "0..*" TimetableEntry
+TimetableFormatter --> TimetableView
+
+@enduml

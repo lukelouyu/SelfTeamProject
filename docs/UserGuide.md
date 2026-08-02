@@ -1,9 +1,9 @@
 # UniEnable — User Guide
 
-**Status:** v1.0, plus v2.0's accessible route search (`route`) and planning dashboard
-(`dashboard`). Every command in Sections 5–15, including recurring class sessions, the
-three-option `reset all`, `route`, and `dashboard`, is implemented. Section 16 lists remaining
-v2.0 work that is explicitly **not** implemented yet.
+**Status:** v1.0, plus v2.0's accessible route search (`route`), planning dashboard
+(`dashboard`), and read-only timetable (`timetable`). Every command documented in Sections 5–16,
+including recurring class sessions and the three-option `reset all`, is implemented. Section 17
+lists remaining v2.0 work that is explicitly **not** implemented yet.
 
 ## 1. Introduction
 
@@ -107,7 +107,8 @@ accessibility information, or medical advice.
 | Accessibility | `connection list/view/find ...` | v1.0 |
 | Accessibility | `route from/FACILITY to/FACILITY` | v2.0 |
 | Dashboard | `dashboard today\|tomorrow\|date/YYYY-MM-DD\|this week [detail]` | v2.0 |
-| Timetable, preferences, recommendation, export | various | **Coming soon (v2.0)** |
+| Timetable | `timetable day/...` / `week/...` / `this week` | v2.0 |
+| Preferences, recommendation, export | various | **Coming soon (v2.0)** |
 
 ## 6. Activity Commands
 
@@ -500,7 +501,7 @@ example `1 to 6; 7 to 13` or `3;7;9;11`. Week numbers, whitespace around `;`/`to
 `to` itself are all case-insensitive and flexible; zero/negative numbers, a reversed range (e.g.
 `5 to 3`), blank items, commas, hyphens, duplicate or overlapping weeks, and trailing text are all
 rejected. There is no fixed maximum week number in the application itself — every week you list is
-checked against `data/academic-calendar.txt` (see Section 12), so what's valid depends entirely on
+checked against `data/academic-calendar.txt` (see Section 13), so what's valid depends entirely on
 what that file defines for the target activity's academic year and semester. The specification
 must include the instructional week containing the source activity; omitting it is rejected.
 
@@ -558,7 +559,7 @@ copying the source's description, category, topic, timing, ratings, and note. Fr
 — there is no linked series to keep in sync.
 
 If `data/academic-calendar.txt` is missing or cannot be parsed, `recur` reports the problem and
-every other command keeps working normally (see Section 12).
+every other command keeps working normally (see Section 13).
 
 ## 7. Topic Commands
 
@@ -865,7 +866,48 @@ workload (not merged), a flexible activity counts its full requested duration on
 accessibility are not considered. Energy and sensory numbers are shown exactly as you entered
 them — self-reported planning data only, never a medical or performance judgement.
 
-## 10. Built-In Guide: `guide`
+## 10. Read-only Timetable: `timetable`
+
+```text
+timetable day/YYYY-MM-DD [detail]
+timetable week/YYYY-MM-DD [compact|detail]
+timetable this week [compact|detail]
+```
+
+Timetable is a read-only view over existing activities. A day request shows one calendar date.
+`week/DATE` accepts any valid date and shows the Monday-Sunday week containing it; `this week`
+uses the current Monday-Sunday week. Dates use strict `yyyy-MM-dd` format.
+
+Fixed activities appear under their day in chronological order:
+
+```text
+MONDAY | 2099-06-01
+  09:00-11:00  [F][1] Lecture
+  13:00-14:00  [F][2] Tutorial
+```
+
+The permanent numeric activity ID is shown directly. Equal start times are ordered by permanent
+ID and are never silently omitted. If fixed commitments overlap, every affected entry is marked
+`[OVERLAP]` and the view includes a warning. Adjacent activities are not overlaps.
+
+Flexible activities have an allowed window rather than a confirmed time, so Timetable never
+places them into fixed slots. They appear separately:
+
+```text
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  2099-06-01 15:00-18:00  [U][3] Review notes (60 min required)
+```
+
+`detail` adds completion, category, energy/sensory ratings, and optional topic/note information.
+For weekly views, `compact` omits empty-day placeholders and the legend, providing an explicit
+narrow-terminal fallback. `compact` is not accepted for a one-day view, and it cannot be combined
+with `detail`.
+
+Timetable performs no save, mutation, confirmation, recommendation, or buffer calculation. The
+current model supports only same-day activities. Recommended placements and buffers will appear
+only if later features introduce approved data for them.
+
+## 11. Built-In Guide: `guide`
 
 ```text
 guide
@@ -873,11 +915,11 @@ guide TOPIC
 guide NUMBER
 ```
 
-`guide` alone shows a 12-item numbered menu. `guide TOPIC` shows one topic's text directly.
+`guide` alone shows a 13-item numbered menu. `guide TOPIC` shows one topic's text directly.
 Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`,
 `list`, `edit`, `delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`,
-`recur`, `topic`, `facility`, `connection`, `route`, `dashboard`, `storage`. Topics for v2.0-only
-features still awaiting implementation (`timetable`, `recommend`, `export`) are still listed but
+`recur`, `topic`, `facility`, `connection`, `route`, `dashboard`, `timetable`, `storage`. Topics
+for v2.0-only features still awaiting implementation (`recommend`, `export`) are still listed but
 end with `(Coming soon in a future release.)` where the underlying command isn't built yet.
 
 Each menu item can also be selected by its number, either as `guide NUMBER` or by entering the
@@ -891,11 +933,11 @@ added when v2.0's `route` shipped) are separate, independently and uniquely numb
 each describes only its own command family, with no combined item grouping them together. Item
 `5` ("Completion and dashboard") was already reserved for the `dashboard` topic in v1.0's menu -
 unlike `route`, `dashboard` did not need a new number; only its text changed, from "Coming soon"
-to real syntax. Item `12` ("Return") is not a topic; it just acknowledges the selection and
-returns to the command prompt — it moved from `11` to `12` solely because `route` took the next
-available number; every other item's number is unchanged from v1.0.
+to real syntax. Item `12` is the implemented `timetable` topic. Item `13` ("Return") is not a
+topic; it just acknowledges the selection and returns to the command prompt. Items `1`-`11`
+retain their prior meanings.
 
-## 11. Exit: `bye`
+## 12. Exit: `bye`
 
 ```text
 bye
@@ -908,7 +950,7 @@ Bye! Take care and see you again.
 ____________________________________________________________
 ```
 
-## 12. Data Storage
+## 13. Data Storage
 
 ```text
 data/
@@ -974,7 +1016,7 @@ If you'd rather check a hand-edited `facilities.txt`/`connections.txt` without r
 application, `facility validate`/`connection validate` (Sections 8.7–8.8) run the exact same
 checks on demand.
 
-## 13. Error Handling
+## 14. Error Handling
 
 ```text
 [Error] Invalid input: ...
@@ -994,7 +1036,7 @@ ____________________________________________________________
 ____________________________________________________________
 ```
 
-## 14. Frequently Asked Questions
+## 15. Frequently Asked Questions
 
 **What is the difference between a fixed and flexible activity?**
 A fixed activity has a confirmed start and end time. A flexible activity has an allowed window
@@ -1024,7 +1066,7 @@ Yes, while the application is closed. Changes are validated and loaded the next 
 the application. If you want to check your edit is well-formed without restarting, run `facility
 validate`/`connection validate` (Sections 8.7–8.8) any time while the application is running.
 
-## 15. Complete Command Summary
+## 16. Complete Command Summary
 
 ```text
 guide
@@ -1067,12 +1109,16 @@ dashboard today [detail]
 dashboard tomorrow [detail]
 dashboard date/YYYY-MM-DD [detail]
 dashboard this week [detail]
+
+timetable day/YYYY-MM-DD [detail]
+timetable week/YYYY-MM-DD [compact|detail]
+timetable this week [compact|detail]
 ```
 
-## 16. Coming in a Future Release (v2.0 — not yet implemented)
+## 17. Remaining v2.0 Features
 
-The following were planned in the original product scope but have no working command yet: a
-text-based weekly timetable, recommendation preferences, a deterministic schedule recommender, and
+The following were planned in the original product scope but have no working command yet:
+recommendation preferences, a deterministic schedule recommender, and
 CSV export. `guide` will point this out if you ask about one of these topics directly. Accessible
-route search (`route`, Section 8.9) and the accessible planning dashboard (`dashboard`, Section 9)
-have both shipped in v2.0.
+route search (`route`, Section 8.9), the accessible planning dashboard (`dashboard`, Section 9),
+and the read-only timetable (`timetable`, Section 10) have shipped in v2.0.

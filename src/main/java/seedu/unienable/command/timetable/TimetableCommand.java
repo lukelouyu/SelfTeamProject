@@ -15,7 +15,13 @@ public class TimetableCommand extends Command {
     private final TimetablePeriod period;
     private final TimetableMode mode;
 
-    /** Creates a timetable command over the given manager and resolved period. */
+    /**
+     * Creates a timetable command over the given manager and resolved period.
+     *
+     * @param activityManager manager to read without mutation
+     * @param period already resolved selected period
+     * @param mode selected output mode
+     */
     public TimetableCommand(ActivityManager activityManager, TimetablePeriod period,
             TimetableMode mode) {
         this.activityManager = activityManager;

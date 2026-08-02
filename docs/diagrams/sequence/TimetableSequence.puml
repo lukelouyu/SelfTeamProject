@@ -1,0 +1,47 @@
+@startuml
+title Timetable Weekly View Sequence
+
+skinparam sequenceMessageAlign center
+skinparam shadowing false
+
+actor User
+participant CommandDispatcher as Dispatcher
+participant TimetableCommandParser as Parser
+participant TimetableService as Service
+participant TimetableCommand as Command
+participant ActivityManager as Manager
+participant TimetableFormatter as Formatter
+
+User -> Dispatcher : timetable week/2026-08-19 detail
+activate Dispatcher
+Dispatcher -> Parser : parse(manager, now, args)
+activate Parser
+Parser -> Service : resolveWeek(2026-08-19)
+Service --> Parser : TimetablePeriod (Mon-Sun)
+Parser --> Dispatcher : TimetableCommand
+deactivate Parser
+Dispatcher --> User : command ready
+deactivate Dispatcher
+
+User -> Command : execute()
+activate Command
+Command -> Service : build(manager, period)
+activate Service
+Service -> Manager : getAll()
+Manager --> Service : unmodifiable activities
+Service -> Service : select, sort, mark overlaps
+Service --> Command : immutable TimetableView
+deactivate Service
+Command -> Formatter : format(view, DETAIL)
+activate Formatter
+Formatter --> Command : deterministic plain text
+deactivate Formatter
+Command --> User : CommandResult
+deactivate Command
+
+note over Service,Manager
+Read-only: no activity mutation,
+confirmation, or storage write.
+end note
+
+@enduml

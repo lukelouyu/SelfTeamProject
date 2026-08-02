@@ -15,7 +15,13 @@ public final class TimetableFormatter {
     private TimetableFormatter() {
     }
 
-    /** Formats one timetable in the selected output mode. */
+    /**
+     * Formats one timetable in the selected output mode.
+     *
+     * @param view immutable calculated timetable
+     * @param mode selected output mode
+     * @return deterministic plain-text timetable
+     */
     public static String format(TimetableView view, TimetableMode mode) {
         StringBuilder result = new StringBuilder();
         TimetablePeriod period = view.getPeriod();

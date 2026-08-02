@@ -3,6 +3,7 @@ package seedu.unienable.app;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
@@ -30,6 +31,8 @@ import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.FixedActivity;
+import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.parser.CommandDispatcher;
@@ -183,8 +186,10 @@ public class ApplicationRunner {
 
     /**
      * Dispatches, confirms if needed, and executes one line of input. A command that mutates
-     * application state is persisted before its success feedback is shown, so a save failure is
-     * reported instead of a false success message; a command that only reads state is never
+     * application state has a complete pre-execution snapshot captured, is persisted before its
+     * success feedback is shown, and - if that save fails - has the snapshot restored, so a save
+     * failure is reported instead of a false success message and never leaves a partially-applied
+     * change sitting in memory only; a command that only reads state is never snapshotted or
      * saved. "bye" always ends the loop, attempting one final save first only if an earlier save
      * this session failed.
      *
@@ -198,17 +203,16 @@ public class ApplicationRunner {
             if (!confirmationHandler.confirmIfNeeded(command)) {
                 return true;
             }
-            ApplicationStateSnapshot snapshot = needsFailureRollback(command) ? new ApplicationStateSnapshot() : null;
+            boolean mutates = mutatesState(command);
+            ApplicationStateSnapshot snapshot = mutates ? new ApplicationStateSnapshot() : null;
             CommandResult result = command.execute();
             if (result.isShouldExit()) {
                 return handleExit(result);
             }
-            if (mutatesState(command)) {
+            if (mutates) {
                 hasUnsavedChanges = true;
                 if (!trySave()) {
-                    if (snapshot != null) {
-                        snapshot.restore();
-                    }
+                    snapshot.restore();
                     return true;
                 }
             }
@@ -243,9 +247,10 @@ public class ApplicationRunner {
      * Returns whether executing the given command may have changed activity, topic, or
      * settings state that needs persisting. Read-only commands (list, find, view, next, guide,
      * facility/connection lookups, order view, bye) are deliberately excluded so they never
-     * trigger a save.
+     * trigger a snapshot or a save.
      *
-     * @param command the already-executed command
+     * @param command the command about to execute (or, for the post-execute save check, the one
+     *     that just did)
      * @return true if command is one of the mutating command types
      */
     private boolean mutatesState(Command command) {
@@ -263,33 +268,81 @@ public class ApplicationRunner {
     }
 
     /**
-     * Returns whether a failed save must roll back this command's complete in-memory batch, not
-     * just be reported. Every other mutating command changes at most one activity/topic, so a
-     * failed save leaving that one change in memory (until the next successful save or restart
-     * reloads from disk) is accepted, existing behaviour; recur can add many activities in one
-     * command and reset can rewrite the whole collection, so a failed save must not leave a
-     * partially-applied batch sitting in memory only.
+     * Exact pre-command state used to roll back any mutating command when persistence fails.
+     * Activities and topics are captured as independent copies, not shared references -
+     * {@code mark}/{@code unmark} and a cascading {@code topic rename} mutate the stored
+     * Activity/Topic objects in place, so a snapshot that merely copied the list (as this class
+     * used to, when only recur/reset used it) would silently "restore" the already-mutated
+     * objects instead of their pre-command values.
      *
-     * @param command the about-to-execute command
-     * @return true if a failed save after this command must restore the pre-command state
+     * <p>Deliberately does not restore {@code hasUnsavedChanges} to its pre-command value: even
+     * though the attempted mutation itself is fully undone, the save attempt still failed, and
+     * {@link #handleExit} needs that fact to warn the user and retry at exit rather than showing
+     * a normal goodbye - a rolled-back mutation is not the same as a session with no save
+     * problems at all.
      */
-    private boolean needsFailureRollback(Command command) {
-        return command instanceof RecurCommand || command instanceof ResetCommand;
-    }
-
-    /** Exact pre-command state used to roll back recur/reset when persistence fails. */
     private final class ApplicationStateSnapshot {
-        private final List<Activity> activities = List.copyOf(activityManager.getAll());
-        private final List<Topic> topics = List.copyOf(topicManager.getAll());
+        private final List<Activity> activities = copyActivities(activityManager.getAll());
+        private final List<Topic> topics = copyTopics(topicManager.getAll());
         private final int nextId = activityManager.getNextId();
         private final ActivityOrder order = activityManager.getDefaultOrder();
-        private final boolean previouslyUnsaved = hasUnsavedChanges;
 
         private void restore() {
             activityManager.restoreState(activities, nextId, order);
             topicManager.loadAll(topics);
-            hasUnsavedChanges = previouslyUnsaved;
         }
+    }
+
+    /**
+     * Returns an independent copy of each activity, preserving its concrete type, every field,
+     * and its completion status - see {@link ApplicationStateSnapshot}'s Javadoc for why a plain
+     * list copy is not enough.
+     *
+     * @param source the activities to copy
+     * @return a new list of new Activity instances with the same field values
+     */
+    private static List<Activity> copyActivities(List<Activity> source) {
+        List<Activity> copies = new ArrayList<>(source.size());
+        for (Activity activity : source) {
+            copies.add(copyOf(activity));
+        }
+        return copies;
+    }
+
+    private static Activity copyOf(Activity activity) {
+        Activity copy;
+        if (activity instanceof FixedActivity) {
+            FixedActivity fixed = (FixedActivity) activity;
+            copy = new FixedActivity(fixed.getId(), fixed.getDescription(), fixed.getCategory(), fixed.getDate(),
+                    fixed.getStartTime(), fixed.getEndTime(), fixed.getEnergyRating(), fixed.getSensoryRating(),
+                    fixed.getTopic(), fixed.getNote());
+        } else {
+            FlexibleActivity flexible = (FlexibleActivity) activity;
+            copy = new FlexibleActivity(flexible.getId(), flexible.getDescription(), flexible.getCategory(),
+                    flexible.getDate(), flexible.getEarliestStart(), flexible.getLatestEnd(),
+                    flexible.getDurationMinutes(), flexible.getEnergyRating(), flexible.getSensoryRating(),
+                    flexible.getTopic(), flexible.getNote());
+        }
+        if (activity.isComplete()) {
+            copy.mark();
+        }
+        return copy;
+    }
+
+    /**
+     * Returns an independent copy of each topic - see {@link ApplicationStateSnapshot}'s Javadoc
+     * for why a plain list copy is not enough ({@code topic rename} mutates a Topic's name in
+     * place).
+     *
+     * @param source the topics to copy
+     * @return a new list of new Topic instances with the same field values
+     */
+    private static List<Topic> copyTopics(List<Topic> source) {
+        List<Topic> copies = new ArrayList<>(source.size());
+        for (Topic topic : source) {
+            copies.add(new Topic(topic.getCategory(), topic.getName()));
+        }
+        return copies;
     }
 
     /**

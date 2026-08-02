@@ -1,5 +1,6 @@
 package seedu.unienable.app;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,14 +22,12 @@ import seedu.unienable.storage.Storage;
 import seedu.unienable.testutil.recur.RecurrenceTestData;
 
 /**
- * Verifies that a save failure occurring right after {@code recur}/{@code reset all} rolls back
- * the complete in-memory batch instead of just being reported - the behaviour
- * {@code ApplicationRunner.ApplicationStateSnapshot} exists for. Every other mutating command
- * changes at most one activity/topic, so leaving that one change in memory after a failed save is
- * accepted, existing behaviour; recur/reset can change many at once, so a failed save must not
- * leave a partially-applied batch visible only in memory. Uses the package-private constructor
- * that injects a {@link Storage} whose {@code saveAll} always fails, so this never depends on
- * real filesystem permission quirks.
+ * Verifies that a save failure occurring right after any mutating command rolls back that
+ * command's complete pre-command state instead of just being reported -
+ * {@code ApplicationRunner.ApplicationStateSnapshot}'s job for every mutating command, not just
+ * recur/reset. Uses the package-private constructor that injects a {@link Storage} whose
+ * {@code saveAll} fails in a controlled, deterministic way, so none of this depends on real
+ * filesystem permission quirks.
  */
 class ApplicationRunnerTest {
     @TempDir
@@ -47,6 +46,10 @@ class ApplicationRunnerTest {
         return capturedOutput.toString(StandardCharsets.UTF_8);
     }
 
+    private static FailAfterStorage alwaysFailing(Path dataDirectory) {
+        return new FailAfterStorage(dataDirectory, 0);
+    }
+
     @Test
     public void recur_saveFails_rollsBackWholeBatchAndReportsNoFalseSuccess() throws Exception {
         RecurrenceTestData.writeCalendar(dataDirectory.resolve("academic-calendar.txt"));
@@ -58,7 +61,9 @@ class ApplicationRunnerTest {
                 "list",
                 "bye") + "\n";
 
-        String output = run(input, new FailingSaveAllStorage(dataDirectory));
+        // 1 success allowed: the seeding "add" must persist normally so activity [1] exists for
+        // recur to act on; recur's own save (the 2nd call) is the one under test and must fail.
+        String output = run(input, new FailAfterStorage(dataDirectory, 1));
 
         assertFalse(output.contains("Created 3 recurring sessions"),
                 "a failed save must never show recur's success message");
@@ -77,7 +82,9 @@ class ApplicationRunnerTest {
                 "list",
                 "bye") + "\n";
 
-        String output = run(input, new FailingSaveAllStorage(dataDirectory));
+        // 2 successes allowed: both seeding "add"s must persist so reset has something real to
+        // act on; reset's own save (the 3rd call) is the one under test and must fail.
+        String output = run(input, new FailAfterStorage(dataDirectory, 2));
 
         assertFalse(output.contains("All user data has been reset."),
                 "a failed save must never show reset's success message");
@@ -86,16 +93,253 @@ class ApplicationRunnerTest {
                 "both activities must still be in memory after the rollback");
     }
 
-    /** A real, filesystem-backed Storage whose saveAll() always fails without touching disk. */
-    private static final class FailingSaveAllStorage extends Storage {
-        private FailingSaveAllStorage(Path dataDirectory) {
+    @Test
+    public void add_saveFails_rollsBackAndReportsNoFalseSuccess() throws Exception {
+        String input = String.join("\n",
+                "add n/Task c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                "list",
+                "bye") + "\n";
+
+        String output = run(input, alwaysFailing(dataDirectory));
+
+        assertFalse(output.contains("Got it. Activity [1] has been added"),
+                "a failed save must never show add's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("No activities found."),
+                "the added activity must not remain in memory after the rollback");
+    }
+
+    @Test
+    public void add_saveFailsThenRetrySucceeds_doesNotConsumeIdOnFailedAttempt() throws Exception {
+        String addCommand = "add n/Task c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1";
+        String input = String.join("\n", addCommand, addCommand, "list", "bye") + "\n";
+
+        // First add's save fails and must be rolled back (including the ID it consumed); the
+        // identical second add's save succeeds and must receive ID [1], not [2].
+        String output = run(input, new FailOnceThenSucceedStorage(dataDirectory));
+
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("Got it. Activity [1] has been added"),
+                "the retry must receive ID [1] - the failed attempt's ID must not have been consumed");
+        assertTrue(output.contains("Here are 1 matching activity:"));
+    }
+
+    @Test
+    public void edit_saveFails_rollsBackToOriginalActivity() throws Exception {
+        String input = String.join("\n",
+                "add n/Original c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                "edit 1 n/Changed",
+                "y",
+                "list",
+                "bye") + "\n";
+
+        // 1 success allowed: the seeding add.
+        String output = run(input, new FailAfterStorage(dataDirectory, 1));
+
+        assertFalse(output.contains("Activity [1] has been updated"),
+                "a failed save must never show edit's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("Original"), "the original description must still be in memory");
+        assertFalse(output.substring(output.lastIndexOf("matching activit")).contains("Changed"),
+                "the edited description must not appear in the post-rollback list");
+    }
+
+    @Test
+    public void delete_saveFails_rollsBackDeletedActivity() throws Exception {
+        String input = String.join("\n",
+                "add n/Keep me c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                "delete 1",
+                "y",
+                "list",
+                "bye") + "\n";
+
+        String output = run(input, new FailAfterStorage(dataDirectory, 1));
+
+        assertFalse(output.contains("Activity [1] has been deleted"),
+                "a failed save must never show delete's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("Here are 1 matching activity:"),
+                "the deleted activity must still be in memory after the rollback");
+    }
+
+    @Test
+    public void mark_saveFails_rollsBackCompletionStatus() throws Exception {
+        String input = String.join("\n",
+                "add n/Task c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                "mark 1",
+                "list",
+                "bye") + "\n";
+
+        String output = run(input, new FailAfterStorage(dataDirectory, 1));
+
+        assertFalse(output.contains("Nice! Activity [1] is now complete"),
+                "a failed save must never show mark's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("[1][ ]"),
+                "activity [1] must still show as incomplete after the rollback (proves the snapshot "
+                        + "captured an independent copy, not a reference to the same mutated object)");
+        assertFalse(output.contains("[1][X]"), "activity [1] must not show as complete after the rollback");
+    }
+
+    @Test
+    public void unmark_saveFails_rollsBackCompletionStatus() throws Exception {
+        String input = String.join("\n",
+                "add n/Task c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                "mark 1",
+                "unmark 1",
+                "list",
+                "bye") + "\n";
+
+        // 2 successes allowed: the seeding add, then the mark that must actually take effect.
+        String output = run(input, new FailAfterStorage(dataDirectory, 2));
+
+        assertFalse(output.contains("Activity [1] is now incomplete"),
+                "a failed save must never show unmark's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("[1][X]"), "activity [1] must still show as complete after the rollback");
+        assertFalse(output.contains("[1][ ]"), "activity [1] must not show as incomplete after the rollback");
+    }
+
+    @Test
+    public void orderSet_saveFails_rollsBackToPreviousOrder() throws Exception {
+        String input = String.join("\n", "order set time", "order view", "bye") + "\n";
+
+        String output = run(input, alwaysFailing(dataDirectory));
+
+        assertFalse(output.contains("Default activity order updated"),
+                "a failed save must never show order set's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("Saved default activity order: chronological"),
+                "the default (chronological) order must still be in effect after the rollback");
+    }
+
+    @Test
+    public void topicAdd_saveFails_rollsBackAddedTopic() throws Exception {
+        String input = String.join("\n", "topic add c/ACADEMIC n/CG3207", "topic list c/ACADEMIC", "bye") + "\n";
+
+        String output = run(input, alwaysFailing(dataDirectory));
+
+        assertFalse(output.contains("Topic created"), "a failed save must never show topic add's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("No topics"), "the added topic must not remain in memory after the rollback");
+    }
+
+    @Test
+    public void topicAdd_saveFailsThenRetrySucceeds_doesNotFalselyRejectAsDuplicate() throws Exception {
+        String topicAddCommand = "topic add c/ACADEMIC n/CG3207";
+        String input = String.join("\n", topicAddCommand, topicAddCommand, "bye") + "\n";
+
+        String output = run(input, new FailOnceThenSucceedStorage(dataDirectory));
+
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("Topic created"),
+                "the retry must succeed - the failed attempt's topic must not have been left in memory");
+        assertFalse(output.contains("already exists"),
+                "the retry must not be rejected as a duplicate of the rolled-back failed attempt");
+    }
+
+    @Test
+    public void topicRename_saveFails_rollsBackNameAndEveryCascadedActivity() throws Exception {
+        String input = String.join("\n",
+                "topic add c/ACADEMIC n/OldName",
+                "add n/Lecture one c/ACADEMIC date/2099-01-01 type/FIXED from/09:00 to/10:00 "
+                        + "energy/1 sensory/1 topic/OldName",
+                "add n/Lecture two c/ACADEMIC date/2099-01-02 type/FIXED from/09:00 to/10:00 "
+                        + "energy/1 sensory/1 topic/OldName",
+                "topic rename c/ACADEMIC old/OldName new/NewName",
+                "y",
+                "list",
+                "topic list c/ACADEMIC",
+                "bye") + "\n";
+
+        // 3 successes allowed: topic add, then the two seeding adds; the rename's own save (the
+        // 4th call) is the one under test and must fail.
+        String output = run(input, new FailAfterStorage(dataDirectory, 3));
+
+        assertFalse(output.contains("Topic renamed from OldName to NewName"),
+                "a failed save must never show topic rename's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        String listSection = output.substring(output.indexOf("Here are"), output.indexOf("ACADEMIC topics:"));
+        assertFalse(listSection.contains("NewName"),
+                "neither cascaded activity may show the new topic name after the rollback");
+        assertEquals(2, countOccurrences(listSection, "OldName"),
+                "both activities must show the original topic name after the rollback");
+        String topicSection = output.substring(output.indexOf("ACADEMIC topics:"));
+        assertTrue(topicSection.contains("OldName"), "the topic itself must still show its original name");
+        assertFalse(topicSection.contains("NewName"),
+                "the topic registry must not show the new name after the rollback");
+    }
+
+    @Test
+    public void topicDelete_saveFails_rollsBackDeletedTopic() throws Exception {
+        String input = String.join("\n",
+                "topic add c/ACADEMIC n/CG3207",
+                "topic delete c/ACADEMIC n/CG3207",
+                "y",
+                "topic list c/ACADEMIC",
+                "bye") + "\n";
+
+        String output = run(input, new FailAfterStorage(dataDirectory, 1));
+
+        assertFalse(output.contains("has been deleted"),
+                "a failed save must never show topic delete's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.substring(output.lastIndexOf("ACADEMIC")).contains("CG3207"),
+                "the deleted topic must still be in memory after the rollback");
+    }
+
+    private static int countOccurrences(String text, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(needle, index)) != -1) {
+            count++;
+            index += needle.length();
+        }
+        return count;
+    }
+
+    /**
+     * A real, filesystem-backed Storage whose saveAll() succeeds for the first
+     * {@code successesAllowed} calls, then fails on every call after that. Lets a test's seeding
+     * commands (e.g. an "add" that creates the activity the command actually under test will act
+     * on) persist normally, while the command under test's own save still fails deterministically.
+     */
+    private static final class FailAfterStorage extends Storage {
+        private int remainingSuccesses;
+
+        private FailAfterStorage(Path dataDirectory, int successesAllowed) {
+            super(dataDirectory);
+            this.remainingSuccesses = successesAllowed;
+        }
+
+        @Override
+        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
+                throws StorageException {
+            if (remainingSuccesses > 0) {
+                remainingSuccesses--;
+                super.saveAll(activities, topics, order);
+                return;
+            }
+            throw new StorageException("simulated disk failure");
+        }
+    }
+
+    /** A real, filesystem-backed Storage whose saveAll() fails once, then succeeds on every later call. */
+    private static final class FailOnceThenSucceedStorage extends Storage {
+        private boolean hasFailedOnce;
+
+        private FailOnceThenSucceedStorage(Path dataDirectory) {
             super(dataDirectory);
         }
 
         @Override
         public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
                 throws StorageException {
-            throw new StorageException("simulated disk failure");
+            if (!hasFailedOnce) {
+                hasFailedOnce = true;
+                throw new StorageException("simulated disk failure");
+            }
+            super.saveAll(activities, topics, order);
         }
     }
 }

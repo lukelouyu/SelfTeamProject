@@ -1,27 +1,64 @@
 # UniEnable Handover
 
+**Read this whole file before doing anything else.** It is the up-to-date continuity doc for this
+project across sessions/tools — commit and push discipline, verification commands, and design
+taste the user has been firm about are all in Section 4, and skipping them is the most common way
+a new session repeats a mistake an earlier one already made and documented here.
+
+**If you are picking this project up next (including a different tool, e.g. Codex):** the
+concrete next task is a read-only design review, at
+`docs/planning/UniEnable_ActivityConflictChecker_Review_and_Extraction.md` — see Section 1's last
+paragraph before touching any code.
+
 ## 1. Current state (as of this update)
 
-`main` is at `a4aa683` locally, **7 commits ahead of `origin/main`** (last pushed commit:
-`003fbc2`) — **deliberately not pushed yet**, on explicit instruction, pending a final push
-decision after the consolidated review in this update. No unmerged work-in-progress branches
-remain; `refactor/command-package-reorg` and `feature/recur-reset-v2` are both fully merged and
-safe to delete; `v2-dashboard` is still empty (0 commits ahead), untouched.
+`main` is at `804ce09` locally and on `origin/main` — **pushed, working tree clean**. No unmerged
+work-in-progress branches remain; `v2-dashboard` is still empty (0 commits ahead), untouched.
 
-Since `003fbc2`, this session executed the first phase of a supplied external hardening-plan
-document (`UniEnable_Claude_Codebase_Hardening_Plan.md`, from Downloads): a Phase-0 baseline audit
-(all green — see Section 2's newest bullet), three zero-risk cleanup commits, then two
-architectural changes the user explicitly approved (parser split, storage/parser decoupling),
-followed by a full consolidated post-refactoring-and-Javadoc review (a second supplied document,
-`UniEnable_Post_Refactoring_and_Javadoc_Review.md`) that found and fixed two small polish items
-before this handover was written. **No user-visible command syntax, validation rule, exception
-type, error message, or output changed anywhere in these 7 commits** — verified both by the full
-863→867 test suite passing unmodified/extended and by a direct string-literal diff across the
-parser-split commit specifically. Full detail in Section 2's newest bullet.
+Since the previous revision of this handover (`a4aa683`, mid-review, not yet pushed), three more
+small hardening batches landed and were pushed, each reviewed and approved before pushing, per the
+user's standing "stop and report before pushing" instruction — full detail in Section 2's three
+newest bullets:
+1. Three isolated polish fixes flagged by the earlier review but deferred as out-of-scope for it:
+   `serialVersionUID` on all 8 exception classes, one genuinely-misleading boolean method name,
+   and `DateTimeParser.parseTime()`'s "wrong shape vs. out-of-range" message split (mirroring the
+   equivalent `parseDate()` fix from a much earlier session).
+2. Extended `ApplicationRunner`'s mutation-rollback mechanism (previously recur/reset-only) to
+   **every** mutating command, after an audit found several commands - most seriously `topic
+   rename`, which can cascade to an unbounded number of activities - had no rollback at all on a
+   failed save.
+3. Added Java assertions for a small set of internal programmer invariants, plus file-based
+   logging (previously: none) for storage/rollback failures.
 
-The previous revision of this handover (written right after `feature/recur-reset-v2` merged)
-described four more things that happened in the session before that one — still accurate history,
-kept below:
+**No user-visible command syntax or successful-path output changed in any of the three batches.**
+Test count grew from 867 to **887** as each batch added focused regression coverage; checkstyle
+and javadoc stayed clean throughout (same 100 pre-existing javadoc warnings, zero new, in every
+verification run across all three batches).
+
+**Verification as of this handover (commit `804ce09`):** `./gradlew clean check` all green, **887
+JUnit tests**, checkstyle clean (main + test), `./gradlew javadoc` succeeds with the same 100
+pre-existing warnings as always, zero new. `text-ui-test/runtest.sh` passes. This was verified
+separately at the end of each of the three batches before that batch was pushed (per the user's
+standing "stop, report, wait for approval, then push" instruction — Section 4) — not re-verified
+freshly for this documentation-only update, since no production code changed while adding
+`docs/planning/` and editing this file. Re-run the full verification block (Section 4) before
+trusting this claim if picking up work after any gap.
+
+**New this update:** four external reference documents were added to the repo under
+`docs/planning/` (previously kept outside the repo, in Downloads) so a different tool (Codex) can
+read them without access to the user's local filesystem — see Section 6's last paragraph for what
+each one actually is and, importantly, what it is **not**: three of them describe an earlier/wider
+"Accessible Itinerary Planner" concept (dashboard, timetable, preferences, recommend, route,
+export) that is **not** UniEnable's current approved scope - historical/traceability reference
+only, not a task list. Only the fourth, `UniEnable_ActivityConflictChecker_Review_and_Extraction.
+md`, is an actual work order: a read-only Phase-1 design review of whether `ActivityManager`'s
+conflict-validation logic is worth extracting into a dedicated `ActivityConflictChecker` class,
+which must stop and report before any Phase-2 implementation begins. This is the next task,
+picking up exactly where the design-taste note in Section 4 (the parser-split precedent) and
+Section 5 (the deferred `ActivityConflictChecker` decision) leave off.
+
+The previous revision of this handover described what happened up to `a4aa683` — still accurate
+history, kept below, prefixed with what came immediately before it:
 1. `command.activity` and `command.accessibility` were split into responsibility-based
    sub-packages (`crud`/`general`, `facility`/`connection`/`common`) on
    `refactor/command-package-reorg`, merged into `main`.
@@ -61,7 +98,8 @@ and README's "Distribution" section. A copy already sits at
 *before* the 3 message-quality fixes in point 4 above — rebuild if you need a JAR matching the
 exact current `main` tip).
 
-**Verification as of this handover (commit `a4aa683`):** `./gradlew clean check` all green,
+**Verification at that earlier point (commit `a4aa683`, historical, superseded by the current
+verification above):** `./gradlew clean check` all green,
 **867 JUnit tests** (863 + 4 new delegation-smoke tests from the parser-test split), checkstyle
 clean (main + test), `./gradlew javadoc` succeeds with the same **100 pre-existing warnings** as
 before this session — all in files this session didn't touch, all the permitted-omission kind
@@ -74,6 +112,56 @@ worth a fresh run before trusting a new release artifact or before tagging v1.0.
 ## 2. Condensed history (compressed — see `git log` for full detail)
 
 Most recent sessions, newest first:
+
+- **Assertions + logging batch** (2 commits, `797e29f`/`804ce09`, explicitly scoped to exclude
+  `ActivityConflictChecker` decomposition, date/time parser changes, and new features): added Java
+  `assert` statements for a small set of internal programmer invariants that should never be false
+  if callers are behaving correctly (e.g. `FixedActivity`/`FlexibleActivity` constructor
+  preconditions — `endTime.isAfter(startTime)`, duration fits the flexible window — see the two
+  files' current content; these run only with `-ea`, which `build.gradle`'s `test {}`/`run {}` now
+  both enable, with a comment documenting `java -ea -jar unienable.jar` for a manually-run jar).
+  Built `app/LoggingConfig.java` (new, package-private): `configure(Path)`/`shutdown()` static
+  methods, tracking *only* the single `FileHandler` it adds — deliberately not touching the root
+  logger's other handlers, since an earlier version that did caused ~60 test failures (Windows
+  couldn't delete the `@TempDir` because the log file handle was still open; see the `finally {
+  LoggingConfig.shutdown(); }` wrapper this pushed into `ApplicationRunner.run()`). Added logging
+  points at storage/rollback failure sites (`Storage.restore()` now logs `SEVERE` on an on-disk
+  rollback failure) and trimmed field-mutation logs in `FixedActivity`/`FlexibleActivity` for
+  privacy (log that a field changed, not the value). `ApplicationRunner.processCommand()` gained an
+  entry assertion plus a `catch (RuntimeException e)` boundary, accepted as a defensive safety net,
+  not a replacement for specific exception handling elsewhere. Checkstyle and javadoc clean, no
+  user-visible output changed; this batch brought the running total to the 887 tests cited in
+  Section 1.
+- **Mutation persistence and rollback fix** (2 commits, `168eef1`/`d5a22b4`): extended
+  `ApplicationStateSnapshot` rollback — previously wired only into `recur`/`reset` — to all 11
+  mutating commands, after an audit found the others (most seriously `topic rename`, which cascades
+  a name change across every activity under that topic) had no rollback at all on a failed save,
+  meaning a failed persist could leave in-memory state ahead of what's on disk. Along the way, found
+  and fixed a real pre-existing bug in the snapshot mechanism itself: it used to take snapshots via
+  `List.copyOf(...)`, which only copies the *list*, not the mutable `Activity`/`Topic` objects
+  inside it — since `mark()`/`unmark()`/`setName()`/topic-rename's cascade all mutate those objects
+  **in place**, a snapshot taken before such a command would "restore" objects that were already
+  mutated, silently defeating the rollback. Fixed with new `copyActivities()`/`copyOf(Activity)`/
+  `copyTopics()` helpers that build genuinely independent copies. Also fixed `reset`'s no-op case
+  (nothing to reset) to skip persistence entirely rather than writing an unchanged file. Two
+  existing `ApplicationRunnerTest` tests (recur, reset) used an always-fails storage double for both
+  their setup `add` and the command under test; once `add` itself started rolling back correctly,
+  the setup `add` never persisted and broke the tests' premise — redesigned the double into
+  `FailAfterStorage(dataDirectory, successesAllowed)` (succeeds N times, then fails) to fix. Also
+  removed a `previouslyUnsaved` field that used to restore `hasUnsavedChanges` back to its
+  pre-command value on rollback — that erased the fact a save had just failed, breaking `bye`'s
+  "could not be saved" farewell message; `hasUnsavedChanges` now correctly stays `true` after a
+  rollback until a later successful save clears it. Checkstyle/javadoc clean, no user-visible
+  successful-path output changed; added focused regression coverage for the extended rollback.
+- **Defensive-programming cleanup** (3 commits, `27746b8`/`da6e65c`/`8240a8f` — three items flagged
+  by the earlier consolidated review, Section 2's next bullet, but deferred as out of scope for it
+  at the time): added `serialVersionUID` to all 8 classes in `seedu.unienable.exception`; renamed
+  `ListCommandParser`'s boolean-returning `parseViewMode()`/its `detail` local to predicate-style
+  names; split `DateTimeParser.parseTime()`'s single "must be in HH:mm format" message into a
+  wrong-shape case and a separate right-shape-but-out-of-range (`25:00`, `10:99`) case, mirroring
+  the equivalent `parseDate()` split from an earlier session (Section 2's `fix/v1.0-guide-and-
+  date-bugs` bullet below). No user-visible successful-path output changed; test count grew with
+  new regression coverage for the message split.
 
 - **Hardening-plan Phase 0 + parser/storage refactor + consolidated review** (7 commits directly
   on `main`, `567116f`..`a4aa683`, per an externally-supplied hardening-plan document driving the
@@ -390,10 +478,19 @@ Guide's §11 (Data Storage) for the exact record schema.
 
 ## 5. Where to look for further bugs / risk, concretely
 
-- **The "one error message covers two semantically different causes" family**: `DateTimeParser.
-  parseTime()` still conflates "wrong shape" and "hour 25"/"minute 60" into one message, the same
-  shape of issue `parseDate()` had before the latest fix (Section 2) — not flagged as a bug yet,
-  worth a look if touching that file again.
+- **`ActivityConflictChecker` decision — the actual next task.** `ActivityManager` still owns all
+  duplicate/overlap conflict-validation logic (`checkNoConflicts`, `validateNoDuplicateOrOverlap`,
+  `isDuplicate`, `hasSameSchedulingDetails`, `findOverlap`, plus the `add`/`replace`/
+  `addAllAtomically` call sites) inline, unchanged by any of this update's three batches. A fully
+  scoped read-only review-and-decide task for this is at `docs/planning/
+  UniEnable_ActivityConflictChecker_Review_and_Extraction.md` (see Section 1's last paragraph and
+  Section 6's last paragraph) — do not extract preemptively without going through that document's
+  Phase 1 first; it explicitly requires stopping for approval before any Phase 2 implementation.
+- **The "one error message covers two semantically different causes" family**: resolved for both
+  `DateTimeParser.parseDate()` (earlier session) and `parseTime()` (Section 2's defensive-
+  programming cleanup bullet, this update) — both now split "wrong shape" from "right shape but
+  out of range" into separate messages. Worth re-checking this file if it grows a third date/time
+  parsing entry point later, but not a live risk today.
 - **The "hardcoded near-future date used as a placeholder" family**: still a real, live risk in
   `UniEnableTest.java`'s ~60 scenarios using `date/2026-08-15`-style placeholders, not yet
   mitigated. **This family already bit once this session** — `text-ui-test/input.txt`'s "Far past
@@ -432,18 +529,11 @@ Guide's §11 (Data Storage) for the exact record schema.
   before assuming a format change is complete. (The rating side of the same decoupling did *not*
   duplicate anything worth centralizing — both `RatingParser` and `ActivityStorage` still delegate
   the one real rule, the 1-5 range check, to `EnergyRating.of`/`SensoryRating.of`.)
-- **Missing `serialVersionUID` on custom exceptions (pre-existing, not from this session):** none
-  of the 8 classes in `seedu.unienable.exception` declare one, though all extend the serializable
-  `Exception`. Flagged during the hardening-plan session's Javadoc/coding-standard audit but not
-  fixed — unrelated to that session's actual diff, low real-world impact (this app never
-  serializes an exception), safe to defer to a dedicated hardening pass rather than touching 8
-  unrelated files for one push.
-- **Minor boolean-naming nits carried over during the parser split, not fixed:**
-  `ListCommandParser.parseViewMode()` returns a boolean but is named as an action, not a
-  predicate (`is`/`has`/`can`/`was`/`should`), and the local variable holding its result
-  (`detail`) has the same issue — both pre-existing, just relocated verbatim from the old
-  `ActivityCommandParser` during the split, not something the split introduced. Cosmetic; worth a
-  rename only if that file is being touched for another reason anyway.
+- **`serialVersionUID` / boolean-naming nits — both resolved.** Both were flagged during the
+  hardening-plan session's Javadoc/coding-standard audit and fixed in the defensive-programming
+  cleanup batch (Section 2, this update): all 8 `seedu.unienable.exception` classes now declare
+  `serialVersionUID`, and `ListCommandParser.parseViewMode()`/its `detail` local were renamed to
+  predicate style. No longer live risks.
 
 ## 6. Product context (condensed, mostly unchanged from prior sessions)
 
@@ -486,6 +576,32 @@ model — a different, older package tree from `command.accessibility.*` above, 
 two: this one is `seedu.unienable.accessibility.classes`/`.enums`, immutable read-only reference
 data).
 
-Other attached reference materials (requirements baseline, user stories, original draft user
-guide, kickoff prompt, campus map PDF) are in the user's Downloads folder outside this repo, per
-earlier sessions' notes — not re-listed here since nothing about them changed this session.
+**`docs/planning/` (new this update)** holds four reference documents, added so a different tool
+(e.g. Codex) picking this project up doesn't need access to the user's local Downloads folder.
+Read what each one actually is before treating any of them as a task list:
+
+- `CS2113_tP_Requirements_Baseline_v0.2.md`, `CS2113_tP_Prioritised_User_Stories_v0.1.md`,
+  `CS2113_tP_Primary_User_Guide_Draft.md` — a pre-development requirements baseline, user-story
+  list, and draft user guide for a **broader, differently-scoped product concept** (working name
+  undecided, described in these docs as an "Accessible Itinerary Planner") that predates
+  UniEnable's actual implementation history. They describe a v1.0 similar in spirit to what shipped
+  plus a v2.0 backlog — dashboard, timetable, preferences, a schedule recommender, Dijkstra-based
+  accessible routing, CSV export — that is **not** UniEnable's current approved scope (Section 6's
+  second paragraph above: "still don't start any of those unprompted"). Treat these three as
+  historical/traceability background only. Do not start implementing anything from their v2.0
+  sections without the user explicitly approving it in the current conversation, the same rule that
+  already applied before these files were added to the repo.
+- `UniEnable_ActivityConflictChecker_Review_and_Extraction.md` — the one document in this folder
+  that **is** an actual work order, and the concrete next task for this project (Section 1's
+  opening paragraph, Section 5's first bullet). It is scoped tightly to UniEnable as it actually
+  exists today: a read-only Phase 1 review of whether `ActivityManager`'s conflict-validation logic
+  (duplicate/overlap detection across `add`/`replace`/`edit`/`addAllAtomically`) is cohesive enough
+  to justify extracting into a dedicated `ActivityConflictChecker` class, producing a method-by-
+  method table and one of three conclusions (keep / extract / defer for insufficient evidence),
+  then **stopping for explicit approval** before any Phase 2 implementation. It explicitly excludes
+  new v2.0 features, date/time parser changes, storage-format changes, command-syntax changes, and
+  unrelated cleanup — and explicitly warns against extraction for its own sake (no generic
+  `ValidationUtils`, no interface with one implementation, no static global state). Anyone starting
+  this task should follow that document itself for the detailed steps; this handover's job is only
+  to point to it and to the working conventions (Section 4) and design taste (Section 4's last
+  bullet, Section 5) that apply to how the work gets done, reported, and pushed.

@@ -244,16 +244,25 @@ public class ApplicationRunner {
     }
 
     /**
-     * Returns whether executing the given command may have changed activity, topic, or
-     * settings state that needs persisting. Read-only commands (list, find, view, next, guide,
-     * facility/connection lookups, order view, bye) are deliberately excluded so they never
-     * trigger a snapshot or a save.
+     * Returns whether executing the given command may change activity, topic, or settings state
+     * that needs persisting - and, for a command whose effect depends on current state rather
+     * than its type alone, whether it would actually change anything this time. Read-only
+     * commands (list, find, view, next, guide, facility/connection lookups, order view, bye) are
+     * deliberately excluded so they never trigger a snapshot or a save. "reset all" is checked
+     * against its own {@link ResetCommand#hasAnythingToReset()} rather than unconditionally,
+     * since resetting already-empty/default state has nothing to persist - without this, the
+     * no-menu-shown "nothing to reset" path (see {@link ResetCommand#getMenuPrompt()}) would
+     * still trigger a real save of unchanged data on every run.
      *
      * @param command the command about to execute (or, for the post-execute save check, the one
      *     that just did)
-     * @return true if command is one of the mutating command types
+     * @return true if command is one of the mutating command types, and - for reset all -
+     *     actually has something to change
      */
     private boolean mutatesState(Command command) {
+        if (command instanceof ResetCommand) {
+            return ((ResetCommand) command).hasAnythingToReset();
+        }
         return command instanceof AddCommand
                 || command instanceof DeleteCommand
                 || command instanceof EditCommand
@@ -263,8 +272,7 @@ public class ApplicationRunner {
                 || command instanceof TopicAddCommand
                 || command instanceof TopicRenameCommand
                 || command instanceof TopicDeleteCommand
-                || command instanceof RecurCommand
-                || command instanceof ResetCommand;
+                || command instanceof RecurCommand;
     }
 
     /**

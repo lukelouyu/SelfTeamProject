@@ -288,6 +288,18 @@ class ApplicationRunnerTest {
                 "the deleted topic must still be in memory after the rollback");
     }
 
+    @Test
+    public void resetAll_nothingToReset_doesNotInvokeSave() throws Exception {
+        String input = String.join("\n", "reset all", "bye") + "\n";
+        SaveCallCountingStorage storage = new SaveCallCountingStorage(dataDirectory);
+
+        String output = run(input, storage);
+
+        assertEquals(0, storage.saveCallCount, "resetting already-empty state must never call Storage.saveAll()");
+        assertTrue(output.contains("All user data has been reset."),
+                "the existing no-op message must still be shown even though nothing was actually saved");
+    }
+
     private static int countOccurrences(String text, String needle) {
         int count = 0;
         int index = 0;
@@ -339,6 +351,22 @@ class ApplicationRunnerTest {
                 hasFailedOnce = true;
                 throw new StorageException("simulated disk failure");
             }
+            super.saveAll(activities, topics, order);
+        }
+    }
+
+    /** A real, filesystem-backed Storage that counts every saveAll() call while behaving normally. */
+    private static final class SaveCallCountingStorage extends Storage {
+        private int saveCallCount;
+
+        private SaveCallCountingStorage(Path dataDirectory) {
+            super(dataDirectory);
+        }
+
+        @Override
+        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
+                throws StorageException {
+            saveCallCount++;
             super.saveAll(activities, topics, order);
         }
     }

@@ -21,6 +21,7 @@ import seedu.unienable.logic.TopicManager;
 import seedu.unienable.parser.activity.ActivityCommandParser;
 import seedu.unienable.parser.accessibility.ConnectionCommandParser;
 import seedu.unienable.parser.accessibility.FacilityCommandParser;
+import seedu.unienable.parser.accessibility.RouteCommandParser;
 import seedu.unienable.parser.common.FieldParser;
 import seedu.unienable.parser.common.Parser;
 import seedu.unienable.parser.recur.RecurCommandParser;
@@ -40,6 +41,7 @@ public class CommandDispatcher {
     private final TopicCommandParser topicCommandParser = new TopicCommandParser();
     private final FacilityCommandParser facilityCommandParser = new FacilityCommandParser();
     private final ConnectionCommandParser connectionCommandParser = new ConnectionCommandParser();
+    private final RouteCommandParser routeCommandParser = new RouteCommandParser();
 
     /**
      * Creates a CommandDispatcher over the given managers.
@@ -113,6 +115,8 @@ public class CommandDispatcher {
             return dispatchFacility(args);
         case "connection":
             return dispatchConnection(args);
+        case "route":
+            return routeCommandParser.parse(facilityManager, connectionManager, args);
         case "guide":
             return new GuideCommand(args.isEmpty() ? null : args);
         case "reset":
@@ -121,9 +125,9 @@ public class CommandDispatcher {
             FieldParser.requireNoArguments("bye", args);
             return new ExitCommand();
         case "1": case "2": case "3": case "4": case "5":
-        case "6": case "7": case "8": case "9": case "10": case "11":
+        case "6": case "7": case "8": case "9": case "10": case "11": case "12":
             // A bare menu number entered right after "guide" displays the main menu, matching
-            // its own "Enter a number from 1 to 11." instruction; see GuideCommand's Javadoc.
+            // its own "Enter a number from 1 to 12." instruction; see GuideCommand's Javadoc.
             return new GuideCommand(commandWord);
         default:
             throw new InvalidCommandException("Unknown command \"" + commandWord + "\". Enter guide for help.");

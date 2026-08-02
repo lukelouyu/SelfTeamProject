@@ -6,14 +6,38 @@ taste the user has been firm about are all in Section 4, and skipping them is th
 a new session repeats a mistake an earlier one already made and documented here.
 
 **If you are picking this project up next (including a different tool, e.g. Codex):** the
-concrete next task is a read-only design review, at
-`docs/planning/UniEnable_ActivityConflictChecker_Review_and_Extraction.md` — see Section 1's last
-paragraph before touching any code.
+`ActivityConflictChecker` review/extraction mentioned below as "the next task" is **done** (both
+phases shipped at `e44f660`, before the release-tagging note just below). `main` has since moved
+past the `804ce09` state this file otherwise still describes — see the dated note immediately
+below for what actually changed most recently. There is also unmerged work on
+`feature/v2-route` (v2.0's first feature, complete, awaiting review/merge - not reflected in the
+rest of this file below, which predates that branch).
 
 ## 1. Current state (as of this update)
 
-`main` is at `804ce09` locally and on `origin/main` — **pushed, working tree clean**. No unmerged
-work-in-progress branches remain; `v2-dashboard` is still empty (0 commits ahead), untouched.
+**Update (2026-08-02, later the same day as the `804ce09` state described below): a
+release-packaging mistake was found and fixed on `main` directly.** `v1.0` was tagged (this file
+below still says it hadn't been - it has, since) with a GitHub Release whose only asset was a
+**bare `unienable.jar`**. That's broken for `recur`, which needs `data/academic-calendar.txt`
+shipped alongside the jar - the app never creates that file itself, and the documented
+distributable has always been `./gradlew releaseZip`'s zip (jar + calendar file), never a bare
+jar (see README's "Distribution" section). A user who downloaded the bare jar hit exactly this:
+`[Error] Storage error: academic calendar file not found: data/academic-calendar.txt` on `recur`.
+A short-lived `v1.0.1` tag/release was created with the identical mistake (copied from `v1.0`'s
+own asset without cross-checking it against this project's own documented rule), then corrected
+in place (bare jar removed, correct zip uploaded, verified via a clean-extraction smoke test that
+`add` then `recur` both work), then - per explicit instruction, rather than keeping two tags
+pointing at variously-fixed states of identical code - **deleted entirely** (release and tag,
+local and remote). `v1.0`'s tag was then moved to the commit this HANDOVER.md fix itself lands on
+(deleted and recreated, since git tags aren't normally force-moved on a published repo, but this
+one was explicitly requested), and `v1.0`'s GitHub Release was rebuilt with the correct
+`unienable.zip` as its only asset. **Lesson: when creating a GitHub Release for a jar-based
+distributable, always attach `releaseZip`'s output zip, never a bare `build/libs/*.jar` - and
+smoke-test the exact uploaded asset (extract fresh, run, exercise the feature that depends on the
+external file) before considering a release done, not just the local build.**
+
+`main` was at `804ce09` locally and on `origin/main` as of the rest of this section below —
+**pushed, working tree clean** at that point. No unmerged work-in-progress branches remain; `v2-dashboard` is still empty (0 commits ahead), untouched.
 
 Since the previous revision of this handover (`a4aa683`, mid-review, not yet pushed), three more
 small hardening batches landed and were pushed, each reviewed and approved before pushing, per the

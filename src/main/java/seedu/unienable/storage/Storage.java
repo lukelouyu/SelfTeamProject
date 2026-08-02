@@ -16,6 +16,8 @@ import seedu.unienable.exception.StorageException;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityOrder;
+import seedu.unienable.model.preference.PreferenceProfile;
+import seedu.unienable.storage.preference.PreferenceStorage;
 
 /**
  * Coordinates the individual *Storage classes against a shared data directory, so callers can load
@@ -29,6 +31,7 @@ public class Storage {
     private final Path facilitiesFile;
     private final Path connectionsFile;
     private final Path settingsFile;
+    private final Path preferencesFile;
     private final Path academicCalendarFile;
 
     private final ActivityStorage activityStorage = new ActivityStorage();
@@ -36,12 +39,14 @@ public class Storage {
     private final FacilityStorage facilityStorage = new FacilityStorage();
     private final ConnectionStorage connectionStorage = new ConnectionStorage();
     private final SettingsStorage settingsStorage = new SettingsStorage();
+    private final PreferenceStorage preferenceStorage = new PreferenceStorage();
 
     /**
      * Creates a Storage coordinator rooted at the given data directory.
      *
      * @param dataDirectory directory containing activities.txt, topics.txt, facilities.txt,
-     *     connections.txt, settings.txt, and the externally supplied academic-calendar.txt
+     *     connections.txt, settings.txt, preferences.txt, and the externally supplied
+     *     academic-calendar.txt
      */
     public Storage(Path dataDirectory) {
         this.activitiesFile = dataDirectory.resolve("activities.txt");
@@ -49,6 +54,7 @@ public class Storage {
         this.facilitiesFile = dataDirectory.resolve("facilities.txt");
         this.connectionsFile = dataDirectory.resolve("connections.txt");
         this.settingsFile = dataDirectory.resolve("settings.txt");
+        this.preferencesFile = dataDirectory.resolve("preferences.txt");
         this.academicCalendarFile = dataDirectory.resolve("academic-calendar.txt");
     }
 
@@ -183,9 +189,30 @@ public class Storage {
     }
 
     /**
-     * Saves activities, topics, and the default activity order together, so a multi-file mutation
-     * (e.g. "reset all", which touches all three) cannot leave activities.txt, topics.txt, and
-     * settings.txt disagreeing with each other on disk. Each file is first written to a sibling
+     * Loads the complete preference profile, or documented defaults when its file is missing or
+     * invalid.
+     *
+     * @return the one loaded/default profile plus any all-or-default recovery warnings
+     * @throws StorageException if the file exists but cannot be read
+     */
+    public LoadResult<PreferenceProfile> loadPreferences() throws StorageException {
+        return preferenceStorage.load(preferencesFile);
+    }
+
+    /**
+     * Saves one complete preference profile to preferences.txt.
+     *
+     * @param profile the complete profile to save
+     * @throws StorageException if the file cannot be written
+     */
+    public void savePreferences(PreferenceProfile profile) throws StorageException {
+        preferenceStorage.save(preferencesFile, profile);
+    }
+
+    /**
+     * Saves activities, topics, the default activity order, and preferences together, so a
+     * multi-file mutation (e.g. "reset all") cannot leave their four data files disagreeing with
+     * each other on disk. Each file is first written to a sibling
      * temporary file; only once every write has succeeded does committing begin. Before any file
      * is replaced, every destination that currently exists is backed up. If any commit fails
      * (including partway through - e.g. activities.txt commits successfully but topics.txt
@@ -198,52 +225,69 @@ public class Storage {
      * @param activities the activities to save
      * @param topics the topics to save
      * @param order the default activity order to save
+     * @param preferences the complete global preference profile to save
      * @throws StorageException if a field contains the '|' delimiter, or any file cannot be
      *     written or committed
      */
-    public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
+    public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order,
+            PreferenceProfile preferences)
             throws StorageException {
         Path activitiesTmp = tempSiblingOf(activitiesFile);
         Path topicsTmp = tempSiblingOf(topicsFile);
         Path settingsTmp = tempSiblingOf(settingsFile);
+        Path preferencesTmp = tempSiblingOf(preferencesFile);
         try {
             activityStorage.save(activitiesTmp, activities);
             topicStorage.save(topicsTmp, toTopicRecords(topics));
             settingsStorage.saveDefaultOrder(settingsTmp, order);
+            preferenceStorage.save(preferencesTmp, preferences);
 
             checkWritable(activitiesFile);
             checkWritable(topicsFile);
             checkWritable(settingsFile);
+            checkWritable(preferencesFile);
 
-            commitAllWithRollback(activitiesTmp, topicsTmp, settingsTmp);
+            commitAllWithRollback(activitiesTmp, topicsTmp, settingsTmp, preferencesTmp);
         } finally {
             deleteQuietly(activitiesTmp);
             deleteQuietly(topicsTmp);
             deleteQuietly(settingsTmp);
+            deleteQuietly(preferencesTmp);
         }
     }
 
-    private void commitAllWithRollback(Path activitiesTmp, Path topicsTmp, Path settingsTmp)
+    /** Backward-compatible overload used by existing storage-level callers. */
+    public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
             throws StorageException {
+        saveAll(activities, topics, order, PreferenceProfile.defaults());
+    }
+
+    private void commitAllWithRollback(Path activitiesTmp, Path topicsTmp, Path settingsTmp,
+            Path preferencesTmp) throws StorageException {
         boolean activitiesExisted = Files.exists(activitiesFile);
         boolean topicsExisted = Files.exists(topicsFile);
         boolean settingsExisted = Files.exists(settingsFile);
+        boolean preferencesExisted = Files.exists(preferencesFile);
         Path activitiesBak = backupIfExists(activitiesFile, activitiesExisted);
         Path topicsBak = backupIfExists(topicsFile, topicsExisted);
         Path settingsBak = backupIfExists(settingsFile, settingsExisted);
+        Path preferencesBak = backupIfExists(preferencesFile, preferencesExisted);
         try {
             commit(activitiesTmp, activitiesFile);
             commit(topicsTmp, topicsFile);
             commit(settingsTmp, settingsFile);
+            commit(preferencesTmp, preferencesFile);
         } catch (StorageException e) {
             restore(activitiesFile, activitiesBak, activitiesExisted);
             restore(topicsFile, topicsBak, topicsExisted);
             restore(settingsFile, settingsBak, settingsExisted);
+            restore(preferencesFile, preferencesBak, preferencesExisted);
             throw e;
         } finally {
             deleteQuietly(activitiesBak);
             deleteQuietly(topicsBak);
             deleteQuietly(settingsBak);
+            deleteQuietly(preferencesBak);
         }
     }
 

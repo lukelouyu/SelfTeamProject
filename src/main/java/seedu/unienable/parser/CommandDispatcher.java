@@ -18,6 +18,7 @@ import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
+import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.parser.activity.ActivityCommandParser;
 import seedu.unienable.parser.accessibility.ConnectionCommandParser;
 import seedu.unienable.parser.accessibility.FacilityCommandParser;
@@ -26,6 +27,7 @@ import seedu.unienable.parser.dashboard.DashboardCommandParser;
 import seedu.unienable.parser.common.FieldParser;
 import seedu.unienable.parser.common.Parser;
 import seedu.unienable.parser.recur.RecurCommandParser;
+import seedu.unienable.parser.preference.PreferenceCommandParser;
 import seedu.unienable.parser.timetable.TimetableCommandParser;
 import seedu.unienable.parser.topic.TopicCommandParser;
 import seedu.unienable.storage.Storage;
@@ -36,6 +38,7 @@ public class CommandDispatcher {
     private final TopicManager topicManager;
     private final FacilityManager facilityManager;
     private final ConnectionManager connectionManager;
+    private final PreferenceManager preferenceManager;
     private final Storage storage;
     private final RecurCommandParser recurCommandParser;
 
@@ -46,6 +49,7 @@ public class CommandDispatcher {
     private final RouteCommandParser routeCommandParser = new RouteCommandParser();
     private final DashboardCommandParser dashboardCommandParser = new DashboardCommandParser();
     private final TimetableCommandParser timetableCommandParser = new TimetableCommandParser();
+    private final PreferenceCommandParser preferenceCommandParser = new PreferenceCommandParser();
 
     /**
      * Creates a CommandDispatcher over the given managers.
@@ -54,16 +58,19 @@ public class CommandDispatcher {
      * @param topicManager the manager topic commands act on
      * @param facilityManager the manager facility commands read from
      * @param connectionManager the manager connection commands read from
+     * @param preferenceManager the manager preference commands view and update
      * @param storage the storage coordinator "facility validate"/"connection validate" re-read
      *     the raw data files through, and recur lazily loads the external academic calendar
      *     through (see {@link Storage#getAcademicCalendarFile()})
      */
     public CommandDispatcher(ActivityManager activityManager, TopicManager topicManager,
-            FacilityManager facilityManager, ConnectionManager connectionManager, Storage storage) {
+            FacilityManager facilityManager, ConnectionManager connectionManager,
+            PreferenceManager preferenceManager, Storage storage) {
         this.activityManager = activityManager;
         this.topicManager = topicManager;
         this.facilityManager = facilityManager;
         this.connectionManager = connectionManager;
+        this.preferenceManager = preferenceManager;
         this.storage = storage;
         this.recurCommandParser = new RecurCommandParser(storage.getAcademicCalendarFile());
     }
@@ -125,6 +132,8 @@ public class CommandDispatcher {
             return dashboardCommandParser.parse(activityManager, now, args);
         case "timetable":
             return timetableCommandParser.parse(activityManager, now, args);
+        case "preference":
+            return preferenceCommandParser.parse(preferenceManager, args);
         case "guide":
             return new GuideCommand(args.isEmpty() ? null : args);
         case "reset":
@@ -159,7 +168,7 @@ public class CommandDispatcher {
         if (!"all".equalsIgnoreCase(trimmed)) {
             throw new InvalidCommandException("reset only accepts \"all\".");
         }
-        return new ResetCommand(activityManager, topicManager);
+        return new ResetCommand(activityManager, topicManager, preferenceManager);
     }
 
     private Command dispatchTopic(String args)

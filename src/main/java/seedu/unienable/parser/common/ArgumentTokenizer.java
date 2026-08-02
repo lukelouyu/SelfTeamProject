@@ -78,6 +78,9 @@ public final class ArgumentTokenizer {
                 next = scanForward(args, valueStart, prefixes);
                 value = args.substring(valueStart, next.index).trim();
             }
+            if (values.containsKey(current.prefix)) {
+                throw new InvalidCommandException("Duplicate option \"" + current.prefix + "\".");
+            }
             values.put(current.prefix, value);
             current = next;
         }

@@ -9,6 +9,7 @@ import seedu.unienable.command.MenuConfirmable;
 import seedu.unienable.command.MenuOutcome;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
+import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.logic.recur.ClassSchedulePolicy;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.enums.ActivityOrder;
@@ -30,6 +31,7 @@ public class ResetCommand extends Command implements MenuConfirmable {
 
     private final ActivityManager activityManager;
     private final TopicManager topicManager;
+    private final PreferenceManager preferenceManager;
     private final ClassSchedulePolicy classSchedulePolicy = new ClassSchedulePolicy();
     private Selection selection = Selection.DELETE_ALL;
 
@@ -39,10 +41,13 @@ public class ResetCommand extends Command implements MenuConfirmable {
      * @param activityManager the manager whose activities, next-ID counter, and default order
      *     will be reset
      * @param topicManager the manager whose topics will be reset
+     * @param preferenceManager the manager whose profile option 1 will reset
      */
-    public ResetCommand(ActivityManager activityManager, TopicManager topicManager) {
+    public ResetCommand(ActivityManager activityManager, TopicManager topicManager,
+            PreferenceManager preferenceManager) {
         this.activityManager = activityManager;
         this.topicManager = topicManager;
+        this.preferenceManager = preferenceManager;
     }
 
     /** Returns the number of activities currently stored, for the menu preview. */
@@ -73,8 +78,9 @@ public class ResetCommand extends Command implements MenuConfirmable {
 
     /**
      * Returns whether there is anything for this reset to actually change: any stored activity,
-     * any stored topic, a saved default order other than chronological, or a next-activity-ID
-     * counter already past 1. Used to skip the menu entirely when nothing needs resetting.
+     * any stored topic, a saved default order other than chronological, a next-activity-ID
+     * counter already past 1, or a custom preference profile. Used to skip the menu entirely
+     * when nothing needs resetting.
      *
      * @return true if executing this command could change any state
      */
@@ -82,7 +88,8 @@ public class ResetCommand extends Command implements MenuConfirmable {
         return getActivityCount() > 0
                 || getTopicCount() > 0
                 || activityManager.getDefaultOrder() != ActivityOrder.CHRONOLOGICAL
-                || activityManager.getNextId() != 1;
+                || activityManager.getNextId() != 1
+                || !preferenceManager.isDefault();
     }
 
     @Override
@@ -94,11 +101,13 @@ public class ResetCommand extends Command implements MenuConfirmable {
                 + "Activities      : " + getActivityCount() + "\n"
                 + "Class schedules : " + getClassScheduleCount() + "\n"
                 + "Other activities: " + getOtherActivityCount() + "\n"
-                + "Topics          : " + getTopicCount() + "\n\n"
+                + "Topics          : " + getTopicCount() + "\n"
+                + "Preferences     : " + (preferenceManager.isDefault() ? "Default" : "Custom") + "\n\n"
                 + "[1] Delete all user data\n"
                 + "[2] Delete other activities but keep class schedules\n"
                 + "[3] Do not delete anything\n\n"
                 + "Facility, connection, and academic-calendar reference data will be kept.\n"
+                + "Option 1 resets preferences; options 2 and 3 retain them.\n"
                 + "Enter 1, 2, or 3:";
     }
 
@@ -125,6 +134,7 @@ public class ResetCommand extends Command implements MenuConfirmable {
         }
         activityManager.resetAll();
         topicManager.resetAll();
+        preferenceManager.reset();
         return new CommandResult("All user data has been reset.\nYour next activity will use ID [1].");
     }
 

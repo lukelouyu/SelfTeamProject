@@ -20,6 +20,8 @@ import seedu.unienable.command.activity.general.MarkCommand;
 import seedu.unienable.command.activity.general.OrderSetCommand;
 import seedu.unienable.command.activity.general.UnmarkCommand;
 import seedu.unienable.command.general.ResetCommand;
+import seedu.unienable.command.preference.PreferenceResetCommand;
+import seedu.unienable.command.preference.PreferenceSetCommand;
 import seedu.unienable.command.recur.RecurCommand;
 import seedu.unienable.command.topic.TopicAddCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;
@@ -30,11 +32,13 @@ import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
+import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityOrder;
+import seedu.unienable.model.preference.PreferenceProfile;
 import seedu.unienable.parser.CommandDispatcher;
 import seedu.unienable.storage.LoadResult;
 import seedu.unienable.storage.Storage;
@@ -63,6 +67,7 @@ public class ApplicationRunner {
     private TopicManager topicManager;
     private FacilityManager facilityManager;
     private ConnectionManager connectionManager;
+    private PreferenceManager preferenceManager;
     private CommandDispatcher dispatcher;
     private CommandConfirmationHandler confirmationHandler;
     private boolean hasUnsavedChanges;
@@ -118,14 +123,15 @@ public class ApplicationRunner {
         storage = suppliedStorage == null ? new Storage(dataDirectory) : suppliedStorage;
         activityManager = new ActivityManager();
         topicManager = new TopicManager(activityManager);
+        preferenceManager = new PreferenceManager();
         confirmationHandler = new CommandConfirmationHandler(ui, scanner);
 
         if (!initialise()) {
             return;
         }
 
-        dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager, connectionManager,
-                storage);
+        dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager,
+                connectionManager, preferenceManager, storage);
         runCommandLoop();
     }
 
@@ -144,18 +150,21 @@ public class ApplicationRunner {
             LoadResult<Facility> facilityLoad = storage.loadFacilities();
             LoadResult<Connection> connectionLoad = storage.loadConnections(facilityLoad.getRecords());
             LoadResult<ActivityOrder> settingsLoad = storage.loadSettings();
+            LoadResult<PreferenceProfile> preferencesLoad = storage.loadPreferences();
 
             activityManager.loadAll(activityLoad.getRecords());
             topicManager.loadAll(topicLoad.getRecords());
             facilityManager = new FacilityManager(facilityLoad.getRecords());
             connectionManager = new ConnectionManager(connectionLoad.getRecords());
             activityManager.setDefaultOrder(settingsLoad.getRecords().get(0));
+            preferenceManager.setProfile(preferencesLoad.getRecords().get(0));
 
             showAndLogLoadWarnings("activities.txt", activityLoad.getWarnings());
             showAndLogLoadWarnings("topics.txt", topicLoad.getWarnings());
             showAndLogLoadWarnings("facilities.txt", facilityLoad.getWarnings());
             showAndLogLoadWarnings("connections.txt", connectionLoad.getWarnings());
             showAndLogLoadWarnings("settings.txt", settingsLoad.getWarnings());
+            showAndLogLoadWarnings("preferences.txt", preferencesLoad.getWarnings());
             return true;
         } catch (UniEnableException e) {
             LOGGER.log(Level.WARNING, "Storage load failure during startup", e);
@@ -275,7 +284,7 @@ public class ApplicationRunner {
     }
 
     /**
-     * Returns whether executing the given command may change activity, topic, or settings state
+     * Returns whether executing the given command may change activity, topic, settings, or preference state
      * that needs persisting - and, for a command whose effect depends on current state rather
      * than its type alone, whether it would actually change anything this time. Read-only
      * commands (list, find, view, next, guide, facility/connection lookups, order view, bye) are
@@ -303,6 +312,10 @@ public class ApplicationRunner {
                 || command instanceof TopicAddCommand
                 || command instanceof TopicRenameCommand
                 || command instanceof TopicDeleteCommand
+                || (command instanceof PreferenceSetCommand
+                        && ((PreferenceSetCommand) command).hasChanges())
+                || (command instanceof PreferenceResetCommand
+                        && ((PreferenceResetCommand) command).hasChanges())
                 || command instanceof RecurCommand;
     }
 
@@ -325,10 +338,12 @@ public class ApplicationRunner {
         private final List<Topic> topics = copyTopics(topicManager.getAll());
         private final int nextId = activityManager.getNextId();
         private final ActivityOrder order = activityManager.getDefaultOrder();
+        private final PreferenceProfile preferences = preferenceManager.getProfile();
 
         private void restore() {
             activityManager.restoreState(activities, nextId, order);
             topicManager.loadAll(topics);
+            preferenceManager.setProfile(preferences);
         }
     }
 
@@ -385,15 +400,16 @@ public class ApplicationRunner {
     }
 
     /**
-     * Attempts to persist activities, topics, and the saved default activity order, updating the
-     * unsaved-changes flag to match the outcome. On failure, shows the storage error itself so
-     * callers only need to react to whether the save succeeded.
+     * Attempts to persist activities, topics, the saved default activity order, and preferences,
+     * updating the unsaved-changes flag to match the outcome. On failure, shows the storage error
+     * itself so callers only need to react to whether the save succeeded.
      *
      * @return true if the save succeeded; false if it failed (the error has already been shown)
      */
     private boolean trySave() {
         try {
-            storage.saveAll(activityManager.getAll(), topicManager.getAll(), activityManager.getDefaultOrder());
+            storage.saveAll(activityManager.getAll(), topicManager.getAll(),
+                    activityManager.getDefaultOrder(), preferenceManager.getProfile());
             hasUnsavedChanges = false;
             return true;
         } catch (StorageException e) {

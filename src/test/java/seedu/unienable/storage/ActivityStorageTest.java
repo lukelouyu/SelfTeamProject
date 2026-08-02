@@ -115,6 +115,23 @@ class ActivityStorageTest {
     }
 
     @Test
+    public void saveThenLoad_roundTripsFlexibleAdoptedPlacement() throws Exception {
+        Path file = tempDir.resolve("activities.txt");
+        FlexibleActivity flexible = new FlexibleActivity(13, "Finish assignment 1", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(18, 0), 90,
+                EnergyRating.of(5), SensoryRating.of(2), "CG3207", null, LocalTime.of(13, 30));
+
+        new ActivityStorage().save(file, List.of(flexible));
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getWarnings().size());
+        FlexibleActivity loaded = (FlexibleActivity) result.getRecords().get(0);
+        assertTrue(loaded.hasAdoptedPlacement());
+        assertEquals(LocalTime.of(13, 30), loaded.getAdoptedStartTime());
+        assertEquals(LocalTime.of(15, 0), loaded.getAdoptedEndTime());
+    }
+
+    @Test
     public void save_fieldContainingDelimiter_throwsStorageException() throws Exception {
         FixedActivity fixed = new FixedActivity(12, "Bad | description", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),

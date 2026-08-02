@@ -1,0 +1,25 @@
+topic add c/ACADEMIC n/PL2131
+topic add c/ACADEMIC n/GEC1044
+topic add c/ACADEMIC n/IE2141
+topic add c/ACADEMIC n/CG2027
+topic add c/ACADEMIC n/CG2028
+topic add c/ACADEMIC n/CDE2001
+topic add c/ACADEMIC n/CS2113
+add n/PL2131 Lecture c/ACADEMIC date/2026-08-17 type/FIXED from/08:00 to/10:00 energy/3 sensory/2 topic/PL2131 note/LT11
+add n/GEC1044 Tutorial c/ACADEMIC date/2026-08-17 type/FIXED from/14:00 to/16:00 energy/2 sensory/2 topic/GEC1044 note/UTSRC-SR1
+add n/IE2141 Lecture c/ACADEMIC date/2026-08-17 type/FIXED from/16:00 to/18:00 energy/3 sensory/3 topic/IE2141 note/LT6
+add n/IE2141 Tutorial c/ACADEMIC date/2026-08-18 type/FIXED from/12:00 to/14:00 energy/3 sensory/3 topic/IE2141 note/E1A-05-19
+add n/CG2027 Lecture c/ACADEMIC date/2026-08-18 type/FIXED from/14:00 to/17:00 energy/4 sensory/3 topic/CG2027 note/SDE3-LT424
+add n/CG2028 Lecture (E-Learning) c/ACADEMIC date/2026-08-18 type/FIXED from/14:00 to/15:00 energy/5 sensory/4 topic/CG2028 note/E-Learning
+add n/CG2028 Lecture c/ACADEMIC date/2026-08-18 type/FIXED from/15:00 to/17:00 energy/5 sensory/4 topic/CG2028 note/SDE3-LT424
+add n/CDE2001 Lecture c/ACADEMIC date/2026-08-19 type/FIXED from/09:00 to/11:00 energy/3 sensory/3 topic/CDE2001 note/LT4
+add n/CDE2001 Tutorial c/ACADEMIC date/2026-08-19 type/FIXED from/11:00 to/12:00 energy/3 sensory/3 topic/CDE2001 note/E3-06-05
+add n/GEC1044 Lecture c/ACADEMIC date/2026-08-19 type/FIXED from/12:00 to/14:00 energy/2 sensory/2 topic/GEC1044 note/E-Learning
+add n/CS2113 Tutorial c/ACADEMIC date/2026-08-19 type/FIXED from/14:00 to/15:00 energy/5 sensory/4 topic/CS2113 note/COM1-0210
+add n/PL2131 Tutorial c/ACADEMIC date/2026-08-20 type/FIXED from/10:00 to/12:00 energy/3 sensory/2 topic/PL2131 note/AS7-0201
+add n/CG2027 Tutorial c/ACADEMIC date/2026-08-20 type/FIXED from/13:00 to/14:00 energy/4 sensory/3 topic/CG2027 note/E5-03-21
+add n/CG2028 Tutorial c/ACADEMIC date/2026-08-20 type/FIXED from/13:00 to/14:00 energy/5 sensory/4 topic/CG2028 note/E5-03-21
+add n/CG2028 Lab c/ACADEMIC date/2026-08-20 type/FIXED from/14:00 to/17:00 energy/5 sensory/4 topic/CG2028 note/E4-03-06
+add n/CS2113 Lecture c/ACADEMIC date/2026-08-21 type/FIXED from/16:00 to/18:00 energy/5 sensory/4 topic/CS2113 note/LT12
+list this week
+bye

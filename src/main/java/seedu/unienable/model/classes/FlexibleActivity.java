@@ -16,6 +16,7 @@ public class FlexibleActivity extends Activity {
     private LocalTime earliestStart;
     private LocalTime latestEnd;
     private int durationMinutes;
+    private LocalTime adoptedStartTime;
 
     /**
      * Creates a FlexibleActivity.
@@ -35,6 +36,20 @@ public class FlexibleActivity extends Activity {
     public FlexibleActivity(int id, String description, ActivityCategory category, LocalDate date,
             LocalTime earliestStart, LocalTime latestEnd, int durationMinutes,
             EnergyRating energyRating, SensoryRating sensoryRating, String topic, String note) {
+        this(id, description, category, date, earliestStart, latestEnd, durationMinutes,
+                energyRating, sensoryRating, topic, note, null);
+    }
+
+    /**
+     * Creates a FlexibleActivity with an optional adopted placement.
+     *
+     * @param adoptedStartTime adopted scheduled start time, or null if the activity is still
+     *     unscheduled
+     */
+    public FlexibleActivity(int id, String description, ActivityCategory category, LocalDate date,
+            LocalTime earliestStart, LocalTime latestEnd, int durationMinutes,
+            EnergyRating energyRating, SensoryRating sensoryRating, String topic, String note,
+            LocalTime adoptedStartTime) {
         super(id, description, category, date, energyRating, sensoryRating, topic, note);
         assert latestEnd.isAfter(earliestStart)
                 : "FlexibleActivity constructed with latest end not after earliest start - every "
@@ -45,6 +60,8 @@ public class FlexibleActivity extends Activity {
         this.earliestStart = earliestStart;
         this.latestEnd = latestEnd;
         this.durationMinutes = durationMinutes;
+        requireValidAdoptedPlacement(earliestStart, latestEnd, durationMinutes, adoptedStartTime);
+        this.adoptedStartTime = adoptedStartTime;
     }
 
     /** Returns the earliest allowed start time. */
@@ -78,6 +95,45 @@ public class FlexibleActivity extends Activity {
     public void setDurationMinutes(int durationMinutes) {
         logger.log(Level.INFO, "Updated duration for activity [" + getId() + "].");
         this.durationMinutes = durationMinutes;
+    }
+
+    /** Returns whether this activity has an adopted scheduled placement. */
+    public boolean hasAdoptedPlacement() {
+        return adoptedStartTime != null;
+    }
+
+    /** Returns the adopted scheduled start time, or null if still unscheduled. */
+    public LocalTime getAdoptedStartTime() {
+        return adoptedStartTime;
+    }
+
+    /** Returns the adopted scheduled end time, or null if still unscheduled. */
+    public LocalTime getAdoptedEndTime() {
+        return adoptedStartTime == null ? null : adoptedStartTime.plusMinutes(durationMinutes);
+    }
+
+    /** Sets the adopted placement after validating it still fits the flexible window. */
+    public void setAdoptedStartTime(LocalTime adoptedStartTime) {
+        requireValidAdoptedPlacement(earliestStart, latestEnd, durationMinutes, adoptedStartTime);
+        logger.log(Level.INFO, "Updated adopted schedule for activity [" + getId() + "].");
+        this.adoptedStartTime = adoptedStartTime;
+    }
+
+    /** Clears any adopted placement and returns this activity to an unscheduled flexible state. */
+    public void clearAdoptedPlacement() {
+        logger.log(Level.INFO, "Cleared adopted schedule for activity [" + getId() + "].");
+        this.adoptedStartTime = null;
+    }
+
+    private static void requireValidAdoptedPlacement(LocalTime earliestStart, LocalTime latestEnd,
+            int durationMinutes, LocalTime adoptedStartTime) {
+        if (adoptedStartTime == null) {
+            return;
+        }
+        LocalTime adoptedEndTime = adoptedStartTime.plusMinutes(durationMinutes);
+        if (adoptedStartTime.isBefore(earliestStart) || adoptedEndTime.isAfter(latestEnd)) {
+            throw new IllegalArgumentException("adopted placement must fit inside the flexible window");
+        }
     }
 
     @Override

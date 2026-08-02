@@ -34,7 +34,7 @@ import seedu.unienable.model.enums.CompletionStatus;
  * <p>Format:
  * {@code FIXED|id|description|category|date|startTime|endTime|energy|sensory|completion|topic|notes}
  * {@code FLEXIBLE|id|description|category|date|earliestStart|latestEnd|durationMinutes|energy|
- * sensory|completion|topic|notes}
+ * sensory|completion|topic|notes|adoptedStartTime}
  * topic and notes are optional trailing fields. Fields must not contain the '|' delimiter; this is
  * not escaped in v1.0, so save() rejects any field that contains one.
  *
@@ -246,7 +246,7 @@ public class ActivityStorage {
     }
 
     private Activity parseFlexible(String[] fields) throws InvalidActivityException, InvalidDateTimeException {
-        if (fields.length < 11 || fields.length > 13) {
+        if (fields.length < 11 || fields.length > 14) {
             throw new IllegalArgumentException("FLEXIBLE line has the wrong number of fields");
         }
         int id = parsePositiveWholeNumber(fields[1], "id");
@@ -269,9 +269,10 @@ public class ActivityStorage {
         CompletionStatus status = parseCompletionStatus(fields[10]);
         String topic = optionalField(fields, 11);
         String notes = optionalField(fields, 12);
+        LocalTime adoptedStart = optionalTimeField(fields, 13);
 
         FlexibleActivity activity = new FlexibleActivity(id, description, category, date, earliestStart,
-                latestEnd, durationMinutes, energy, sensory, topic, notes);
+                latestEnd, durationMinutes, energy, sensory, topic, notes, adoptedStart);
         applyStatus(activity, status);
         return activity;
     }
@@ -398,6 +399,10 @@ public class ActivityStorage {
         return fields.length > index && !fields[index].isEmpty() ? fields[index] : null;
     }
 
+    private LocalTime optionalTimeField(String[] fields, int index) throws InvalidDateTimeException {
+        return fields.length > index && !fields[index].isEmpty() ? parseTime(fields[index]) : null;
+    }
+
     private String toLine(Activity activity) throws StorageException {
         if (activity instanceof FixedActivity) {
             FixedActivity fixed = (FixedActivity) activity;
@@ -415,7 +420,8 @@ public class ActivityStorage {
                     String.valueOf(flexible.getDurationMinutes()),
                     String.valueOf(flexible.getEnergyRating().getValue()),
                     String.valueOf(flexible.getSensoryRating().getValue()), flexible.getStatus().name(),
-                    emptyIfNull(flexible.getTopic()), emptyIfNull(flexible.getNote()));
+                    emptyIfNull(flexible.getTopic()), emptyIfNull(flexible.getNote()),
+                    emptyIfNull(flexible.getAdoptedStartTime()));
         }
         throw new StorageException("unknown activity type: " + activity.getClass());
     }
@@ -431,6 +437,10 @@ public class ActivityStorage {
 
     private String emptyIfNull(String value) {
         return value == null ? "" : value;
+    }
+
+    private String emptyIfNull(LocalTime value) {
+        return value == null ? "" : value.toString();
     }
 
     private List<String> readLines(Path filePath) throws StorageException {

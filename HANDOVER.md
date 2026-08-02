@@ -27,7 +27,8 @@ Treat it as the authoritative v2.0 specification, exactly as Claude did.
   parser/commands, all-or-default storage, four-file transaction, reset integration, tests,
   Text-UI coverage, guides, and diagrams are complete. It must remain unmerged and unpushed until
   the user separately reviews and approves that action.
-- No v2.0 git tag or GitHub Release exists yet. `feature/v2-recommend` has not been started.
+- No v2.0 git tag or GitHub Release exists yet. `feature/v2-recommend` has now been created
+  locally from `main` and is in progress, but remains unmerged and unpushed pending user review.
 - A stale local branch `v2-dashboard` (no `feature/` prefix, tip `9829911`) also exists with
   content unrelated to the current `feature/v2-dashboard` work — confirmed in earlier sessions to
   have zero unique commits worth keeping relative to `main`. Left untouched, not deleted, per
@@ -37,7 +38,7 @@ Treat it as the authoritative v2.0 specification, exactly as Claude did.
 **0.3 — What to actually do, in order:**
 1. Review the `feature/v2-preferences` completion report and current diff. Merge and push only if the
    user explicitly approves both actions.
-2. After Preferences: `feature/v2-recommend`, then `feature/v2-export`, then the final v2.0
+2. After Preferences: finish `feature/v2-recommend`, then the final v2.0
    integration/documentation/regression pass — same
    process every time: audit → proposed plan → explicit approval → task-spec folder → implement →
    full quality gate (Section 4) → completion report → **stop and wait**. Never chain straight into
@@ -111,8 +112,9 @@ silently loads all defaults; every malformed/incomplete/duplicate/unknown/invali
 profile produces startup warnings and falls back to the complete defaults with no partial-field
 retention. Preferences are the fourth member of `Storage.saveAll` and the application snapshot,
 so cancelled/failed commands never leave partial memory or disk state. `reset all` option 1 resets
-the profile, option 2 retains it, and option 3 cancels. Tomato remains stored advisory data only;
-the recommender-side display belongs to `feature/v2-recommend`, which has not started.
+the profile, option 2 retains it, and option 3 cancels. Tomato remains advisory-only data; on
+`feature/v2-recommend` it now feeds display-only study suggestions rather than changing slot
+generation.
 
 Core commits, oldest first: `a0c6ab2` (task specification), `8cb1d2e` (production and
 integration), `252e2af` (JUnit and Text-UI coverage), `688370c` (guides and PlantUML/PNG
@@ -820,12 +822,14 @@ the historical part of Section 1 below for the release-packaging fix applied to 
 
 **v2.0 status, per the approved master prompt
 (`UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md`, supplied 2026-08-02, now the authoritative
-v2.0 spec):** the required branch sequence is route -> dashboard -> timetable -> preferences ->
-recommend -> export -> final integration pass. Recurrence and technical-debt hardening already
-shipped before this sequence started (Section 2). **Route and Dashboard are merged into `main`.
-Timetable is complete on `feature/v2-timetable` and awaiting review/merge approval.** Preferences,
-recommend, and export remain untouched backlog - approved in principle by the master prompt, but
-each still needs its own audit-confirm-implement pass in its own turn. Each feature so far has
+v2.0 spec):** the original branch sequence was route -> dashboard -> timetable -> preferences ->
+recommend -> export -> final integration pass. Export has since been removed from the approved
+scope, so recommend now flows directly into the final v2.0 integration pass. Recurrence and
+technical-debt hardening already shipped before this sequence started (Section 2). **Route and
+Dashboard are merged into `main`. Timetable is complete on `feature/v2-timetable` and awaiting
+review/merge approval.** Preferences are complete on `feature/v2-preferences`, and
+`feature/v2-recommend` is now actively in progress. Each remaining feature still needs its own
+audit-confirm-implement pass in its own turn. Each feature so far has
 also come with its own
 feature-specific master prompt (not just the shared v2.0 one) - check
 `docs/tasks/v2/<feature>/README.md` for what was actually supplied and approved for that feature

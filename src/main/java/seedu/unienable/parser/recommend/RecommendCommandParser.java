@@ -1,0 +1,56 @@
+package seedu.unienable.parser.recommend;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import seedu.unienable.command.Command;
+import seedu.unienable.command.recommend.RecommendAdoptCommand;
+import seedu.unienable.command.recommend.RecommendCancelCommand;
+import seedu.unienable.command.recommend.RecommendGenerateCommand;
+import seedu.unienable.command.recommend.RecommendViewCommand;
+import seedu.unienable.exception.InvalidCommandException;
+import seedu.unienable.exception.InvalidDateTimeException;
+import seedu.unienable.exception.MissingInputException;
+import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.preference.PreferenceManager;
+import seedu.unienable.logic.recommend.RecommendationManager;
+import seedu.unienable.model.recommend.RecommendationProposal;
+import seedu.unienable.parser.common.DateTimeParser;
+
+/** Parses the recommend command family. */
+public class RecommendCommandParser {
+    /** Parses recommend generation, view, adopt, and cancel commands. */
+    public Command parse(ActivityManager activityManager, PreferenceManager preferenceManager,
+            RecommendationManager recommendationManager, LocalDateTime now, String args)
+            throws MissingInputException, InvalidCommandException, InvalidDateTimeException {
+        String trimmed = args.trim();
+        if (trimmed.isEmpty()) {
+            return new RecommendGenerateCommand(activityManager, preferenceManager, recommendationManager, now, null);
+        }
+        if ("this week".equalsIgnoreCase(trimmed)) {
+            return new RecommendGenerateCommand(activityManager, preferenceManager, recommendationManager, now, null);
+        }
+        if ("view".equalsIgnoreCase(trimmed)) {
+            return new RecommendViewCommand(activityManager, recommendationManager);
+        }
+        if ("cancel".equalsIgnoreCase(trimmed)) {
+            return new RecommendCancelCommand(recommendationManager);
+        }
+        if ("adopt".equalsIgnoreCase(trimmed)) {
+            RecommendationProposal proposal = recommendationManager.getProposal()
+                    .orElseThrow(() -> new InvalidCommandException(
+                            "No recommendation proposal is currently active. Generate one with recommend."));
+            return new RecommendAdoptCommand(activityManager, proposal);
+        }
+        if (trimmed.toLowerCase().startsWith("date/")) {
+            String dateText = trimmed.substring("date/".length()).trim();
+            if (dateText.contains(" ")) {
+                throw new InvalidCommandException("\"recommend date/YYYY-MM-DD\" does not take extra arguments.");
+            }
+            LocalDate date = DateTimeParser.parseNotBeforeDate(dateText, now.toLocalDate());
+            return new RecommendGenerateCommand(activityManager, preferenceManager, recommendationManager, now, date);
+        }
+        throw new InvalidCommandException("Unknown recommend command \"" + trimmed
+                + "\". Enter guide recommend for help.");
+    }
+}

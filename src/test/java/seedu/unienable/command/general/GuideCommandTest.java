@@ -22,13 +22,12 @@ class GuideCommandTest {
                 + "6. Recommended timetable\n"
                 + "7. Accessible facilities\n"
                 + "8. Accessible connections\n"
-                + "9. CSV export\n"
-                + "10. Data files and storage\n"
-                + "11. Accessible routes\n"
-                + "12. Text timetable\n"
-                + "13. Return\n"
+                + "9. Data files and storage\n"
+                + "10. Accessible routes\n"
+                + "11. Text timetable\n"
+                + "12. Return\n"
                 + "\n"
-                + "Enter a number from 1 to 13.", result.getFeedback());
+                + "Enter a number from 1 to 12.", result.getFeedback());
     }
 
     @Test
@@ -162,11 +161,19 @@ class GuideCommandTest {
     }
 
     @Test
-    public void execute_unimplementedV2Topic_appendsComingSoonNote() {
+    public void execute_recommendTopic_documentsLiveGrammarAndScope() {
         CommandResult result = new GuideCommand("recommend").execute();
+        String feedback = result.getFeedback();
 
-        assertTrue(result.getFeedback().endsWith("(Coming soon in a future release.)"));
-        assertTrue(result.getFeedback().contains("guide preference"));
+        assertTrue(feedback.startsWith("Recommended timetable"));
+        assertTrue(!feedback.contains("Coming soon"));
+        assertTrue(feedback.contains("recommend this week"));
+        assertTrue(feedback.contains("recommend date/YYYY-MM-DD"));
+        assertTrue(feedback.contains("recommend view"));
+        assertTrue(feedback.contains("recommend adopt"));
+        assertTrue(feedback.contains("recommend cancel"));
+        assertTrue(feedback.contains("Minimum buffer is enforced"));
+        assertTrue(feedback.contains("Tomato"));
     }
 
     @Test
@@ -181,7 +188,7 @@ class GuideCommandTest {
         assertTrue(feedback.contains("preference reset"));
         assertTrue(feedback.contains("start 08:00, end 20:00, buffer 15 minutes, tomato off"));
         assertTrue(feedback.contains("advisory"));
-        assertTrue(feedback.contains("does not yet recommend or reschedule"));
+        assertTrue(feedback.contains("planning inputs for recommend"));
     }
 
     @Test
@@ -286,9 +293,9 @@ class GuideCommandTest {
 
     @Test
     public void execute_storageTopic_doesNotClaimCsvHistoryExists() {
-        // Regression test: the "storage" topic previously said "CSV history is under exports/"
-        // as present fact, even though CSV export is v2.0 scope with no working command yet -
-        // directly contradicted by the "export" topic's own "(Coming soon...)" note.
+        // Regression test: the "storage" topic previously claimed other generated history paths
+        // as present fact; storage guidance must stay aligned with the files UniEnable actually
+        // owns today.
         CommandResult result = new GuideCommand("storage").execute();
 
         assertTrue(!result.getFeedback().contains("exports/"));
@@ -530,7 +537,7 @@ class GuideCommandTest {
 
     @Test
     public void execute_everyNumberedMenuMapping_resolvesToItsAdvertisedTopic() {
-        // Every numbered menu item from 1-12 must resolve to a real, distinct topic (never
+        // Every numbered menu item from 1-11 must resolve to a real, distinct topic (never
         // falling back to the "No guide topic named" error), and the topic text it shows must
         // start with the same subject the main menu line advertises for that number.
         assertTrue(new GuideCommand("1").execute().getFeedback().startsWith("Getting started"));
@@ -541,51 +548,51 @@ class GuideCommandTest {
         assertTrue(new GuideCommand("6").execute().getFeedback().startsWith("Recommended timetable"));
         assertTrue(new GuideCommand("7").execute().getFeedback().startsWith("Accessible facilities"));
         assertTrue(new GuideCommand("8").execute().getFeedback().startsWith("Accessible connections"));
-        assertTrue(new GuideCommand("9").execute().getFeedback().startsWith("CSV exports"));
-        assertTrue(new GuideCommand("10").execute().getFeedback().startsWith("Data files and storage"));
-        assertTrue(new GuideCommand("11").execute().getFeedback().startsWith("Accessible routes"));
-        assertTrue(new GuideCommand("12").execute().getFeedback().startsWith("Text timetable"));
+        assertTrue(new GuideCommand("9").execute().getFeedback().startsWith("Data files and storage"));
+        assertTrue(new GuideCommand("10").execute().getFeedback().startsWith("Accessible routes"));
+        assertTrue(new GuideCommand("11").execute().getFeedback().startsWith("Text timetable"));
     }
 
     @Test
-    public void execute_menuNumberEleven_resolvesToRoute() {
-        CommandResult result = new GuideCommand("11").execute();
+    public void execute_menuNumberTen_resolvesToRoute() {
+        CommandResult result = new GuideCommand("10").execute();
 
         assertTrue(result.getFeedback().startsWith("Accessible routes"));
     }
 
     @Test
-    public void execute_menuNumberElevenAgreesWithItsOwnKeyword() {
-        assertEquals(new GuideCommand("11").execute().getFeedback(),
+    public void execute_menuNumberTenAgreesWithItsOwnKeyword() {
+        assertEquals(new GuideCommand("10").execute().getFeedback(),
                 new GuideCommand("route").execute().getFeedback());
     }
 
     @Test
-    public void execute_menuNumberNine_resolvesToExport() {
+    public void execute_menuNumberNine_resolvesToStorage() {
         CommandResult result = new GuideCommand("9").execute();
 
-        assertTrue(result.getFeedback().startsWith("CSV exports"));
+        assertTrue(result.getFeedback().startsWith("Data files and storage"));
     }
 
     @Test
-    public void execute_menuNumberTen_resolvesToStorage() {
-        CommandResult result = new GuideCommand("10").execute();
+    public void execute_menuNumberEleven_resolvesToTimetable() {
+        CommandResult result = new GuideCommand("11").execute();
 
-        assertTrue(result.getFeedback().startsWith("Data files and storage"));
+        assertTrue(result.getFeedback().startsWith("Text timetable"));
     }
 
     @Test
     public void execute_menuNumberTwelve_resolvesToTimetable() {
         CommandResult result = new GuideCommand("12").execute();
 
-        assertTrue(result.getFeedback().startsWith("Text timetable"));
+        assertEquals("Returning to the command prompt.", result.getFeedback());
     }
 
     @Test
     public void execute_menuNumberThirteen_returnsWithoutShowingATopic() {
         CommandResult result = new GuideCommand("13").execute();
 
-        assertEquals("Returning to the command prompt.", result.getFeedback());
+        assertEquals("No guide topic named \"13\". Enter guide to see the list of topics.",
+                result.getFeedback());
     }
 
     @Test
@@ -600,9 +607,9 @@ class GuideCommandTest {
 
     @Test
     public void execute_menuNumberOutOfRangeAbove_showsFallbackMessage() {
-        CommandResult result = new GuideCommand("14").execute();
+        CommandResult result = new GuideCommand("13").execute();
 
-        assertEquals("No guide topic named \"14\". Enter guide to see the list of topics.",
+        assertEquals("No guide topic named \"13\". Enter guide to see the list of topics.",
                 result.getFeedback());
     }
 }

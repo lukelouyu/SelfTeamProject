@@ -20,6 +20,7 @@ import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.timetable.TimetableEntry;
+import seedu.unienable.model.timetable.TimetableEntryType;
 import seedu.unienable.model.timetable.TimetablePeriod;
 import seedu.unienable.model.timetable.TimetableView;
 
@@ -172,6 +173,20 @@ class TimetableServiceTest {
         assertTrue(view.getFixedEntries().isEmpty());
         assertEquals(List.of(1, 2, 3), view.getUnscheduledFlexibleEntries().stream()
                 .map(TimetableEntry::getId).toList());
+    }
+
+    @Test
+    public void build_adoptedFlexibleAppearsAsScheduledRecommendedEntry() throws Exception {
+        FlexibleActivity flexible = flexible(1, MONDAY, 9, 12);
+        flexible.setAdoptedStartTime(LocalTime.of(10, 0));
+
+        TimetableView view = TimetableService.build(List.of(flexible), TimetableService.resolveDay(MONDAY));
+
+        assertEquals(1, view.getFixedEntries().size());
+        assertTrue(view.getUnscheduledFlexibleEntries().isEmpty());
+        assertEquals(TimetableEntryType.ADOPTED_FLEXIBLE, view.getFixedEntries().get(0).getType());
+        assertEquals(LocalTime.of(10, 0), view.getFixedEntries().get(0).getStartTime());
+        assertEquals(LocalTime.of(11, 0), view.getFixedEntries().get(0).getEndTime());
     }
 
     @Test

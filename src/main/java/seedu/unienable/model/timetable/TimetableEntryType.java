@@ -4,6 +4,8 @@ package seedu.unienable.model.timetable;
 public enum TimetableEntryType {
     /** Activity with confirmed start and end times. */
     FIXED,
+    /** Flexible activity with an adopted scheduled placement. */
+    ADOPTED_FLEXIBLE,
     /** Flexible activity shown without an invented placement. */
     UNSCHEDULED_FLEXIBLE
 }

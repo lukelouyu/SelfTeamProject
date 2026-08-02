@@ -12,7 +12,6 @@ guide timetable
 guide preference
 guide recommend
 guide route
-guide export
 guide reset
 guide recur
 guide bogus-topic-xyz
@@ -26,9 +25,9 @@ guide 7
 guide 8
 guide 10
 guide 11
-guide 0
 guide 12
 guide 13
+guide 0
 guide 14
 guide
 1
@@ -42,9 +41,9 @@ guide
 9
 10
 11
-0
 12
 13
+0
 14
 
 banana
@@ -480,5 +479,19 @@ preference set tomato/off
 y
 preference reset
 y
+
+add n/Recommend fixed block c/ACADEMIC date/2099-06-02 type/FIXED from/10:00 to/11:00 energy/2 sensory/2
+add n/Recommend essay draft c/ACADEMIC date/2099-06-02 type/FLEXIBLE earliest/09:00 latest/14:00 dur/60 energy/4 sensory/2
+recommend date/2099-06-02
+recommend view
+recommend cancel
+recommend view
+recommend date/2099-06-02
+recommend adopt
+y
+view 2
+timetable day/2099-06-02 detail
+recommend adopt
+recommend cancel
 
 bye

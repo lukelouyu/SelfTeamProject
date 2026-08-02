@@ -13,7 +13,7 @@ import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
  *
  * <p>The main menu's items can be selected either by their existing text keyword (e.g. "add") or
  * by the number shown next to them in the menu (e.g. "1"), both as the argument to "guide" and as
- * a bare top-level command entered right after the menu is displayed. Menu item 13 ("Return") is
+ * a bare top-level command entered right after the menu is displayed. Menu item 12 ("Return") is
  * not a topic; it's a no-op that acknowledges the selection instead of showing topic text.
  */
 public class GuideCommand extends Command {
@@ -29,13 +29,13 @@ public class GuideCommand extends Command {
      * Facility and connection are independent command families with independent guide topics, so
      * unlike "activities"/"browse" they each get their own direct number (7 and 8) rather than
      * being folded into one combined overview. Item 11 ("Route search") was added as the next
-     * available number when v2.0's {@code route} shipped, after items 1-10 which keep their
-     * original v1.0 numbers unchanged. Item 12 ("Text timetable") was added when v2.0's
-     * {@code timetable} shipped. Item 13 ("Return") is handled separately, not through this list.
+     * available number when v2.0's {@code route} shipped. Item 11 ("Text timetable") was added
+     * when v2.0's {@code timetable} shipped. Item 12 ("Return") is handled separately, not
+     * through this list.
      */
     private static final String[] MENU_NUMBER_TOPICS = {
         "getting-started", "activities", "browse", "topic", "dashboard",
-        "recommend", "facility", "connection", "export", "storage", "route", "timetable",
+        "recommend", "facility", "connection", "storage", "route", "timetable",
     };
 
     private static final String MAIN_MENU = "Application Guide\n\n"
@@ -47,12 +47,11 @@ public class GuideCommand extends Command {
             + "6. Recommended timetable\n"
             + "7. Accessible facilities\n"
             + "8. Accessible connections\n"
-            + "9. CSV export\n"
-            + "10. Data files and storage\n"
-            + "11. Accessible routes\n"
-            + "12. Text timetable\n"
-            + "13. Return\n\n"
-            + "Enter a number from 1 to 13.";
+            + "9. Data files and storage\n"
+            + "10. Accessible routes\n"
+            + "11. Text timetable\n"
+            + "12. Return\n\n"
+            + "Enter a number from 1 to 12.";
 
     private static final Map<String, String> TOPICS = buildTopics();
 
@@ -72,7 +71,7 @@ public class GuideCommand extends Command {
         if (topic == null) {
             return new CommandResult(MAIN_MENU);
         }
-        if (topic.equals("13")) {
+        if (topic.equals("12")) {
             return new CommandResult(RETURN_MESSAGE);
         }
         String text = TOPICS.get(resolveMenuNumber(topic).toLowerCase(Locale.ROOT));
@@ -417,10 +416,33 @@ public class GuideCommand extends Command {
                 + "Timetable is read-only. It does not schedule flexible activities, create\n"
                 + "recommendations, infer buffers, or change any stored data.");
         topics.put("recommend", "Recommended timetable\n"
-                + "Use recommend PERIOD [PREFERENCE_OVERRIDES].\n"
-                + "Review the plan before choosing whether to adopt it.\n"
-                + "Global planning preferences are available now; see guide preference."
-                + COMING_SOON_NOTE);
+                + "Format: recommend\n"
+                + "        recommend this week\n"
+                + "        recommend date/YYYY-MM-DD\n"
+                + "        recommend view\n"
+                + "        recommend adopt\n"
+                + "        recommend cancel\n"
+                + "\n"
+                + "recommend and recommend this week generate one deterministic weekly\n"
+                + "preview for incomplete flexible activities. recommend date/YYYY-MM-DD\n"
+                + "generates a one-day preview. recommend view re-shows the current\n"
+                + "proposal, recommend adopt confirms and saves it once, and recommend\n"
+                + "cancel discards it with no change.\n"
+                + "\n"
+                + "The recommender uses fixed activities, flexible windows, and your\n"
+                + "global planning preferences. Minimum buffer is enforced; Tomato only\n"
+                + "adds advisory study suggestions when enabled. Activities keep their\n"
+                + "stable IDs and original flexible windows.\n"
+                + "\n"
+                + "Examples:\n"
+                + "  recommend\n"
+                + "  recommend this week\n"
+                + "  recommend date/2026-08-15\n"
+                + "  recommend view\n"
+                + "  recommend adopt\n"
+                + "\n"
+                + "Limitations: recommendation does not use route/facility data yet,\n"
+                + "because activities still do not store facility/location bindings.");
         topics.put("preference", "Global planning preferences\n"
                 + "Format: preference view\n"
                 + "        preference set start/HH:mm [end/HH:mm] [buffer/MINUTES] [tomato/on|off]\n"
@@ -440,8 +462,8 @@ public class GuideCommand extends Command {
                 + "  preference reset\n"
                 + "\n"
                 + "Changes and reset require y/n confirmation. These settings are advisory\n"
-                + "planning inputs only; this release does not yet recommend or reschedule\n"
-                + "activities.");
+                + "planning inputs for recommend. Tomato only affects advisory study\n"
+                + "suggestions, not slot generation or activity timing.");
         topics.put("facility", "Accessible facilities\n"
                 + "View and search the local read-only accessibility facility reference.\n"
                 + "Related commands: connection (see guide connection for the route graph\n"
@@ -496,10 +518,6 @@ public class GuideCommand extends Command {
                 + "two known facilities, route says so rather than suggesting an unconfirmed one.\n"
                 + "\n"
                 + AccessibilityDisclaimer.TEXT);
-        topics.put("export", "CSV exports\n"
-                + "Use export activities, export schedule, export all, or export.\n"
-                + "Each export creates a timestamped historical record."
-                + COMING_SOON_NOTE);
         topics.put("storage", "Data files and storage\n"
                 + "Application data (activities, topics, your saved default order, and\n"
                 + "global planning preferences)\n"

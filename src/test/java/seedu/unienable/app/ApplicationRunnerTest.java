@@ -10,6 +10,9 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Handler;
@@ -22,7 +25,11 @@ import org.junit.jupiter.api.io.TempDir;
 
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.EnergyRating;
+import seedu.unienable.model.classes.FixedActivity;
+import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.classes.Topic;
+import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.model.preference.PreferenceProfile;
 import seedu.unienable.storage.Storage;
@@ -41,12 +48,16 @@ class ApplicationRunnerTest {
     Path dataDirectory;
 
     private String run(String input, Storage storage) {
+        return run(input, storage, LocalDateTime::now);
+    }
+
+    private String run(String input, Storage storage, java.util.function.Supplier<LocalDateTime> nowSupplier) {
         ByteArrayOutputStream capturedOutput = new ByteArrayOutputStream();
         PrintStream originalOut = System.out;
         System.setOut(new PrintStream(capturedOutput, true, StandardCharsets.UTF_8));
         try {
             new ApplicationRunner(dataDirectory,
-                    new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), storage).run();
+                    new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), storage, nowSupplier).run();
         } finally {
             System.setOut(originalOut);
         }
@@ -100,6 +111,20 @@ class ApplicationRunnerTest {
         } finally {
             Logger.getLogger("").removeHandler(handler);
         }
+    }
+
+    @Test
+    public void fixedNowSupplier_makesRelativeCommandsDeterministic() throws Exception {
+        Storage storage = new Storage(dataDirectory);
+        storage.prepareDataFiles();
+        storage.saveActivities(List.of(new FixedActivity(1, "Deterministic lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 19), LocalTime.of(14, 0), LocalTime.of(15, 0),
+                EnergyRating.of(3), SensoryRating.of(2), null, null)));
+
+        String output = run("list today\nbye\n", storage, () -> LocalDateTime.of(2026, 8, 19, 16, 0));
+
+        assertTrue(output.contains("Deterministic lecture"));
+        assertTrue(output.contains("2026-08-19"));
     }
 
     @Test
@@ -426,6 +451,47 @@ class ApplicationRunnerTest {
         assertTrue(output.contains("[Error] Storage error:"));
         assertTrue(output.contains("Preferred daily start: 08:00"));
         assertTrue(output.contains("Tomato suggestion: OFF"));
+    }
+
+    @Test
+    public void recommendAdopt_persistsPlacementAndReloadsOnRestart() throws Exception {
+        String adoptInput = String.join("\n",
+                "add n/Essay draft c/ACADEMIC date/2099-01-01 type/FLEXIBLE earliest/09:00 latest/14:00 "
+                        + "dur/60 energy/4 sensory/3",
+                "recommend date/2099-01-01",
+                "recommend adopt",
+                "y",
+                "bye") + "\n";
+
+        String adoptOutput = run(adoptInput, new Storage(dataDirectory));
+        String restartOutput = run("view 1\nbye\n", new Storage(dataDirectory));
+
+        assertTrue(adoptOutput.contains("Recommendation adopted."));
+        assertEquals(List.of("FLEXIBLE|1|Essay draft|ACADEMIC|2099-01-01|09:00|14:00|60|4|3|INCOMPLETE|||09:00"),
+                Files.readAllLines(dataDirectory.resolve("activities.txt")));
+        assertTrue(restartOutput.contains("Adopted     : 09:00 -> 10:00"));
+    }
+
+    @Test
+    public void recommendAdopt_saveFails_rollsBackAdoptedPlacement() throws Exception {
+        String input = String.join("\n",
+                "add n/Essay draft c/ACADEMIC date/2099-01-01 type/FLEXIBLE earliest/09:00 latest/14:00 "
+                        + "dur/60 energy/4 sensory/3",
+                "recommend date/2099-01-01",
+                "recommend adopt",
+                "y",
+                "view 1",
+                "bye") + "\n";
+
+        String output = run(input, new FailAfterStorage(dataDirectory, 1));
+
+        assertFalse(output.contains("Recommendation adopted."),
+                "a failed save must never show recommend adopt's success message");
+        assertTrue(output.contains("[Error] Storage error:"));
+        String viewSection = output.substring(output.lastIndexOf("Activity [1]"));
+        assertTrue(viewSection.contains("Duration    : 60 min"));
+        assertFalse(viewSection.contains("Adopted"),
+                "the rolled-back flexible activity must remain unscheduled in memory");
     }
 
     @Test

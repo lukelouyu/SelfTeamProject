@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,6 +23,7 @@ import seedu.unienable.command.activity.general.UnmarkCommand;
 import seedu.unienable.command.general.ResetCommand;
 import seedu.unienable.command.preference.PreferenceResetCommand;
 import seedu.unienable.command.preference.PreferenceSetCommand;
+import seedu.unienable.command.recommend.RecommendAdoptCommand;
 import seedu.unienable.command.recur.RecurCommand;
 import seedu.unienable.command.topic.TopicAddCommand;
 import seedu.unienable.command.topic.TopicDeleteCommand;
@@ -33,6 +35,7 @@ import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.logic.preference.PreferenceManager;
+import seedu.unienable.logic.recommend.RecommendationManager;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
@@ -59,6 +62,7 @@ public class ApplicationRunner {
     private final Path dataDirectory;
     private final InputStream input;
     private final Storage suppliedStorage;
+    private final Supplier<LocalDateTime> nowSupplier;
 
     private Ui ui;
     private Scanner scanner;
@@ -68,6 +72,7 @@ public class ApplicationRunner {
     private FacilityManager facilityManager;
     private ConnectionManager connectionManager;
     private PreferenceManager preferenceManager;
+    private RecommendationManager recommendationManager;
     private CommandDispatcher dispatcher;
     private CommandConfirmationHandler confirmationHandler;
     private boolean hasUnsavedChanges;
@@ -80,7 +85,20 @@ public class ApplicationRunner {
      * @param input the source of command-line input, e.g. System.in; never closed by this class
      */
     public ApplicationRunner(Path dataDirectory, InputStream input) {
-        this(dataDirectory, input, null);
+        this(dataDirectory, input, null, LocalDateTime::now);
+    }
+
+    /**
+     * Creates a runner with an injectable time source for deterministic tests and scripted
+     * regression batches.
+     *
+     * @param dataDirectory the directory containing (or to create) application data files and,
+     *     when recur is used, the externally supplied academic-calendar.txt
+     * @param input the source of command-line input, e.g. System.in; never closed by this class
+     * @param nowSupplier the current-time source to use for command dispatch
+     */
+    public ApplicationRunner(Path dataDirectory, InputStream input, Supplier<LocalDateTime> nowSupplier) {
+        this(dataDirectory, input, null, nowSupplier);
     }
 
     /**
@@ -94,9 +112,15 @@ public class ApplicationRunner {
      *     dataDirectory, or null to construct one normally
      */
     ApplicationRunner(Path dataDirectory, InputStream input, Storage suppliedStorage) {
+        this(dataDirectory, input, suppliedStorage, LocalDateTime::now);
+    }
+
+    ApplicationRunner(Path dataDirectory, InputStream input, Storage suppliedStorage,
+            Supplier<LocalDateTime> nowSupplier) {
         this.dataDirectory = dataDirectory;
         this.input = input;
         this.suppliedStorage = suppliedStorage;
+        this.nowSupplier = nowSupplier;
     }
 
     /**
@@ -124,6 +148,7 @@ public class ApplicationRunner {
         activityManager = new ActivityManager();
         topicManager = new TopicManager(activityManager);
         preferenceManager = new PreferenceManager();
+        recommendationManager = new RecommendationManager();
         confirmationHandler = new CommandConfirmationHandler(ui, scanner);
 
         if (!initialise()) {
@@ -131,7 +156,7 @@ public class ApplicationRunner {
         }
 
         dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager,
-                connectionManager, preferenceManager, storage);
+                connectionManager, preferenceManager, recommendationManager, storage);
         runCommandLoop();
     }
 
@@ -229,7 +254,7 @@ public class ApplicationRunner {
                 && topicManager != null && ui != null
                 : "processCommand requires run() to have completed its setup first";
         try {
-            Command command = dispatcher.dispatch(line, LocalDateTime.now());
+            Command command = dispatcher.dispatch(line, nowSupplier.get());
             if (!confirmationHandler.confirmIfNeeded(command)) {
                 return true;
             }
@@ -245,6 +270,9 @@ public class ApplicationRunner {
                     snapshot.restore();
                     return true;
                 }
+                recommendationManager.clear();
+            } else if (command instanceof RecommendAdoptCommand) {
+                recommendationManager.clear();
             }
             ui.showFramed(result.getFeedback());
             return true;
@@ -316,7 +344,8 @@ public class ApplicationRunner {
                         && ((PreferenceSetCommand) command).hasChanges())
                 || (command instanceof PreferenceResetCommand
                         && ((PreferenceResetCommand) command).hasChanges())
-                || command instanceof RecurCommand;
+                || command instanceof RecurCommand
+                || command instanceof RecommendAdoptCommand;
     }
 
     /**
@@ -375,7 +404,7 @@ public class ApplicationRunner {
             copy = new FlexibleActivity(flexible.getId(), flexible.getDescription(), flexible.getCategory(),
                     flexible.getDate(), flexible.getEarliestStart(), flexible.getLatestEnd(),
                     flexible.getDurationMinutes(), flexible.getEnergyRating(), flexible.getSensoryRating(),
-                    flexible.getTopic(), flexible.getNote());
+                    flexible.getTopic(), flexible.getNote(), flexible.getAdoptedStartTime());
         }
         if (activity.isComplete()) {
             copy.mark();

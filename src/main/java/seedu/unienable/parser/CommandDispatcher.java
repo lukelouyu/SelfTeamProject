@@ -19,6 +19,7 @@ import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.logic.preference.PreferenceManager;
+import seedu.unienable.logic.recommend.RecommendationManager;
 import seedu.unienable.parser.activity.ActivityCommandParser;
 import seedu.unienable.parser.accessibility.ConnectionCommandParser;
 import seedu.unienable.parser.accessibility.FacilityCommandParser;
@@ -28,6 +29,7 @@ import seedu.unienable.parser.common.FieldParser;
 import seedu.unienable.parser.common.Parser;
 import seedu.unienable.parser.recur.RecurCommandParser;
 import seedu.unienable.parser.preference.PreferenceCommandParser;
+import seedu.unienable.parser.recommend.RecommendCommandParser;
 import seedu.unienable.parser.timetable.TimetableCommandParser;
 import seedu.unienable.parser.topic.TopicCommandParser;
 import seedu.unienable.storage.Storage;
@@ -39,6 +41,7 @@ public class CommandDispatcher {
     private final FacilityManager facilityManager;
     private final ConnectionManager connectionManager;
     private final PreferenceManager preferenceManager;
+    private final RecommendationManager recommendationManager;
     private final Storage storage;
     private final RecurCommandParser recurCommandParser;
 
@@ -50,6 +53,7 @@ public class CommandDispatcher {
     private final DashboardCommandParser dashboardCommandParser = new DashboardCommandParser();
     private final TimetableCommandParser timetableCommandParser = new TimetableCommandParser();
     private final PreferenceCommandParser preferenceCommandParser = new PreferenceCommandParser();
+    private final RecommendCommandParser recommendCommandParser = new RecommendCommandParser();
 
     /**
      * Creates a CommandDispatcher over the given managers.
@@ -65,12 +69,13 @@ public class CommandDispatcher {
      */
     public CommandDispatcher(ActivityManager activityManager, TopicManager topicManager,
             FacilityManager facilityManager, ConnectionManager connectionManager,
-            PreferenceManager preferenceManager, Storage storage) {
+            PreferenceManager preferenceManager, RecommendationManager recommendationManager, Storage storage) {
         this.activityManager = activityManager;
         this.topicManager = topicManager;
         this.facilityManager = facilityManager;
         this.connectionManager = connectionManager;
         this.preferenceManager = preferenceManager;
+        this.recommendationManager = recommendationManager;
         this.storage = storage;
         this.recurCommandParser = new RecurCommandParser(storage.getAcademicCalendarFile());
     }
@@ -134,6 +139,8 @@ public class CommandDispatcher {
             return timetableCommandParser.parse(activityManager, now, args);
         case "preference":
             return preferenceCommandParser.parse(preferenceManager, args);
+        case "recommend":
+            return recommendCommandParser.parse(activityManager, preferenceManager, recommendationManager, now, args);
         case "guide":
             return new GuideCommand(args.isEmpty() ? null : args);
         case "reset":
@@ -142,9 +149,9 @@ public class CommandDispatcher {
             FieldParser.requireNoArguments("bye", args);
             return new ExitCommand();
         case "1": case "2": case "3": case "4": case "5":
-        case "6": case "7": case "8": case "9": case "10": case "11": case "12": case "13":
+        case "6": case "7": case "8": case "9": case "10": case "11": case "12":
             // A bare menu number entered right after "guide" displays the main menu, matching
-            // its own "Enter a number from 1 to 13." instruction; see GuideCommand's Javadoc.
+            // its own "Enter a number from 1 to 12." instruction; see GuideCommand's Javadoc.
             return new GuideCommand(commandWord);
         default:
             throw new InvalidCommandException("Unknown command \"" + commandWord + "\". Enter guide for help.");

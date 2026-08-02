@@ -93,8 +93,14 @@ public final class DashboardService {
      */
     public static DashboardSummary summarize(ActivityManager activityManager, DashboardPeriod period,
             LocalDateTime now) {
+        return summarize(activityManager.getAll(), period, now);
+    }
+
+    /** Calculates the full dashboard summary for an already prepared activity list. */
+    public static DashboardSummary summarize(Iterable<Activity> activities, DashboardPeriod period,
+            LocalDateTime now) {
         Accumulator acc = new Accumulator();
-        for (Activity activity : activityManager.getAll()) {
+        for (Activity activity : activities) {
             accumulate(acc, activity, period, now);
         }
         return acc.toSummary(period);
@@ -110,8 +116,10 @@ public final class DashboardService {
             activityEnd = LocalDateTime.of(fixed.getDate(), fixed.getEndTime());
         } else {
             FlexibleActivity flexible = (FlexibleActivity) activity;
-            activityStart = LocalDateTime.of(flexible.getDate(), flexible.getEarliestStart());
-            activityEnd = LocalDateTime.of(flexible.getDate(), flexible.getLatestEnd());
+            activityStart = LocalDateTime.of(flexible.getDate(),
+                    flexible.hasAdoptedPlacement() ? flexible.getAdoptedStartTime() : flexible.getEarliestStart());
+            activityEnd = LocalDateTime.of(flexible.getDate(),
+                    flexible.hasAdoptedPlacement() ? flexible.getAdoptedEndTime() : flexible.getLatestEnd());
         }
         if (!intersects(activityStart, activityEnd, period.getStart(), period.getEnd())) {
             return;
@@ -157,7 +165,8 @@ public final class DashboardService {
             eligibleFrom = LocalDateTime.of(fixed.getDate(), fixed.getEndTime());
         } else {
             FlexibleActivity flexible = (FlexibleActivity) activity;
-            eligibleFrom = LocalDateTime.of(flexible.getDate(), flexible.getLatestEnd());
+            eligibleFrom = LocalDateTime.of(flexible.getDate(),
+                    flexible.hasAdoptedPlacement() ? flexible.getAdoptedEndTime() : flexible.getLatestEnd());
         }
         return !eligibleFrom.isAfter(now);
     }

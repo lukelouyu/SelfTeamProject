@@ -5,20 +5,20 @@ import java.util.List;
 /** Immutable calculated timetable result. */
 public final class TimetableView {
     private final TimetablePeriod period;
-    private final List<TimetableEntry> fixedEntries;
+    private final List<TimetableEntry> scheduledEntries;
     private final List<TimetableEntry> unscheduledFlexibleEntries;
 
     /**
      * Creates a timetable result from already ordered display entries.
      *
      * @param period selected period
-     * @param fixedEntries ordered fixed entries
+     * @param scheduledEntries ordered scheduled entries
      * @param unscheduledFlexibleEntries ordered unscheduled flexible entries
      */
-    public TimetableView(TimetablePeriod period, List<TimetableEntry> fixedEntries,
+    public TimetableView(TimetablePeriod period, List<TimetableEntry> scheduledEntries,
             List<TimetableEntry> unscheduledFlexibleEntries) {
         this.period = period;
-        this.fixedEntries = List.copyOf(fixedEntries);
+        this.scheduledEntries = List.copyOf(scheduledEntries);
         this.unscheduledFlexibleEntries = List.copyOf(unscheduledFlexibleEntries);
     }
 
@@ -27,9 +27,9 @@ public final class TimetableView {
         return period;
     }
 
-    /** Returns the immutable ordered fixed-entry list. */
+    /** Returns the immutable ordered scheduled-entry list. */
     public List<TimetableEntry> getFixedEntries() {
-        return fixedEntries;
+        return scheduledEntries;
     }
 
     /** Returns the immutable ordered unscheduled-flexible list. */
@@ -39,11 +39,11 @@ public final class TimetableView {
 
     /** Returns whether any fixed entry is marked as overlapping. */
     public boolean hasOverlaps() {
-        return fixedEntries.stream().anyMatch(TimetableEntry::isOverlapping);
+        return scheduledEntries.stream().anyMatch(TimetableEntry::isOverlapping);
     }
 
     /** Returns whether the period contains no fixed or flexible entry. */
     public boolean isEmpty() {
-        return fixedEntries.isEmpty() && unscheduledFlexibleEntries.isEmpty();
+        return scheduledEntries.isEmpty() && unscheduledFlexibleEntries.isEmpty();
     }
 }

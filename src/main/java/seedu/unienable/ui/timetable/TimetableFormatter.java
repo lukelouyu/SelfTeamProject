@@ -29,14 +29,15 @@ public final class TimetableFormatter {
         result.append("Period: ").append(period.getLabel());
 
         if (view.hasOverlaps()) {
-            result.append("\n\nWarning: overlapping fixed commitments are marked [OVERLAP].");
+            result.append("\n\nWarning: overlapping scheduled commitments are marked [OVERLAP].");
         }
 
         appendFixedEntries(result, view, mode);
         appendFlexibleEntries(result, view.getUnscheduledFlexibleEntries(), mode);
 
         if (mode != TimetableMode.COMPACT) {
-            result.append("\n\n[F] Fixed activity | [U] Unscheduled flexible activity");
+            result.append("\n\n[F] Fixed activity | [R] Adopted flexible activity | "
+                    + "[U] Unscheduled flexible activity");
         }
         return result.toString();
     }
@@ -54,7 +55,7 @@ public final class TimetableFormatter {
             result.append("\n\n").append(dayHeading(date));
             wroteDay = true;
             if (entries.isEmpty()) {
-                result.append("\n  No fixed activities.");
+                result.append("\n  No scheduled activities.");
                 continue;
             }
             for (TimetableEntry entry : entries) {
@@ -63,7 +64,7 @@ public final class TimetableFormatter {
             }
         }
         if (!wroteDay) {
-            result.append("\n\nNo fixed activities in the selected period.");
+            result.append("\n\nNo scheduled activities in the selected period.");
         }
     }
 
@@ -79,8 +80,9 @@ public final class TimetableFormatter {
 
     private static void appendFixedEntry(StringBuilder result, TimetableEntry entry,
             TimetableMode mode) {
+        String marker = entry.getType() == seedu.unienable.model.timetable.TimetableEntryType.FIXED ? "F" : "R";
         result.append("  ").append(entry.getStartTime()).append('-').append(entry.getEndTime())
-                .append("  [F][").append(entry.getId()).append("] ")
+                .append("  [").append(marker).append("][").append(entry.getId()).append("] ")
                 .append(entry.getDescription());
         if (entry.isOverlapping()) {
             result.append(" [OVERLAP]");

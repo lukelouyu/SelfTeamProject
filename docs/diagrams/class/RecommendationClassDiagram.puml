@@ -1,0 +1,133 @@
+@startuml
+title Deterministic Schedule Recommendation (recommend)
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+class RecommendCommandParser {
+  + parse(activityManager : ActivityManager, preferenceManager : PreferenceManager,
+      recommendationManager : RecommendationManager, now : LocalDateTime, args : String) : Command
+}
+
+abstract class Command
+
+class RecommendGenerateCommand <<Command>> {
+  - activityManager : ActivityManager
+  - preferenceManager : PreferenceManager
+  - recommendationManager : RecommendationManager
+  - now : LocalDateTime
+  - date : LocalDate
+  + execute() : CommandResult
+}
+
+class RecommendViewCommand <<Command>> {
+  - activityManager : ActivityManager
+  - recommendationManager : RecommendationManager
+  + execute() : CommandResult
+}
+
+class RecommendCancelCommand <<Command>> {
+  - recommendationManager : RecommendationManager
+  + execute() : CommandResult
+}
+
+class RecommendAdoptCommand <<Command, Confirmable>> {
+  - activityManager : ActivityManager
+  - proposal : RecommendationProposal
+  + getConfirmation() : Confirmation
+  + execute() : CommandResult
+}
+
+class RecommendationManager {
+  - proposal : RecommendationProposal
+  + setProposal(proposal : RecommendationProposal) : void
+  + getProposal() : Optional<RecommendationProposal>
+  + hasProposal() : boolean
+  + clear() : void
+}
+
+class RecommendationService <<static>> {
+  + {static} recommendThisWeek(activityManager : ActivityManager, preferences : PreferenceProfile,
+      now : LocalDateTime) : RecommendationProposal
+  + {static} recommendDate(activityManager : ActivityManager, preferences : PreferenceProfile,
+      date : LocalDate) : RecommendationProposal
+  + {static} applyPreview(activities : List<Activity>,
+      proposal : RecommendationProposal) : List<Activity>
+}
+
+class RecommendationFormatter <<static>> {
+  + {static} formatPreview(proposal : RecommendationProposal,
+      previewActivities : List<Activity>) : String
+  + {static} formatAdoptSuccess(proposal : RecommendationProposal) : String
+  + {static} formatCancel() : String
+  + {static} formatMissingProposal() : String
+}
+
+class RecommendationProposal <<immutable>> {
+  - timetablePeriod : TimetablePeriod
+  - dashboardPeriod : DashboardPeriod
+  - placements : List<RecommendedPlacement>
+  - unscheduledActivityIds : List<Integer>
+}
+
+class RecommendedPlacement <<immutable>>
+
+class ActivityManager <<read-only for generate>>
+class PreferenceManager
+class PreferenceProfile <<immutable>>
+class FlexibleActivity
+class TimetableService <<static>>
+class DashboardService <<static>>
+
+RecommendCommandParser ..> RecommendGenerateCommand : creates
+RecommendCommandParser ..> RecommendViewCommand : creates
+RecommendCommandParser ..> RecommendCancelCommand : creates
+RecommendCommandParser ..> RecommendAdoptCommand : creates
+RecommendCommandParser ..> RecommendationManager : reads active proposal
+
+RecommendGenerateCommand --> RecommendationService : build preview
+RecommendGenerateCommand --> RecommendationManager : store proposal
+RecommendGenerateCommand --> RecommendationFormatter : formatPreview()
+RecommendGenerateCommand --> ActivityManager
+RecommendGenerateCommand --> PreferenceManager
+
+RecommendViewCommand --> RecommendationManager : read proposal
+RecommendViewCommand --> RecommendationService : applyPreview()
+RecommendViewCommand --> RecommendationFormatter : formatPreview()
+RecommendViewCommand --> ActivityManager
+
+RecommendCancelCommand --> RecommendationManager : clear()
+RecommendCancelCommand --> RecommendationFormatter : formatCancel()
+
+RecommendAdoptCommand --> ActivityManager : getById()
+RecommendAdoptCommand ..> FlexibleActivity : setAdoptedStartTime()
+RecommendAdoptCommand --> RecommendationFormatter : formatAdoptSuccess()
+
+RecommendationService ..> ActivityManager : reads getAll()
+RecommendationService ..> PreferenceProfile : reads
+RecommendationService ..> RecommendationProposal : builds
+RecommendationService ..> RecommendedPlacement : builds
+RecommendationService ..> FlexibleActivity : reads/copies/adopts preview
+RecommendationFormatter ..> TimetableService : build()
+RecommendationFormatter ..> DashboardService : summarize()
+RecommendationFormatter ..> RecommendationProposal : reads
+RecommendationProposal "1" *-- "1..*" RecommendedPlacement
+
+note bottom of RecommendationManager
+  Proposal state is in-memory only for the
+  current application run. No history file
+  or background schedule is persisted here.
+end note
+
+note bottom of RecommendationService
+  Stateless and deterministic. Generation
+  reads fixed activities, adopted flexible
+  activities, preference data, and the
+  target period, then returns one preview
+  proposal without mutating stored state.
+end note
+
+@enduml

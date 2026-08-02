@@ -34,6 +34,8 @@ package "Business logic" {
   [DashboardService] as DashboardLogic
   [TimetableService] as TimetableLogic
   [PreferenceManager] as PreferenceLogic
+  [RecommendationManager] as RecommendState
+  [RecommendationService] as RecommendLogic
 }
 
 package "Domain model" {
@@ -42,6 +44,7 @@ package "Domain model" {
   [Accessibility records] as AccessModel
   [Timetable view model] as TimetableModel
   [Preference profile] as PreferenceModel
+  [Recommendation proposal model] as RecommendModel
 }
 
 package "Persistence" {
@@ -69,9 +72,17 @@ Commands --> DashboardLogic
 DashboardLogic --> ActivityLogic
 Commands --> TimetableLogic
 Commands --> PreferenceLogic
+Commands --> RecommendState
+Commands --> RecommendLogic
 TimetableLogic --> ActivityLogic
 TimetableLogic --> TimetableModel
 PreferenceLogic --> PreferenceModel
+RecommendLogic --> ActivityLogic
+RecommendLogic --> PreferenceLogic
+RecommendLogic --> RecommendModel
+RecommendLogic --> TimetableLogic
+RecommendLogic --> DashboardLogic
+RecommendState --> RecommendModel
 Parsers --> RecurLogic
 ActivityLogic --> ActivityModel
 TopicLogic --> ActivityModel

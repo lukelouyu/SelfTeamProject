@@ -7,7 +7,20 @@ energy-demand and sensory-load ratings, category and topic organisation, a deter
 relevant activity" lookup, read-only local facility/connection reference information, and — new
 in v2.0 — Dijkstra-based accessible route search (`route`), a planning-load dashboard
 (`dashboard`), deterministic read-only day/week timetables (`timetable`), and one persisted global
-planning-preference profile (`preference`) over that same activity and reference data.
+planning-preference profile (`preference`), plus deterministic schedule recommendation
+(`recommend`) over that same activity and reference data.
+
+This repository now reflects the finished documented release scope. `recommend` is fully
+implemented as a deterministic preview-and-adopt workflow, and no further feature development is
+planned beyond the commands already documented in the guides.
+
+`recommend` supports:
+
+- `recommend` / `recommend this week` to generate a weekly proposal
+- `recommend date/YYYY-MM-DD` to generate a one-day proposal
+- `recommend view` to re-display the active in-memory proposal
+- `recommend adopt` to confirm and save adopted placements onto flexible activities
+- `recommend cancel` to discard the active proposal without saving changes
 
 Useful links:
 * [User Guide](docs/UserGuide.md)

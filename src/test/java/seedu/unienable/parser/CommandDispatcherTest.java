@@ -35,6 +35,10 @@ import seedu.unienable.command.general.ResetCommand;
 import seedu.unienable.command.preference.PreferenceResetCommand;
 import seedu.unienable.command.preference.PreferenceSetCommand;
 import seedu.unienable.command.preference.PreferenceViewCommand;
+import seedu.unienable.command.recommend.RecommendAdoptCommand;
+import seedu.unienable.command.recommend.RecommendCancelCommand;
+import seedu.unienable.command.recommend.RecommendGenerateCommand;
+import seedu.unienable.command.recommend.RecommendViewCommand;
 import seedu.unienable.command.activity.general.ListCommand;
 import seedu.unienable.command.activity.general.MarkCommand;
 import seedu.unienable.command.activity.general.NextCommand;
@@ -53,6 +57,7 @@ import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.logic.preference.PreferenceManager;
+import seedu.unienable.logic.recommend.RecommendationManager;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.SensoryRating;
@@ -70,6 +75,7 @@ class CommandDispatcherTest {
     private final FacilityManager facilityManager = new FacilityManager(List.of());
     private final ConnectionManager connectionManager = new ConnectionManager(List.of());
     private final PreferenceManager preferenceManager = new PreferenceManager();
+    private final RecommendationManager recommendationManager = new RecommendationManager();
     private CommandDispatcher dispatcher;
 
     @BeforeEach
@@ -78,7 +84,7 @@ class CommandDispatcherTest {
         // here rather than as a field initialiser, since @TempDir fields are only populated after
         // instance construction (field initialisers would still see tempDir as null).
         dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager,
-                connectionManager, preferenceManager, new Storage(tempDir));
+                connectionManager, preferenceManager, recommendationManager, new Storage(tempDir));
     }
 
     @Test
@@ -99,6 +105,19 @@ class CommandDispatcherTest {
         assertTrue(dispatcher.dispatch("preference view", NOW) instanceof PreferenceViewCommand);
         assertTrue(dispatcher.dispatch("preference set tomato/on", NOW) instanceof PreferenceSetCommand);
         assertTrue(dispatcher.dispatch("preference reset", NOW) instanceof PreferenceResetCommand);
+    }
+
+    @Test
+    public void dispatch_recommendCommands_returnExpectedCommandTypes() throws Exception {
+        assertTrue(dispatcher.dispatch("recommend", NOW) instanceof RecommendGenerateCommand);
+        assertTrue(dispatcher.dispatch("recommend this week", NOW) instanceof RecommendGenerateCommand);
+        assertTrue(dispatcher.dispatch("recommend date/2026-08-15", NOW) instanceof RecommendGenerateCommand);
+        recommendationManager.setProposal(new seedu.unienable.model.recommend.RecommendationProposal(
+                seedu.unienable.logic.timetable.TimetableService.resolveThisWeek(NOW),
+                seedu.unienable.logic.dashboard.DashboardService.resolveThisWeek(NOW), List.of(), List.of()));
+        assertTrue(dispatcher.dispatch("recommend view", NOW) instanceof RecommendViewCommand);
+        assertTrue(dispatcher.dispatch("recommend cancel", NOW) instanceof RecommendCancelCommand);
+        assertTrue(dispatcher.dispatch("recommend adopt", NOW) instanceof RecommendAdoptCommand);
     }
 
     @Test
@@ -273,7 +292,7 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareMenuNumberTen_returnsGuideCommandForStorage() throws Exception {
-        Command command = dispatcher.dispatch("10", NOW);
+        Command command = dispatcher.dispatch("9", NOW);
 
         assertTrue(command instanceof GuideCommand);
         assertTrue(command.execute().getFeedback().startsWith("Data files and storage"));
@@ -282,7 +301,7 @@ class CommandDispatcherTest {
     @Test
     public void dispatch_bareMenuNumberEleven_returnsGuideCommandForRoute() throws Exception {
         // "Route search" was added as menu item 11 when v2.0's route shipped.
-        Command command = dispatcher.dispatch("11", NOW);
+        Command command = dispatcher.dispatch("10", NOW);
 
         assertTrue(command instanceof GuideCommand);
         assertTrue(command.execute().getFeedback().startsWith("Accessible routes"));
@@ -300,7 +319,7 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareMenuNumberTwelve_returnsGuideCommandForTimetable() throws Exception {
-        Command command = dispatcher.dispatch("12", NOW);
+        Command command = dispatcher.dispatch("11", NOW);
 
         assertTrue(command instanceof GuideCommand);
         assertTrue(command.execute().getFeedback().startsWith("Text timetable"));
@@ -308,7 +327,7 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareMenuNumberThirteen_returnsGuideCommandForReturn() throws Exception {
-        Command command = dispatcher.dispatch("13", NOW);
+        Command command = dispatcher.dispatch("12", NOW);
 
         assertTrue(command instanceof GuideCommand);
         assertTrue(command.execute().getFeedback().startsWith("Returning to the command prompt"));
@@ -316,14 +335,14 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareZero_throwsInvalidCommandException() {
-        // "0" is deliberately outside the recognised 1-13 menu range, so it must still fall
+        // "0" is deliberately outside the recognised 1-12 menu range, so it must still fall
         // through to the normal "unknown command" error rather than being treated as a menu item.
         assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("0", NOW));
     }
 
     @Test
-    public void dispatch_bareFourteen_throwsInvalidCommandException() {
-        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("14", NOW));
+    public void dispatch_bareThirteen_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("13", NOW));
     }
 
     @Test

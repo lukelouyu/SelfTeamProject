@@ -38,8 +38,9 @@ folder.
 ## 3. Architecture
 
 The entry point delegates to `ApplicationRunner`, which owns startup, loading, the command loop,
-confirmation, saving, and shutdown. Parsing produces command objects; commands call managers;
-managers operate on domain objects; storage translates between domain objects and local text files.
+confirmation, saving, shutdown, and in-memory recommendation proposal lifecycle. Parsing produces
+command objects; commands call managers or stateless services; managers operate on domain objects
+or hold run-scoped state; storage translates between domain objects and local text files.
 
 <p align="center"><img src="diagrams/architecture/ArchitectureDiagram.png" width="760" alt="UniEnable architecture diagram"></p>
 
@@ -56,8 +57,8 @@ application-owned files and the accessibility reference dataset.
 | `ui` | Frames console output and formats activities and recurrence previews; it contains no business rules. |
 | `parser` | Routes a line through `CommandDispatcher`, validates syntax and values, and constructs a command. |
 | `command` | Represents one user action through `execute()`; confirmable commands also provide a prompt or menu. |
-| `logic` | Owns in-memory activity/topic/preference state, read-only accessibility lookups, filters, conflict policy, and recurrence planning. |
-| `model` | Defines activities, topics, preferences, ratings, enums, academic-calendar records, and recurrence plans. |
+| `logic` | Owns in-memory activity/topic/preference/recommendation state, read-only accessibility lookups, filters, conflict policy, recurrence planning, and deterministic recommendation calculation. |
+| `model` | Defines activities, topics, preferences, ratings, enums, academic-calendar records, recurrence plans, and recommendation proposals. |
 | `accessibility` | Defines immutable facility, feature, connection, and three-state accessibility records. |
 | `storage` | Loads validated text records and atomically saves activities, topics, settings, and preferences. |
 | `exception` | Provides user-facing checked exception categories such as invalid input, conflict, and storage error. |
@@ -434,10 +435,10 @@ API. A wide hour-cell grid was also rejected: arbitrary-minute boundaries, overl
 descriptions would require truncation or terminal assumptions. Day-grouped chronological sections
 preserve every activity.
 
-**Feature boundary.** No `[R]` recommended placement or `[B]` buffer is fabricated. The current
-model has no adopted recommendation or buffer record, and flexible activities retain only a
-window plus duration. Later approved features may extend the immutable display projection after
-their persistence semantics are defined. The same-day activity invariant remains unchanged.
+**Feature boundary.** No `[B]` buffer row is fabricated. Flexible activities now remain flexible
+while optionally carrying one adopted scheduled placement, which timetable may render as `[R]`
+after recommendation adoption. The same-day activity invariant remains unchanged, and route-aware
+recommendation still remains out of scope while activities lack facility bindings.
 
 Tests cover period boundaries, weekend inclusion, date/start/ID ordering, identical starts,
 nested overlaps, adjacency, immutable projections, every parser rejection, exact formatter text,
@@ -447,7 +448,7 @@ wall-clock-relative `this week` path is tested with injected time rather than th
 ## 15. Global planning preferences
 
 `preference view`, `preference set`, and `preference reset` manage one global profile for the
-future deterministic recommender. `PreferenceProfile` is an immutable validated value containing
+deterministic recommender. `PreferenceProfile` is an immutable validated value containing
 a preferred daily start/end, a minimum buffer in minutes, and an advisory Tomato/Pomodoro
 suggestion flag. `PreferenceProfile.defaults()` is the single production source for the
 backward-compatible defaults: `08:00`, `20:00`, `15`, and `OFF`.
@@ -473,12 +474,61 @@ Preferences participate in the four-file `Storage.saveAll` transaction and in
 in-memory profile before any success feedback. `reset all` option 1 restores profile defaults;
 option 2 retains the profile while keeping class schedules; option 3 cancels without change.
 
-Tomato/Pomodoro is data only in this feature. It is a future advisory display preference and does
-not change activities, Dashboard calculations, timetable rendering, route feasibility,
-energy/sensory interpretation, or recommendation ranking. No recommender, preview, or adoption
-workflow is introduced here.
+Tomato/Pomodoro is still data only in this feature itself. `preference` does not create previews
+or mutate activities; it only stores one advisory flag that `recommend` later reads when deciding
+whether to print study-oriented Tomato suggestions. It does not change Dashboard calculations,
+timetable rendering, route feasibility, or energy/sensory interpretation.
 
-## 16. Logging and assertions
+## 16. Deterministic schedule recommendation
+
+`recommend`, `recommend this week`, `recommend date/YYYY-MM-DD`, `recommend view`, `recommend adopt`,
+and `recommend cancel` form one in-memory preview-and-adopt workflow. Bare `recommend` is an alias
+for `recommend this week`. Generation and `view` are read-only; `cancel` mutates only the
+in-memory proposal store; `adopt` is the only recommend command that mutates persisted activity
+state.
+
+<p align="center"><img src="diagrams/class/RecommendationClassDiagram.png" width="760" alt="Recommendation class diagram"></p>
+
+`RecommendCommandParser` returns one of four command types: generate, view, cancel, or adopt.
+`RecommendationManager` holds at most one active `RecommendationProposal` for the current
+application run only; no recommendation history file is introduced. `RecommendationService` is
+stateless and deterministic: it reads current activities, global preferences, and the requested
+period, then returns one immutable proposal containing ordered `RecommendedPlacement`s and any
+unscheduled flexible activity IDs. `RecommendationFormatter` renders that proposal together with a
+preview timetable and dashboard built from copied activities, never from in-place mutation.
+
+`RecommendationService` treats every fixed activity and every already-adopted flexible activity as
+an existing commitment. Eligible work is restricted to incomplete, not-yet-adopted flexible
+activities whose date lies inside the target day/week period. For each eligible activity, every
+valid start minute inside its original window is enumerated subject to the configured minimum
+buffer on both sides of neighbouring commitments. The next activity chosen for placement is the
+one with the fewest valid slots; ties fall through to that activity's best slot and then to the
+lower stable ID.
+
+For one activity's candidate slots, the current implementation's ordering is deterministic and
+intentionally simple: earlier start times win first; if two candidates share the same start, the
+service prefers the one preserving more post-buffer slack around neighbouring commitments, then
+greater distance from other high-energy activities, then greater distance from other high-sensory
+activities, and finally a lower penalty for extending outside the preferred daily start/end range.
+Tomato never changes slot selection; it only controls whether certain study-like placements print
+an advisory suggestion line in the preview.
+
+<p align="center"><img src="diagrams/sequence/RecommendationSequence.png" width="760" alt="Recommendation sequence diagram"></p>
+
+Adoption is handled as a normal mutating command through `ApplicationRunner`. After the user
+confirms `recommend adopt`, the runner snapshots activities/topics/order/preferences, the command
+writes adopted start times back onto the targeted `FlexibleActivity` objects, and the runner
+persists the normal four user-state files through `Storage.saveAll`. If saving fails, the runner
+restores the full pre-adoption snapshot and reports the storage error instead of showing a false
+success. On save success, the active in-memory proposal is cleared; on save failure, it remains
+available because the adoption never committed.
+
+Route-aware recommendation remains deliberately out of scope here. Activities still do not carry
+approved facility/location bindings, so recommendation cannot incorporate campus travel time or
+accessibility graph constraints without expanding the v1.0/v2.0 activity model beyond what this
+branch approved.
+
+## 17. Logging and assertions
 
 `LoggingConfig` removes default console handlers and attaches one append-mode `FileHandler` at
 `data/unienable.log`. It records `INFO` and above with `SimpleFormatter`; operational logs do not
@@ -499,7 +549,7 @@ Assertions are not used for user or persisted input. Parsers and storage validat
 raise checked domain exceptions or load warnings, so behaviour does not depend on whether `-ea` is
 enabled.
 
-## 17. Design considerations
+## 18. Design considerations
 
 ### Extracting conflict validation
 
@@ -540,7 +590,7 @@ contract and preserve each caller's distinct error and recovery behaviour.
   first real caller, via
   `logic.route.AccessibleRouteGraphFactory` (Section 12).
 
-## 18. Testing
+## 19. Testing
 
 The automated strategy has four layers:
 
@@ -572,7 +622,7 @@ deterministic ordering - all in `docs/tasks/v2/dashboard/TEST_PLAN.md`, with `te
 restricted to `dashboard date/...` scenarios for the same real-wall-clock-determinism reason
 `list today`/`tomorrow`/`this week` are.
 
-## 19. Product scope
+## 20. Product scope
 
 UniEnable serves tertiary students with ASD or ADHD and tertiary students who use wheelchairs as
 they prepare for unfamiliar university, internship, or entry-level work routines. It prioritises
@@ -583,10 +633,10 @@ Implemented v1.0 scope includes activity and topic management, completion and or
 selection, academic-calendar recurrence, reset choices, read-only facility/connection lookup, and
 reference-file validation. v2.0 has added accessible route search (`route`, Section 12), the
 accessible planning dashboard (`dashboard`, Section 13), the read-only timetable (`timetable`,
-Section 14), and global planning preferences (`preference`, Section 15). CSV export and a schedule
-recommender remain future work.
+Section 14), global planning preferences (`preference`, Section 15), and deterministic schedule
+recommendation (`recommend`).
 
-## 20. User stories
+## 21. User stories
 
 | Priority | As a ... | I want to ... | So that ... |
 |---|---|---|---|
@@ -601,7 +651,7 @@ recommender remain future work.
 | Should | student planning a week | view fixed and unscheduled activities by day | I can scan my commitments without assigning invented times. |
 | Should | student planning around personal limits | save one daily range, buffer, and advisory Tomato preference | I can reuse consistent planning inputs without re-entering them. |
 
-## 21. Use cases
+## 22. Use cases
 
 ### UC01: Add an activity
 
@@ -680,7 +730,7 @@ input is rejected before confirmation. A no-op or `n` leaves state and files unc
 failure restores the old profile and withholds success. `preference reset` follows the same
 confirmation and rollback rules while restoring all documented defaults.
 
-## 22. Non-functional requirements
+## 23. Non-functional requirements
 
 - The application must run on Java 17 and use primarily object-oriented design.
 - It must operate offline as a single-user CLI without a DBMS or private remote service.
@@ -692,7 +742,7 @@ confirmation and rollback rules while restoring all documented defaults.
 - User errors must be specific and must not terminate the command loop.
 - Unknown accessibility status must remain distinguishable from confirmed inaccessibility.
 
-## 23. Glossary
+## 24. Glossary
 
 - **Activity:** A fixed or flexible user planning item with a permanent ID.
 - **Exact scheduling duplicate:** Same exact description, date, type, and that type's timing fields.
@@ -712,9 +762,9 @@ confirmation and rollback rules while restoring all documented defaults.
 - **Completion-eligible:** An activity whose own scheduled time has fully passed as of the
   injected `now`; only eligible activities count toward `dashboard`'s completion percentage.
 - **Preference profile:** One immutable, global set of preferred daily bounds, minimum buffer, and
-  advisory Tomato/Pomodoro flag saved for future recommendation use.
+  advisory Tomato/Pomodoro flag used by `recommend`.
 
-## 24. Instructions for manual testing
+## 25. Instructions for manual testing
 
 Build and extract the release ZIP, then run `java -jar unienable.jar` from its extracted root.
 Start with a separate test directory if existing personal data must be preserved.

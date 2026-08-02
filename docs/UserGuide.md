@@ -1,10 +1,10 @@
-# UniEnable — User Guide
+﻿# UniEnable â€” User Guide
 
-**Status:** v1.0, plus v2.0's accessible route search (`route`), planning dashboard
-(`dashboard`), read-only timetable (`timetable`), and global planning preferences (`preference`).
-Every command documented in Sections 5–17, including recurring class sessions and the
-three-option `reset all`, is implemented. Section 18
-lists remaining v2.0 work that is explicitly **not** implemented yet.
+**Status:** finished current release.
+Accessible route search (`route`), planning dashboard (`dashboard`), read-only timetable
+(`timetable`), global planning preferences (`preference`), and deterministic schedule
+recommendation (`recommend`) are implemented and documented in this guide.
+Every command documented in Sections 5–17 is part of the current supported release scope.
 
 ## 1. Introduction
 
@@ -12,16 +12,16 @@ UniEnable is a single-user, offline, CLI-based Java 17 application that helps te
 with ASD or ADHD, and tertiary students who use wheelchairs, prepare for unfamiliar university,
 internship, or entry-level work routines.
 
-v1.0 combines:
+UniEnable combines:
 
 - fixed and flexible activity planning, with completion tracking;
 - concise activity lists and keyword/filter search;
 - category and topic organisation;
 - user-entered energy-demand and sensory-load ratings;
-- a deterministic "next relevant activity" lookup; and
-- read-only local facility and accessible-route reference information; and
-- academic-calendar recurrence plus a three-option reset workflow.
-- one persisted global profile for future recommendation preferences.
+- a deterministic "next relevant activity" lookup;
+- read-only local facility and accessible-route reference information;
+- academic-calendar recurrence plus a three-option reset workflow; and
+- one persisted global profile for deterministic schedule recommendation.
 
 The application works fully offline. It does not provide real-time navigation, live
 accessibility information, or medical advice.
@@ -69,10 +69,10 @@ accessibility information, or medical advice.
 - Dates use `YYYY-MM-DD`, e.g. `2026-08-15`. A `date/` you supply to `add` or `edit` is checked
   in three stages, each with its own specific message: the text must match the `YYYY-MM-DD`
   shape (`date must be in yyyy-MM-dd format.`); it must name a calendar date that actually exists
-  (`date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.` — e.g.
+  (`date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.` â€” e.g.
   `2026-02-30` or `2027-02-29` are rejected here, not described as "wrong format"); and it must
   not be earlier than today (`date has passed. Please enter a date from TODAY onwards.`). This
-  only applies to a date you are actively supplying through `add`/`edit` — `list`/`find`'s
+  only applies to a date you are actively supplying through `add`/`edit` â€” `list`/`find`'s
   `date/` filter and previously-saved activities may still refer to a genuinely past date.
 - Times use 24-hour `HH:mm`, e.g. `09:30` or `17:45`.
 - Durations use whole minutes.
@@ -111,7 +111,7 @@ accessibility information, or medical advice.
 | Dashboard | `dashboard today\|tomorrow\|date/YYYY-MM-DD\|this week [detail]` | v2.0 |
 | Timetable | `timetable day/...` / `week/...` / `this week` | v2.0 |
 | Preferences | `preference view` / `set ...` / `reset` | v2.0 |
-| Recommendation, export | various | **Coming soon (v2.0)** |
+| Recommendation | `recommend` / `this week` / `date/...` / `view` / `adopt` / `cancel` | v2.0 |
 
 ## 6. Activity Commands
 
@@ -153,7 +153,7 @@ exactly (including letter case), and their date, start, and end are the same. Ca
 note, ratings, completion, and ID do not make otherwise identical scheduling details distinct.
 Two fixed activities are accepted when one starts exactly when the other ends. If `topic/` is
 supplied, that topic must already exist under the given category (create it first with `topic add`)
-— otherwise the activity is rejected with a "does not exist" error rather than silently accepting
+â€” otherwise the activity is rejected with a "does not exist" error rather than silently accepting
 an unregistered topic name.
 
 ### 6.2 Add a Flexible Activity: `add`
@@ -184,7 +184,7 @@ You now have 2 activities.
 ____________________________________________________________
 ```
 
-`dur/` must be a positive whole number of minutes that fits inside the `earliest/`–`latest/`
+`dur/` must be a positive whole number of minutes that fits inside the `earliest/`â€“`latest/`
 window. As with a fixed activity, a supplied `topic/` must already exist under the given category.
 Flexible windows may overlap each other and may overlap fixed activities. However, an exact
 flexible scheduling duplicate is rejected: description (including letter case), date, earliest
@@ -226,11 +226,11 @@ list next week
 list overdue
 ```
 
-- `today` — activities on the current local date.
-- `tomorrow` — activities on the current local date plus one day.
-- `this week` — activities from Monday through Sunday of the week containing today.
-- `next week` — activities from Monday through Sunday of the week immediately after `this week`.
-- `overdue` — incomplete activities whose scheduled time has already fully passed. This is a
+- `today` â€” activities on the current local date.
+- `tomorrow` â€” activities on the current local date plus one day.
+- `this week` â€” activities from Monday through Sunday of the week containing today.
+- `next week` â€” activities from Monday through Sunday of the week immediately after `this week`.
+- `overdue` â€” incomplete activities whose scheduled time has already fully passed. This is a
   separate view, not a replacement: plain `list` (and every other selector above) keeps showing
   every activity regardless of overdue status. A completed activity, and any activity that hasn't
   started yet, never appears here. `overdue` cannot be combined with `status/`, since it already
@@ -312,7 +312,7 @@ Editable prefixes: `n/`, `c/`, `date/`, `type/`, `from/`, `to/`, `earliest/`, `l
 Topics are one-level groupings inside a fixed category, so the application enforces that
 invariant on every edit: the activity's resulting topic (whether left unchanged or newly
 supplied) must exist under its resulting category. Changing `c/` to a category that does not have
-the activity's current topic is rejected — supply a valid `topic/NEW_TOPIC` for the new category
+the activity's current topic is rejected â€” supply a valid `topic/NEW_TOPIC` for the new category
 in the same edit, or clear the topic with a blank `topic/`, before the category change is applied.
 This check runs before the confirmation prompt, so a rejected edit never asks "Save changes?" and
 never changes the stored activity.
@@ -427,7 +427,7 @@ reset all
 
 `reset all` is the only accepted form; `reset`, `reset all extra`, and any other option after
 `reset` are rejected. Instead of a single yes/no question, it shows a preview of exactly what's
-currently stored and a menu with three explicit choices — nothing is deleted until you type a
+currently stored and a menu with three explicit choices â€” nothing is deleted until you type a
 number:
 
 ```text
@@ -451,11 +451,11 @@ ____________________________________________________________
 ```
 
 "Class schedules" counts the same fixed lecture/tutorial/lab/section-teaching activities that
-`recur` (Section 6.12) can build on — see Section 6.12 for the exact eligibility rule. Facility,
+`recur` (Section 6.12) can build on â€” see Section 6.12 for the exact eligibility rule. Facility,
 connection, and `data/academic-calendar.txt` reference data are always kept, whichever choice you
 pick; they are never counted or affected by this menu.
 
-**Option `1` — delete all user data:**
+**Option `1` â€” delete all user data:**
 
 ```text
 ____________________________________________________________
@@ -469,7 +469,7 @@ user-created topic, resets your saved default order back to `chronological`, and
 activity ID back to `[1]`. It also restores all four planning preferences to their documented
 defaults.
 
-**Option `2` — delete other activities but keep class schedules:**
+**Option `2` â€” delete other activities but keep class schedules:**
 
 ```text
 ____________________________________________________________
@@ -483,7 +483,7 @@ ID, note, and completion status unchanged, and deletes everything else. Only the
 referenced by a kept activity survive; the next activity ID continues from the highest kept ID
 plus one, so kept IDs are never reused. Your complete planning preference profile is retained.
 
-**Option `3` — do not delete anything:**
+**Option `3` â€” do not delete anything:**
 
 ```text
 ____________________________________________________________
@@ -491,7 +491,7 @@ Cancelled. No changes were made.
 ____________________________________________________________
 ```
 
-Entering anything other than `1`, `2`, or `3` — including a blank line or the end of input —
+Entering anything other than `1`, `2`, or `3` â€” including a blank line or the end of input â€”
 cancels the same way, with a message telling you to enter `1`, `2`, or `3`. If there is nothing to
 reset at all (no activities, no topics, the default order is already chronological, the next ID is
 `[1]`, and preferences are already at their defaults), the menu is skipped entirely and the reset
@@ -503,11 +503,11 @@ succeeds immediately as if you had picked option `1`.
 recur TASK_ID week WEEK_SPEC
 ```
 
-`WEEK_SPEC` is one or more week numbers or inclusive ranges, separated by semicolons — for
+`WEEK_SPEC` is one or more week numbers or inclusive ranges, separated by semicolons â€” for
 example `1 to 6; 7 to 13` or `3;7;9;11`. Week numbers, whitespace around `;`/`to`, and the word
 `to` itself are all case-insensitive and flexible; zero/negative numbers, a reversed range (e.g.
 `5 to 3`), blank items, commas, hyphens, duplicate or overlapping weeks, and trailing text are all
-rejected. There is no fixed maximum week number in the application itself — every week you list is
+rejected. There is no fixed maximum week number in the application itself â€” every week you list is
 checked against `data/academic-calendar.txt` (see Section 14), so what's valid depends entirely on
 what that file defines for the target activity's academic year and semester. The specification
 must include the instructional week containing the source activity; omitting it is rejected.
@@ -525,7 +525,7 @@ add n/CG3207 Lecture c/ACADEMIC date/2026-08-14 type/FIXED from/16:00 to/18:00 e
 recur 1 week 1 to 6; 7 to 13
 ```
 
-Output — a preview listing every date to be created and every date skipped, before anything is
+Output â€” a preview listing every date to be created and every date skipped, before anything is
 changed:
 
 ```text
@@ -553,7 +553,7 @@ A requested date is skipped, not created, for three reasons: it is the original 
 week (which you must include in `WEEK_SPEC`); a fixed activity with the same description, date,
 start, and end already exists (so running the same `recur` command again creates nothing new); or
 `data/academic-calendar.txt` lists it as a no-class date. If **any** other target date would
-conflict with an existing activity, the entire command is rejected before the preview is shown —
+conflict with an existing activity, the entire command is rejected before the preview is shown â€”
 never a partial batch. After confirmation, all planned sessions are checked together once more;
 if that final check fails, none is added and no activity ID is consumed. If every requested week
 turns out to be the source, already existing, or a no-class date, `recur` reports that there is
@@ -562,8 +562,8 @@ nothing new to create and skips the confirmation prompt entirely.
 After `y`, every planned session is added as its own ordinary, independent activity with its own
 permanent ID, starting incomplete regardless of the source activity's own completion status, and
 copying the source's description, category, topic, timing, ratings, and note. From that point on,
-`mark`, `unmark`, `edit`, and `delete` (Sections 6.7–6.9) affect only the one occurrence you target
-— there is no linked series to keep in sync.
+`mark`, `unmark`, `edit`, and `delete` (Sections 6.7â€“6.9) affect only the one occurrence you target
+â€” there is no linked series to keep in sync.
 
 If `data/academic-calendar.txt` is missing or cannot be parsed, `recur` reports the problem and
 every other command keeps working normally (see Section 14).
@@ -622,7 +622,7 @@ topic rename c/CATEGORY old/OLD_TOPIC new/NEW_TOPIC
 ```
 
 The old topic name must already exist under the category, and the new name must not already be
-used by a different topic in that category — both are checked before any confirmation is shown,
+used by a different topic in that category â€” both are checked before any confirmation is shown,
 so a rejected rename never asks "Save changes?".
 
 Renaming shows a before/after confirmation, same style as edit:
@@ -681,7 +681,7 @@ Reassign the affected activities with `edit ... topic/NEW_TOPIC` first.
 ## 8. Facility and Connection Commands
 
 The application includes a small local reference dataset digitised from the NUS Student
-Accessibility Unit's FASS Access Route map. Facility and connection commands are **read-only** —
+Accessibility Unit's FASS Access Route map. Facility and connection commands are **read-only** â€”
 no in-app command adds, edits, or deletes these records.
 
 **Every facility and connection command's output ends with:**
@@ -758,8 +758,8 @@ facility validate
 ```
 
 If you've edited `data/facilities.txt` by hand, this re-checks it for the same problems the
-application already looks for every time it starts — a blank or duplicate facility ID, a
-duplicate facility name, or an invalid feature type/status — and lists them, one per line, so you
+application already looks for every time it starts â€” a blank or duplicate facility ID, a
+duplicate facility name, or an invalid feature type/status â€” and lists them, one per line, so you
 don't have to close and reopen the application (or scroll back to catch a startup warning) just to
 see whether your edit was accepted. It only reports; it never changes `facilities.txt` and never
 affects what's currently loaded, so running it is always safe. If nothing is wrong, it says so:
@@ -777,7 +777,7 @@ ____________________________________________________________
 connection validate
 ```
 
-Works the same way as `facility validate`, for `data/connections.txt` — including checking that
+Works the same way as `facility validate`, for `data/connections.txt` â€” including checking that
 every connection's `from`/`to` endpoint still names a facility that actually exists in
 `facilities.txt`. Read-only; changes nothing.
 
@@ -789,7 +789,7 @@ route from/FACILITY to/FACILITY
 
 `from/` and `to/` may appear in either order. Finds the shortest path between the two named
 facilities by total distance, using only connections whose accessibility status is confirmed
-`YES` — a connection marked `NO` or `UNKNOWN` is never used, not even as a last resort when no
+`YES` â€” a connection marked `NO` or `UNKNOWN` is never used, not even as a last resort when no
 `YES` path exists. Names are matched case-insensitively; the report always shows the canonical
 stored name.
 
@@ -800,7 +800,7 @@ route from/AS6 to/AS8
 ```
 
 Output shows the ordered facility chain, each segment's own distance, traversal type, shelter
-status, and any recorded barrier/notes, plus the total distance — followed by the same disclaimer
+status, and any recorded barrier/notes, plus the total distance â€” followed by the same disclaimer
 every facility/connection command ends with. `from`/`to` naming the same known facility is a
 **successful** zero-length result (single-facility chain, `0 m`, no travel required), not an
 error. Two known facilities with no confirmed-accessible path between them get a clear message
@@ -809,7 +809,7 @@ this means UniEnable's local dataset has no confirmed path, not that no real-wor
 route exists. An unrecognised facility name is reported as an error.
 
 `route` never estimates travel time and never claims real-time verification, a guarantee of
-accessibility, or current usability — only that the local dataset records a confirmed-accessible
+accessibility, or current usability â€” only that the local dataset records a confirmed-accessible
 path. It is read-only: it never adds, edits, or deletes a facility or connection record.
 
 ## 9. Accessible Planning Dashboard: `dashboard`
@@ -822,11 +822,11 @@ dashboard this week [detail]
 ```
 
 Shows how much is planned for a period, how much room is left, how energy/sensory-demanding it
-is, and how much of what's already due is complete — using only activity data you already
+is, and how much of what's already due is complete â€” using only activity data you already
 entered. Read-only: it never adds, edits, or deletes an activity, never writes any file, and
 never shows a confirmation prompt.
 
-`this week` means Monday through Sunday of the current week — the same definition `list this
+`this week` means Monday through Sunday of the current week â€” the same definition `list this
 week` already uses, not a rolling seven-day window. `date/YYYY-MM-DD` accepts only that exact
 marker form (not a bare date); an invalid or non-existent date is rejected the same way `add`/`edit`
 already reject one. `detail` is a single optional trailing keyword.
@@ -861,17 +861,17 @@ Overloaded by: 2h 30m
 ```
 
 If nothing in the period has reached its scheduled end time yet, completion shows
-`Completion: No activities are due yet.` instead of a percentage — an activity only counts toward
+`Completion: No activities are due yet.` instead of a percentage â€” an activity only counts toward
 completion once its own time has fully passed, so something not due yet is never counted as
 behind schedule. An empty period (no activities at all) shows
 `No activities found for the selected period.` instead of the usual metrics.
 
-**"Nominal buffer" is arithmetic capacity minus planned workload — not a guarantee that time is
+**"Nominal buffer" is arithmetic capacity minus planned workload â€” not a guarantee that time is
 actually free or usable.** Overlapping fixed activities each count individually toward planned
 workload (not merged), a flexible activity counts its full requested duration once it's included
 (not clipped to however much of its window falls in the period), and travel time/route
 accessibility are not considered. Energy and sensory numbers are shown exactly as you entered
-them — self-reported planning data only, never a medical or performance judgement.
+them â€” self-reported planning data only, never a medical or performance judgement.
 
 ## 10. Read-only Timetable: `timetable`
 
@@ -910,14 +910,15 @@ For weekly views, `compact` omits empty-day placeholders and the legend, providi
 narrow-terminal fallback. `compact` is not accepted for a one-day view, and it cannot be combined
 with `detail`.
 
-Timetable performs no save, mutation, confirmation, recommendation, or buffer calculation. The
-current model supports only same-day activities. Recommended placements and buffers will appear
-only if later features introduce approved data for them.
+Timetable performs no generation, save, or confirmation of recommendations itself. It remains a
+read-only view. The current model supports only same-day activities. Adopted recommendation
+placements appear as scheduled flexible entries; unscheduled flexible activities still remain in
+their own separate section.
 
 ## 11. Global Planning Preferences: `preference`
 
-UniEnable stores one profile that applies to every day considered by the future deterministic
-recommender. The profile is available now even though recommendation generation is not.
+UniEnable stores one profile that applies to every day considered by the deterministic
+recommender.
 
 Defaults:
 
@@ -970,11 +971,107 @@ Restore all four defaults:
 preference reset
 ```
 
-Reset also requires confirmation. Tomato/Pomodoro is an advisory display preference only: this
-feature does not generate recommendations, change activity timing, affect Dashboard calculations,
-or alter energy, sensory, route, or timetable behaviour.
+Reset also requires confirmation. Tomato/Pomodoro is an advisory display preference only: it may
+add a short study suggestion in `recommend` output, but it does not change slot generation,
+activity timing, Dashboard calculations, or route behaviour.
 
-## 12. Built-In Guide: `guide`
+## 12. Deterministic Schedule Recommendation: `recommend`
+
+`recommend` is a deterministic preview-and-adopt workflow for incomplete flexible activities.
+It uses:
+
+- the current set of fixed activities;
+- any flexible activities that already have an adopted placement;
+- each flexible activity's original earliest/latest window and required duration; and
+- your saved global preference profile from Section 11.
+
+It does **not** use route/facility travel data, does not rewrite your original flexible window,
+and does not persist any recommendation until you explicitly adopt it.
+
+### 12.1 Generate a Weekly Recommendation
+
+```text
+recommend
+recommend this week
+```
+
+Both forms are equivalent. They generate one preview for the Monday-Sunday week containing today.
+Only incomplete, not-yet-adopted flexible activities inside that week are considered.
+
+The output includes:
+
+- a recommended placement list;
+- any unscheduled activity IDs that could not be fitted;
+- a preview timetable showing adopted recommendations as `[R]`; and
+- a preview dashboard for the same period.
+
+Generation is read-only: it stores one in-memory proposal for later `view`, `adopt`, or `cancel`,
+but does not save any file and does not mutate your activities yet.
+
+### 12.2 Generate a One-Day Recommendation
+
+```text
+recommend date/YYYY-MM-DD
+```
+
+Example:
+
+```text
+recommend date/2026-08-15
+```
+
+This generates a preview for that one date only. The date must not be earlier than today.
+Malformed dates, non-existent calendar dates, and trailing extra text are rejected.
+
+### 12.3 View the Current Proposal Again
+
+```text
+recommend view
+```
+
+Re-displays the current in-memory proposal without recomputing it. If no proposal is active, the
+command reports that you should generate one first.
+
+### 12.4 Adopt the Current Proposal
+
+```text
+recommend adopt
+```
+
+This is the only `recommend` command that changes saved activity data. It asks for confirmation,
+then writes each proposed placement onto the targeted flexible activity as its adopted scheduled
+time.
+
+After adoption:
+
+- the flexible activity keeps the same permanent ID;
+- its original flexible window and duration are still retained;
+- timetable can show it as a scheduled recommended entry `[R]`; and
+- the change is persisted together with the normal application save.
+
+If saving fails, UniEnable rolls the adoption back and shows the storage error instead of a false
+success message.
+
+### 12.5 Discard the Current Proposal
+
+```text
+recommend cancel
+```
+
+Clears the current in-memory proposal without changing any activity and without saving anything.
+
+### 12.6 Recommendation Rules and Limits
+
+- Minimum buffer from Section 11 is enforced around neighbouring scheduled commitments.
+- A flexible activity that already has an adopted placement is treated as scheduled and is not
+  proposed again.
+- Tomato/Pomodoro only affects whether a short study suggestion line is shown for suitable
+  study-like activities; it does not change slot choice.
+- Recommendations are deterministic for the same activities, preferences, and date/week input.
+- Route-aware recommendation is intentionally out of scope because activities do not store
+  facility/location bindings.
+
+## 13. Built-In Guide: `guide`
 
 ```text
 guide
@@ -986,9 +1083,7 @@ guide NUMBER
 Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`,
 `list`, `edit`, `delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`,
 `recur`, `topic`, `facility`, `connection`, `route`, `dashboard`, `timetable`, `preference`,
-`storage`. Topics
-for v2.0-only features still awaiting implementation (`recommend`, `export`) are still listed but
-end with `(Coming soon in a future release.)` where the underlying command isn't built yet.
+`recommend`, and `storage`.
 
 Each menu item can also be selected by its number, either as `guide NUMBER` or by entering the
 bare number as its own command right after the menu is shown (e.g. `1` selects "Getting
@@ -1005,7 +1100,7 @@ to real syntax. Item `12` is the implemented `timetable` topic. Item `13` ("Retu
 topic; it just acknowledges the selection and returns to the command prompt. Items `1`-`11`
 retain their prior meanings.
 
-## 13. Exit: `bye`
+## 14. Exit: `bye`
 
 ```text
 bye
@@ -1018,22 +1113,22 @@ Bye! Take care and see you again.
 ____________________________________________________________
 ```
 
-## 14. Data Storage
+## 15. Data Storage
 
 ```text
 data/
-├── activities.txt
-├── topics.txt
-├── facilities.txt
-├── connections.txt
-├── settings.txt
-├── preferences.txt
-└── academic-calendar.txt
+â”œâ”€â”€ activities.txt
+â”œâ”€â”€ topics.txt
+â”œâ”€â”€ facilities.txt
+â”œâ”€â”€ connections.txt
+â”œâ”€â”€ settings.txt
+â”œâ”€â”€ preferences.txt
+â””â”€â”€ academic-calendar.txt
 ```
 
 `activities.txt` and `topics.txt` are your saved planning data, created empty on first run.
 `facilities.txt` and `connections.txt` are copied from the bundled sample dataset on first run if
-they don't already exist — an existing file (including one you've edited manually) is never
+they don't already exist â€” an existing file (including one you've edited manually) is never
 overwritten. `settings.txt` stores your saved default activity order (see `order set` in Section
 6); a missing or malformed file safely falls back to the documented `chronological` default.
 
@@ -1045,18 +1140,19 @@ values from an invalid profile with defaults.
 
 `academic-calendar.txt` is different from every file above: it is a reference file you (or your
 school) maintain yourself, listing each semester's teaching weeks and no-class dates. UniEnable
-never creates, repairs, or overwrites it — if it's missing, only `recur` (Section 6.12) is
+never creates, repairs, or overwrites it â€” if it's missing, only `recur` (Section 6.12) is
 affected; every other command keeps working. It's read once, the first time you use `recur` in a
 run, not at startup, and any edit you make while the application is running only takes effect the
 next time you start it. `reset all` (Section 6.11) never touches it, no matter which option you
 choose. If you want to plan for a new academic year or add a week the file doesn't yet have, edit
-the file yourself and restart — no application update is needed. See the release download for the
+the file yourself and restart â€” no application update is needed. See the release download for the
 exact record format and a worked example.
 
 The application only saves activities, topics, settings, and preferences after a command that actually changes
 them: `add`, `edit`, `delete`, `mark`, `unmark`, `order set`, `recur`, `reset all`, `topic add`,
-`topic rename`, `topic delete`, `preference set`, and `preference reset`. `preference view`,
-`topic list`, and other read-only commands such as `list`,
+`topic rename`, `topic delete`, `preference set`, `preference reset`, and `recommend adopt`. Preview-only
+recommendation commands (`recommend`, `recommend this week`, `recommend date/...`, `recommend view`, and
+`recommend cancel`), `preference view`, `topic list`, and other read-only commands such as `list`,
 `find`, `view`, and `next` never write to disk.
 `settings.txt` is therefore created the first time you run any such data-changing command, not
 only when you first use `order set`; `reset all` also writes it, since it resets the saved default
@@ -1071,30 +1167,30 @@ Every data file is validated line-by-line when the application starts, not just 
 A line that fails validation is skipped with a warning (see `[Warning] Partial data loaded` below)
 instead of silently loading bad data:
 
-- `activities.txt` — positive/unique IDs, non-blank descriptions, end-after-start timing, a
+- `activities.txt` â€” positive/unique IDs, non-blank descriptions, end-after-start timing, a
   flexible window/duration that fits, no exact duplicate, no fixed-activity overlap, and a topic
   field that matches a topic actually recorded in `topics.txt` under the same category.
-- `connections.txt` — positive/unique IDs, a positive distance, and `from`/`to` endpoints that
+- `connections.txt` â€” positive/unique IDs, a positive distance, and `from`/`to` endpoints that
   both match a known facility's name in `facilities.txt`.
-- `facilities.txt` — unique facility IDs and unique facility names (facilities are looked up by
+- `facilities.txt` â€” unique facility IDs and unique facility names (facilities are looked up by
   name, so a duplicate name would otherwise make that lookup ambiguous).
-- `preferences.txt` — exactly one valid occurrence of each of its four known fields and a complete,
+- `preferences.txt` â€” exactly one valid occurrence of each of its four known fields and a complete,
   internally consistent profile; any problem falls back to all defaults with startup warnings.
-- `academic-calendar.txt` — validated separately, only when `recur` first needs it (not at
+- `academic-calendar.txt` â€” validated separately, only when `recur` first needs it (not at
   startup): schema version, field counts, real calendar dates, non-blank fields, non-negative week
   numbers, a matching `SOURCE` record for every week/no-class entry, unique academic-year/
   semester/week combinations, unique no-class dates, and non-overlapping instructional week
-  ranges. Any problem disables `recur` only — every other command keeps working normally. A
+  ranges. Any problem disables `recur` only â€” every other command keeps working normally. A
   problem confined to one line (a bad field count, an invalid date, an unknown record type) names
   that exact line number; a problem that only becomes visible once the whole file is read (a
   duplicate academic-year/semester/week combination, or two instructional weeks overlapping)
   names the conflicting records themselves instead of a single line.
 
 If you'd rather check a hand-edited `facilities.txt`/`connections.txt` without restarting the
-application, `facility validate`/`connection validate` (Sections 8.7–8.8) run the exact same
+application, `facility validate`/`connection validate` (Sections 8.7â€“8.8) run the exact same
 checks on demand.
 
-## 15. Error Handling
+## 16. Error Handling
 
 ```text
 [Error] Invalid input: ...
@@ -1114,11 +1210,11 @@ ____________________________________________________________
 ____________________________________________________________
 ```
 
-## 16. Frequently Asked Questions
+## 17. Frequently Asked Questions
 
 **What is the difference between a fixed and flexible activity?**
 A fixed activity has a confirmed start and end time. A flexible activity has an allowed window
-(`earliest/`–`latest/`) and a required duration.
+(`earliest/`â€“`latest/`) and a required duration.
 
 **Why does `edit`/`topic rename` ask for confirmation but `mark`/`unmark` don't?**
 Edits and renames change stored information non-trivially and show a before/after diff so you can
@@ -1126,7 +1222,7 @@ catch a mistake before it's saved. Marking/unmarking is immediately reversible w
 command, so no confirmation is needed.
 
 **Will `recur` or `reset all` ever delete or repair `data/academic-calendar.txt`?**
-No. Neither command, nor anything else in UniEnable, creates, repairs, or overwrites that file —
+No. Neither command, nor anything else in UniEnable, creates, repairs, or overwrites that file â€”
 it's entirely yours to maintain. `reset all` always leaves it untouched, whichever of the three
 options you pick.
 
@@ -1142,9 +1238,17 @@ output.
 **Can I edit `facilities.txt`/`connections.txt` manually?**
 Yes, while the application is closed. Changes are validated and loaded the next time you start
 the application. If you want to check your edit is well-formed without restarting, run `facility
-validate`/`connection validate` (Sections 8.7–8.8) any time while the application is running.
+validate`/`connection validate` (Sections 8.7â€“8.8) any time while the application is running.
 
-## 17. Complete Command Summary
+**Does `recommend` permanently reschedule my flexible activities as soon as I generate a preview?**
+No. `recommend`, `recommend this week`, `recommend date/...`, and `recommend view` are preview-only.
+Nothing is saved until you explicitly confirm `recommend adopt`.
+
+**What does an adopted recommendation actually save?**
+It saves one adopted scheduled placement onto the flexible activity while keeping the activity's
+same ID, original flexible window, duration, and other fields.
+
+## 18. Complete Command Summary
 
 ```text
 guide
@@ -1195,13 +1299,15 @@ timetable this week [compact|detail]
 preference view
 preference set start/HH:mm [end/HH:mm] [buffer/MINUTES] [tomato/on|off]
 preference reset
+
+recommend
+recommend this week
+recommend date/YYYY-MM-DD
+recommend view
+recommend adopt
+recommend cancel
 ```
 
-## 18. Remaining v2.0 Features
 
-The following were planned in the original product scope but have no working command yet:
-a deterministic schedule recommender and
-CSV export. `guide` will point this out if you ask about one of these topics directly. Accessible
-route search (`route`, Section 8.9), the accessible planning dashboard (`dashboard`, Section 9),
-the read-only timetable (`timetable`, Section 10), and global planning preferences
-(`preference`, Section 11) have shipped in v2.0.
+
+

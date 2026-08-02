@@ -47,7 +47,8 @@ class TimetableFormatterTest {
                 + "  09:00-11:00  [F][1] Lecture 1\n\n"
                 + "UNSCHEDULED FLEXIBLE ACTIVITIES\n"
                 + "  2026-08-17 13:00-17:00  [U][2] Study (90 min required)\n\n"
-                + "[F] Fixed activity | [U] Unscheduled flexible activity", result);
+                + "[F] Fixed activity | [R] Adopted flexible activity | "
+                + "[U] Unscheduled flexible activity", result);
     }
 
     @Test
@@ -60,7 +61,7 @@ class TimetableFormatterTest {
 
         assertTrue(result.contains("MONDAY | 2026-08-17"));
         assertTrue(result.contains("SUNDAY | 2026-08-23"));
-        assertEquals(6, countOccurrences(result, "No fixed activities."));
+        assertEquals(6, countOccurrences(result, "No scheduled activities."));
     }
 
     @Test
@@ -73,7 +74,7 @@ class TimetableFormatterTest {
 
         assertTrue(result.contains("WEDNESDAY | 2026-08-19"));
         assertFalse(result.contains("MONDAY |"));
-        assertFalse(result.contains("No fixed activities."));
+        assertFalse(result.contains("No scheduled activities."));
         assertFalse(result.contains("[F] Fixed activity |"));
     }
 
@@ -84,8 +85,8 @@ class TimetableFormatterTest {
 
         String result = TimetableFormatter.format(view, TimetableMode.COMPACT);
 
-        assertTrue(result.contains("No fixed activities in the selected period."));
-        assertTrue(result.contains("UNSCHEDULED FLEXIBLE ACTIVITIES\n  None"));
+        assertTrue(result.contains("No scheduled activities in the selected period."));
+        assertTrue(result.contains("UNSCHEDULED FLEXIBLE ACTIVITIES\n  None in the selected period."));
     }
 
     @Test
@@ -112,7 +113,7 @@ class TimetableFormatterTest {
 
         String result = TimetableFormatter.format(view, TimetableMode.NORMAL);
 
-        assertTrue(result.contains("Warning: overlapping fixed commitments"));
+        assertTrue(result.contains("Warning: overlapping scheduled commitments"));
         assertEquals(3, countOccurrences(result, "[OVERLAP]"));
     }
 

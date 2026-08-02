@@ -333,7 +333,8 @@ public class ActivityManager {
             return ((FixedActivity) activity).getStartTime();
         }
         if (activity instanceof FlexibleActivity) {
-            return ((FlexibleActivity) activity).getEarliestStart();
+            FlexibleActivity flexible = (FlexibleActivity) activity;
+            return flexible.hasAdoptedPlacement() ? flexible.getAdoptedStartTime() : flexible.getEarliestStart();
         }
         throw new IllegalStateException("unknown activity type: " + activity.getClass());
     }
@@ -347,13 +348,13 @@ public class ActivityManager {
      * @return the next relevant activity, or empty if none qualifies
      */
     public Optional<Activity> next(LocalDateTime now) {
-        Optional<FixedActivity> inProgress = findFixedInProgress(now);
+        Optional<Activity> inProgress = findScheduledInProgress(now);
         if (inProgress.isPresent()) {
-            return Optional.of(inProgress.get());
+            return inProgress;
         }
-        Optional<FixedActivity> upcoming = findNearestUpcomingFixed(now);
+        Optional<Activity> upcoming = findNearestUpcomingScheduled(now);
         if (upcoming.isPresent()) {
-            return Optional.of(upcoming.get());
+            return upcoming;
         }
         return findSoonestEndingFlexible(now).map(activity -> activity);
     }
@@ -381,43 +382,44 @@ public class ActivityManager {
         }
         if (activity instanceof FlexibleActivity) {
             FlexibleActivity flexible = (FlexibleActivity) activity;
-            return LocalDateTime.of(flexible.getDate(), flexible.getLatestEnd()).isBefore(now);
+            return LocalDateTime.of(flexible.getDate(),
+                    flexible.hasAdoptedPlacement() ? flexible.getAdoptedEndTime() : flexible.getLatestEnd())
+                    .isBefore(now);
         }
         return false;
     }
 
-    private Optional<FixedActivity> findFixedInProgress(LocalDateTime now) {
+    private Optional<Activity> findScheduledInProgress(LocalDateTime now) {
         for (Activity activity : activities) {
-            if (!(activity instanceof FixedActivity) || activity.isComplete()) {
+            if (activity.isComplete()) {
                 continue;
             }
-            FixedActivity fixed = (FixedActivity) activity;
-            if (!fixed.getDate().equals(now.toLocalDate())) {
+            LocalDateTime start = scheduledStart(activity);
+            LocalDateTime end = scheduledEnd(activity);
+            if (start == null || !start.toLocalDate().equals(now.toLocalDate())) {
                 continue;
             }
-            LocalTime nowTime = now.toLocalTime();
-            if (!nowTime.isBefore(fixed.getStartTime()) && nowTime.isBefore(fixed.getEndTime())) {
-                return Optional.of(fixed);
+            if (!now.isBefore(start) && now.isBefore(end)) {
+                return Optional.of(activity);
             }
         }
         return Optional.empty();
     }
 
-    private Optional<FixedActivity> findNearestUpcomingFixed(LocalDateTime now) {
-        FixedActivity nearest = null;
+    private Optional<Activity> findNearestUpcomingScheduled(LocalDateTime now) {
+        Activity nearest = null;
         LocalDateTime nearestStart = null;
         for (Activity activity : activities) {
-            if (!(activity instanceof FixedActivity) || activity.isComplete()) {
+            if (activity.isComplete()) {
                 continue;
             }
-            FixedActivity fixed = (FixedActivity) activity;
-            LocalDateTime start = LocalDateTime.of(fixed.getDate(), fixed.getStartTime());
-            if (!start.isAfter(now)) {
+            LocalDateTime start = scheduledStart(activity);
+            if (start == null || !start.isAfter(now)) {
                 continue;
             }
             if (nearest == null || start.isBefore(nearestStart)
-                    || (start.isEqual(nearestStart) && fixed.getId() < nearest.getId())) {
-                nearest = fixed;
+                    || (start.isEqual(nearestStart) && activity.getId() < nearest.getId())) {
+                nearest = activity;
                 nearestStart = start;
             }
         }
@@ -432,7 +434,8 @@ public class ActivityManager {
                 continue;
             }
             FlexibleActivity flexible = (FlexibleActivity) activity;
-            LocalDateTime end = LocalDateTime.of(flexible.getDate(), flexible.getLatestEnd());
+            LocalDateTime end = LocalDateTime.of(flexible.getDate(),
+                    flexible.hasAdoptedPlacement() ? flexible.getAdoptedEndTime() : flexible.getLatestEnd());
             if (!end.isAfter(now)) {
                 continue;
             }
@@ -442,6 +445,34 @@ public class ActivityManager {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    private LocalDateTime scheduledStart(Activity activity) {
+        if (activity instanceof FixedActivity) {
+            FixedActivity fixed = (FixedActivity) activity;
+            return LocalDateTime.of(fixed.getDate(), fixed.getStartTime());
+        }
+        if (activity instanceof FlexibleActivity) {
+            FlexibleActivity flexible = (FlexibleActivity) activity;
+            if (flexible.hasAdoptedPlacement()) {
+                return LocalDateTime.of(flexible.getDate(), flexible.getAdoptedStartTime());
+            }
+        }
+        return null;
+    }
+
+    private LocalDateTime scheduledEnd(Activity activity) {
+        if (activity instanceof FixedActivity) {
+            FixedActivity fixed = (FixedActivity) activity;
+            return LocalDateTime.of(fixed.getDate(), fixed.getEndTime());
+        }
+        if (activity instanceof FlexibleActivity) {
+            FlexibleActivity flexible = (FlexibleActivity) activity;
+            if (flexible.hasAdoptedPlacement()) {
+                return LocalDateTime.of(flexible.getDate(), flexible.getAdoptedEndTime());
+            }
+        }
+        return null;
     }
 
     private boolean isBetterFlexibleCandidate(FlexibleActivity candidate, LocalDateTime candidateEnd,

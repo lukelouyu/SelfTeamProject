@@ -29,7 +29,7 @@ class TimetableCommandTest {
         String feedback = command.execute().getFeedback();
 
         assertTrue(feedback.startsWith("Daily Timetable"));
-        assertTrue(feedback.contains("No fixed activities."));
+        assertTrue(feedback.contains("No scheduled activities."));
     }
 
     @Test

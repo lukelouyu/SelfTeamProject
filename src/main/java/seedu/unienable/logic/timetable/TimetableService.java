@@ -3,6 +3,7 @@ package seedu.unienable.logic.timetable;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -48,32 +49,37 @@ public final class TimetableService {
         return build(activityManager.getAll(), period);
     }
 
-    static TimetableView build(List<Activity> activities, TimetablePeriod period) {
-        List<FixedActivity> fixed = new ArrayList<>();
+    public static TimetableView build(List<Activity> activities, TimetablePeriod period) {
+        List<ScheduledEntrySource> scheduled = new ArrayList<>();
         List<FlexibleActivity> flexible = new ArrayList<>();
         for (Activity activity : activities) {
             if (!period.contains(activity.getDate())) {
                 continue;
             }
             if (activity instanceof FixedActivity) {
-                fixed.add((FixedActivity) activity);
+                scheduled.add(ScheduledEntrySource.fromFixed((FixedActivity) activity));
             } else if (activity instanceof FlexibleActivity) {
-                flexible.add((FlexibleActivity) activity);
+                FlexibleActivity flexibleActivity = (FlexibleActivity) activity;
+                if (flexibleActivity.hasAdoptedPlacement()) {
+                    scheduled.add(ScheduledEntrySource.fromAdoptedFlexible(flexibleActivity));
+                } else {
+                    flexible.add(flexibleActivity);
+                }
             } else {
                 throw new IllegalStateException("unknown activity type: " + activity.getClass());
             }
         }
 
-        fixed.sort(Comparator.comparing(FixedActivity::getDate)
-                .thenComparing(FixedActivity::getStartTime)
-                .thenComparingInt(FixedActivity::getId));
+        scheduled.sort(Comparator.comparing(ScheduledEntrySource::date)
+                .thenComparing(ScheduledEntrySource::startTime)
+                .thenComparingInt(ScheduledEntrySource::id));
         flexible.sort(Comparator.comparing(FlexibleActivity::getDate)
                 .thenComparing(FlexibleActivity::getEarliestStart)
                 .thenComparingInt(FlexibleActivity::getId));
 
-        Set<Integer> overlapIds = findOverlapIds(fixed);
-        List<TimetableEntry> fixedEntries = fixed.stream()
-                .map(activity -> fromFixed(activity, overlapIds.contains(activity.getId())))
+        Set<Integer> overlapIds = findOverlapIds(scheduled);
+        List<TimetableEntry> fixedEntries = scheduled.stream()
+                .map(activity -> activity.toEntry(overlapIds.contains(activity.id())))
                 .toList();
         List<TimetableEntry> flexibleEntries = flexible.stream()
                 .map(TimetableService::fromFlexible)
@@ -81,28 +87,28 @@ public final class TimetableService {
         return new TimetableView(period, fixedEntries, flexibleEntries);
     }
 
-    private static Set<Integer> findOverlapIds(List<FixedActivity> fixed) {
+    private static Set<Integer> findOverlapIds(List<ScheduledEntrySource> scheduled) {
         Set<Integer> overlapIds = new HashSet<>();
-        for (int i = 0; i < fixed.size(); i++) {
-            FixedActivity first = fixed.get(i);
-            for (int j = i + 1; j < fixed.size(); j++) {
-                FixedActivity second = fixed.get(j);
-                if (second.getDate().isAfter(first.getDate())) {
+        for (int i = 0; i < scheduled.size(); i++) {
+            ScheduledEntrySource first = scheduled.get(i);
+            for (int j = i + 1; j < scheduled.size(); j++) {
+                ScheduledEntrySource second = scheduled.get(j);
+                if (second.date().isAfter(first.date())) {
                     break;
                 }
                 if (overlaps(first, second)) {
-                    overlapIds.add(first.getId());
-                    overlapIds.add(second.getId());
+                    overlapIds.add(first.id());
+                    overlapIds.add(second.id());
                 }
             }
         }
         return overlapIds;
     }
 
-    private static boolean overlaps(FixedActivity first, FixedActivity second) {
-        return first.getDate().equals(second.getDate())
-                && first.getStartTime().isBefore(second.getEndTime())
-                && second.getStartTime().isBefore(first.getEndTime());
+    private static boolean overlaps(ScheduledEntrySource first, ScheduledEntrySource second) {
+        return first.date().equals(second.date())
+                && first.startTime().isBefore(second.endTime())
+                && second.startTime().isBefore(first.endTime());
     }
 
     private static TimetableEntry fromFixed(FixedActivity activity, boolean overlapping) {
@@ -119,5 +125,30 @@ public final class TimetableService {
                 TimetableEntryType.UNSCHEDULED_FLEXIBLE, false, activity.isComplete(),
                 activity.getCategory(), activity.getEnergyRating().getValue(),
                 activity.getSensoryRating().getValue(), activity.getTopic(), activity.getNote());
+    }
+
+    private record ScheduledEntrySource(int id, String description, LocalDate date, LocalTime startTime,
+            LocalTime endTime, TimetableEntryType type, boolean complete,
+            seedu.unienable.model.enums.ActivityCategory category, int energyRating, int sensoryRating,
+            String topic, String note) {
+        private static ScheduledEntrySource fromFixed(FixedActivity activity) {
+            return new ScheduledEntrySource(activity.getId(), activity.getDescription(), activity.getDate(),
+                    activity.getStartTime(), activity.getEndTime(), TimetableEntryType.FIXED,
+                    activity.isComplete(), activity.getCategory(), activity.getEnergyRating().getValue(),
+                    activity.getSensoryRating().getValue(), activity.getTopic(), activity.getNote());
+        }
+
+        private static ScheduledEntrySource fromAdoptedFlexible(FlexibleActivity activity) {
+            return new ScheduledEntrySource(activity.getId(), activity.getDescription(), activity.getDate(),
+                    activity.getAdoptedStartTime(), activity.getAdoptedEndTime(),
+                    TimetableEntryType.ADOPTED_FLEXIBLE, activity.isComplete(), activity.getCategory(),
+                    activity.getEnergyRating().getValue(), activity.getSensoryRating().getValue(),
+                    activity.getTopic(), activity.getNote());
+        }
+
+        private TimetableEntry toEntry(boolean overlapping) {
+            return new TimetableEntry(id, description, date, startTime, endTime, 0, type, overlapping,
+                    complete, category, energyRating, sensoryRating, topic, note);
+        }
     }
 }

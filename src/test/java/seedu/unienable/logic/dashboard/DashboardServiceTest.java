@@ -404,6 +404,19 @@ class DashboardServiceTest {
     }
 
     @Test
+    public void eligibility_adoptedFlexibleUsesAdoptedEndInsteadOfWindowEnd() throws Exception {
+        FlexibleActivity activity = flexible(1, MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0), 60, 2, 2);
+        activity.setAdoptedStartTime(LocalTime.of(10, 0));
+        ActivityManager manager = managerWith(List.of(activity));
+        DashboardPeriod period = DashboardService.resolveDate(MONDAY);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 17, 11, 0);
+
+        DashboardSummary summary = DashboardService.summarize(manager, period, now);
+
+        assertEquals(1, summary.getEligibleCount());
+    }
+
+    @Test
     public void eligibility_futureAndOngoingFixed_excludedFromEligibility() throws Exception {
         FixedActivity future = fixed(1, MONDAY, LocalTime.of(20, 0), LocalTime.of(21, 0), 2, 2);
         FixedActivity ongoing = fixed(2, MONDAY, LocalTime.of(9, 0), LocalTime.of(11, 0), 2, 2);

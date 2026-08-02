@@ -1,0 +1,28 @@
+list
+list this week
+view 9
+find k/CS2113
+find k/CG2028
+order view
+order set time
+list this week
+mark 1
+list status/completed
+unmark 1
+edit 9 note/Discuss project milestones
+y
+view 9
+topic list
+topic add c/ACADEMIC n/TESTMOD
+topic rename c/ACADEMIC old/TESTMOD new/TESTMOD2
+y
+recur 13 week 2;3
+y
+list next week
+delete 4
+n
+view 4
+delete 4
+y
+view 4
+bye

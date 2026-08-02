@@ -61,7 +61,12 @@ public class MessageFormatter {
         result.append(" | ").append(activity.getDescription()).append("\n             ")
                 .append(activity.getCategory()).append(topicSuffix);
         if (activity instanceof FlexibleActivity) {
-            result.append(" | ").append(((FlexibleActivity) activity).getDurationMinutes()).append(" min");
+            FlexibleActivity flexible = (FlexibleActivity) activity;
+            result.append(" | ").append(flexible.getDurationMinutes()).append(" min");
+            if (flexible.hasAdoptedPlacement()) {
+                result.append(" | Adopted ").append(flexible.getAdoptedStartTime())
+                        .append(" -> ").append(flexible.getAdoptedEndTime());
+            }
         }
         result.append(" | E").append(activity.getEnergyRating().getValue())
                 .append(" | S").append(activity.getSensoryRating().getValue());
@@ -93,6 +98,10 @@ public class MessageFormatter {
                     .append(flexible.getDurationMinutes()).append(" min\n");
             result.append("Category: ").append(flexible.getCategory());
             appendTopicSuffix(result, flexible.getTopic());
+            if (flexible.hasAdoptedPlacement()) {
+                result.append(" | Adopted: ").append(flexible.getAdoptedStartTime())
+                        .append(" -> ").append(flexible.getAdoptedEndTime());
+            }
             result.append('\n');
         }
         result.append("Energy: ").append(activity.getEnergyRating()).append(" | Sensory: ")
@@ -185,6 +194,9 @@ public class MessageFormatter {
         appendField(result, "Earliest", flexible.getEarliestStart());
         appendField(result, "Latest", flexible.getLatestEnd());
         appendField(result, "Duration", flexible.getDurationMinutes() + " min");
+        if (flexible.hasAdoptedPlacement()) {
+            appendField(result, "Adopted", flexible.getAdoptedStartTime() + " -> " + flexible.getAdoptedEndTime());
+        }
     }
 
     private static void appendField(StringBuilder result, String label, Object value) {

@@ -15,13 +15,12 @@ Application Guide
 6. Recommended timetable
 7. Accessible facilities
 8. Accessible connections
-9. CSV export
-10. Data files and storage
-11. Accessible routes
-12. Text timetable
-13. Return
+9. Data files and storage
+10. Accessible routes
+11. Text timetable
+12. Return
 
-Enter a number from 1 to 13.
+Enter a number from 1 to 12.
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -234,15 +233,38 @@ Examples:
   preference reset
 
 Changes and reset require y/n confirmation. These settings are advisory
-planning inputs only; this release does not yet recommend or reschedule
-activities.
+planning inputs for recommend. Tomato only affects advisory study
+suggestions, not slot generation or activity timing.
 ____________________________________________________________
 ____________________________________________________________
 Recommended timetable
-Use recommend PERIOD [PREFERENCE_OVERRIDES].
-Review the plan before choosing whether to adopt it.
-Global planning preferences are available now; see guide preference.
-(Coming soon in a future release.)
+Format: recommend
+        recommend this week
+        recommend date/YYYY-MM-DD
+        recommend view
+        recommend adopt
+        recommend cancel
+
+recommend and recommend this week generate one deterministic weekly
+preview for incomplete flexible activities. recommend date/YYYY-MM-DD
+generates a one-day preview. recommend view re-shows the current
+proposal, recommend adopt confirms and saves it once, and recommend
+cancel discards it with no change.
+
+The recommender uses fixed activities, flexible windows, and your
+global planning preferences. Minimum buffer is enforced; Tomato only
+adds advisory study suggestions when enabled. Activities keep their
+stable IDs and original flexible windows.
+
+Examples:
+  recommend
+  recommend this week
+  recommend date/2026-08-15
+  recommend view
+  recommend adopt
+
+Limitations: recommendation does not use route/facility data yet,
+because activities still do not store facility/location bindings.
 ____________________________________________________________
 ____________________________________________________________
 Accessible routes
@@ -267,12 +289,6 @@ records a confirmed-accessible path. If no confirmed-accessible path connects
 two known facilities, route says so rather than suggesting an unconfirmed one.
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
-____________________________________________________________
-____________________________________________________________
-CSV exports
-Use export activities, export schedule, export all, or export.
-Each export creates a timestamped historical record.
-(Coming soon in a future release.)
 ____________________________________________________________
 ____________________________________________________________
 Reset all user data
@@ -350,13 +366,12 @@ Application Guide
 6. Recommended timetable
 7. Accessible facilities
 8. Accessible connections
-9. CSV export
-10. Data files and storage
-11. Accessible routes
-12. Text timetable
-13. Return
+9. Data files and storage
+10. Accessible routes
+11. Text timetable
+12. Return
 
-Enter a number from 1 to 13.
+Enter a number from 1 to 12.
 ____________________________________________________________
 ____________________________________________________________
 Add activities
@@ -476,17 +491,6 @@ changes the file.
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
-Data files and storage
-Application data (activities, topics, your saved default order, and
-global planning preferences)
-is stored under data/. Do not edit data files while the application runs.
-
-data/academic-calendar.txt is different: it is a reference file you or
-your school maintains yourself, only read by recur (see guide recur),
-loaded once per run the first time you use recur, and never created,
-repaired, or changed by UniEnable itself - including by reset all.
-____________________________________________________________
-____________________________________________________________
 Accessible routes
 Format: route from/FACILITY to/FACILITY
 Related commands: facility (see guide facility), connection (see guide connection)
@@ -509,9 +513,6 @@ records a confirmed-accessible path. If no confirmed-accessible path connects
 two known facilities, route says so rather than suggesting an unconfirmed one.
 
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
-____________________________________________________________
-____________________________________________________________
-No guide topic named "0". Enter guide to see the list of topics.
 ____________________________________________________________
 ____________________________________________________________
 Text timetable
@@ -538,6 +539,12 @@ ____________________________________________________________
 Returning to the command prompt.
 ____________________________________________________________
 ____________________________________________________________
+No guide topic named "13". Enter guide to see the list of topics.
+____________________________________________________________
+____________________________________________________________
+No guide topic named "0". Enter guide to see the list of topics.
+____________________________________________________________
+____________________________________________________________
 No guide topic named "14". Enter guide to see the list of topics.
 ____________________________________________________________
 ____________________________________________________________
@@ -551,13 +558,12 @@ Application Guide
 6. Recommended timetable
 7. Accessible facilities
 8. Accessible connections
-9. CSV export
-10. Data files and storage
-11. Accessible routes
-12. Text timetable
-13. Return
+9. Data files and storage
+10. Accessible routes
+11. Text timetable
+12. Return
 
-Enter a number from 1 to 13.
+Enter a number from 1 to 12.
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -642,10 +648,33 @@ never as a medical or performance judgement.
 ____________________________________________________________
 ____________________________________________________________
 Recommended timetable
-Use recommend PERIOD [PREFERENCE_OVERRIDES].
-Review the plan before choosing whether to adopt it.
-Global planning preferences are available now; see guide preference.
-(Coming soon in a future release.)
+Format: recommend
+        recommend this week
+        recommend date/YYYY-MM-DD
+        recommend view
+        recommend adopt
+        recommend cancel
+
+recommend and recommend this week generate one deterministic weekly
+preview for incomplete flexible activities. recommend date/YYYY-MM-DD
+generates a one-day preview. recommend view re-shows the current
+proposal, recommend adopt confirms and saves it once, and recommend
+cancel discards it with no change.
+
+The recommender uses fixed activities, flexible windows, and your
+global planning preferences. Minimum buffer is enforced; Tomato only
+adds advisory study suggestions when enabled. Activities keep their
+stable IDs and original flexible windows.
+
+Examples:
+  recommend
+  recommend this week
+  recommend date/2026-08-15
+  recommend view
+  recommend adopt
+
+Limitations: recommendation does not use route/facility data yet,
+because activities still do not store facility/location bindings.
 ____________________________________________________________
 ____________________________________________________________
 Accessible facilities
@@ -684,12 +713,6 @@ changes the file.
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
-CSV exports
-Use export activities, export schedule, export all, or export.
-Each export creates a timestamped historical record.
-(Coming soon in a future release.)
-____________________________________________________________
-____________________________________________________________
 Data files and storage
 Application data (activities, topics, your saved default order, and
 global planning preferences)
@@ -725,9 +748,6 @@ two known facilities, route says so rather than suggesting an unconfirmed one.
 Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: Unknown command "0". Enter guide for help.
-____________________________________________________________
-____________________________________________________________
 Text timetable
 Format: timetable day/YYYY-MM-DD [detail]
         timetable week/YYYY-MM-DD [compact|detail]
@@ -750,6 +770,12 @@ recommendations, infer buffers, or change any stored data.
 ____________________________________________________________
 ____________________________________________________________
 Returning to the command prompt.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown command "13". Enter guide for help.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown command "0". Enter guide for help.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: Unknown command "14". Enter guide for help.
@@ -3105,27 +3131,27 @@ MONDAY | 2099-06-01
   13:00-14:00  [F][2] Dashboard Test Tutorial
 
 TUESDAY | 2099-06-02
-  No fixed activities.
+  No scheduled activities.
 
 WEDNESDAY | 2099-06-03
-  No fixed activities.
+  No scheduled activities.
 
 THURSDAY | 2099-06-04
-  No fixed activities.
+  No scheduled activities.
 
 FRIDAY | 2099-06-05
-  No fixed activities.
+  No scheduled activities.
 
 SATURDAY | 2099-06-06
-  No fixed activities.
+  No scheduled activities.
 
 SUNDAY | 2099-06-07
-  No fixed activities.
+  No scheduled activities.
 
 UNSCHEDULED FLEXIBLE ACTIVITIES
   2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
 
-[F] Fixed activity | [U] Unscheduled flexible activity
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
 ____________________________________________________________
 ____________________________________________________________
 Weekly Timetable
@@ -3149,28 +3175,28 @@ MONDAY | 2099-06-01
       Status: Incomplete | Category: ACADEMIC | Energy: 2/5 | Sensory: 2/5
 
 TUESDAY | 2099-06-02
-  No fixed activities.
+  No scheduled activities.
 
 WEDNESDAY | 2099-06-03
-  No fixed activities.
+  No scheduled activities.
 
 THURSDAY | 2099-06-04
-  No fixed activities.
+  No scheduled activities.
 
 FRIDAY | 2099-06-05
-  No fixed activities.
+  No scheduled activities.
 
 SATURDAY | 2099-06-06
-  No fixed activities.
+  No scheduled activities.
 
 SUNDAY | 2099-06-07
-  No fixed activities.
+  No scheduled activities.
 
 UNSCHEDULED FLEXIBLE ACTIVITIES
   2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
       Status: Incomplete | Category: OTHERS | Energy: 4/5 | Sensory: 5/5
 
-[F] Fixed activity | [U] Unscheduled flexible activity
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
 ____________________________________________________________
 ____________________________________________________________
 Daily Timetable
@@ -3183,7 +3209,7 @@ MONDAY | 2099-06-01
 UNSCHEDULED FLEXIBLE ACTIVITIES
   2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
 
-[F] Fixed activity | [U] Unscheduled flexible activity
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
 ____________________________________________________________
 ____________________________________________________________
 Daily Timetable
@@ -3199,19 +3225,19 @@ UNSCHEDULED FLEXIBLE ACTIVITIES
   2099-06-01 15:00-18:00  [U][3] Dashboard Test Flexible (60 min required)
       Status: Incomplete | Category: OTHERS | Energy: 4/5 | Sensory: 5/5
 
-[F] Fixed activity | [U] Unscheduled flexible activity
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
 ____________________________________________________________
 ____________________________________________________________
 Daily Timetable
 Period: 2099-06-02
 
 TUESDAY | 2099-06-02
-  No fixed activities.
+  No scheduled activities.
 
 UNSCHEDULED FLEXIBLE ACTIVITIES
   None in the selected period.
 
-[F] Fixed activity | [U] Unscheduled flexible activity
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
 ____________________________________________________________
 ____________________________________________________________
 [Error] Missing input: timetable requires day/YYYY-MM-DD, week/YYYY-MM-DD, or this week.
@@ -3609,6 +3635,262 @@ Minimum buffer: 15 minutes
 Tomato suggestion: OFF
 
 These preferences apply to every day.
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [1] has been added:
+[ ][F] 2099-06-02 10:00 -> 11:00 | Recommend fixed block
+       ACADEMIC | Energy 2/5 | Sensory 2/5
+
+You now have 1 activity.
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [2] has been added:
+[ ][L] 2099-06-02 09:00 -> 14:00 | Recommend essay draft
+       Duration 60 min | ACADEMIC
+       Energy 4/5 | Sensory 2/5
+
+You now have 2 activities.
+____________________________________________________________
+____________________________________________________________
+Recommended timetable preview
+Period: 2099-06-02
+
+Proposed placements:
+- [2] 2099-06-02 11:15 -> 12:15 | Recommend essay draft
+
+Daily Timetable
+Period: 2099-06-02
+
+TUESDAY | 2099-06-02
+  10:00-11:00  [F][1] Recommend fixed block
+      Status: Incomplete | Category: ACADEMIC | Energy: 2/5 | Sensory: 2/5
+  11:15-12:15  [R][2] Recommend essay draft
+      Status: Incomplete | Category: ACADEMIC | Energy: 4/5 | Sensory: 2/5
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  None in the selected period.
+
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
+
+Dashboard: 2099-06-02
+Period: 2099-06-02
+
+Activities: 2
+Planned workload: 2h 00m
+Nominal buffer: 22h 00m
+
+Energy demand: 6 points
+High-energy activities: 1
+
+Sensory load: 4 points
+High-sensory activities: 0
+
+Completion: No activities are due yet.
+
+Fixed activities: 1
+Flexible activities: 1
+
+Category breakdown
+ACADEMIC: 2
+CCA: 0
+WORK_INTERNSHIP: 0
+OTHERS: 0
+
+Energy distribution
+1 [----------] 0
+2 [##########] 1
+3 [----------] 0
+4 [##########] 1
+5 [----------] 0
+Average energy: 3.0/5
+Highest energy: 4/5
+
+Sensory distribution
+1 [----------] 0
+2 [##########] 2
+3 [----------] 0
+4 [----------] 0
+5 [----------] 0
+Average sensory: 2.0/5
+Highest sensory: 2/5
+____________________________________________________________
+____________________________________________________________
+Recommended timetable preview
+Period: 2099-06-02
+
+Proposed placements:
+- [2] 2099-06-02 11:15 -> 12:15 | Recommend essay draft
+
+Daily Timetable
+Period: 2099-06-02
+
+TUESDAY | 2099-06-02
+  10:00-11:00  [F][1] Recommend fixed block
+      Status: Incomplete | Category: ACADEMIC | Energy: 2/5 | Sensory: 2/5
+  11:15-12:15  [R][2] Recommend essay draft
+      Status: Incomplete | Category: ACADEMIC | Energy: 4/5 | Sensory: 2/5
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  None in the selected period.
+
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
+
+Dashboard: 2099-06-02
+Period: 2099-06-02
+
+Activities: 2
+Planned workload: 2h 00m
+Nominal buffer: 22h 00m
+
+Energy demand: 6 points
+High-energy activities: 1
+
+Sensory load: 4 points
+High-sensory activities: 0
+
+Completion: No activities are due yet.
+
+Fixed activities: 1
+Flexible activities: 1
+
+Category breakdown
+ACADEMIC: 2
+CCA: 0
+WORK_INTERNSHIP: 0
+OTHERS: 0
+
+Energy distribution
+1 [----------] 0
+2 [##########] 1
+3 [----------] 0
+4 [##########] 1
+5 [----------] 0
+Average energy: 3.0/5
+Highest energy: 4/5
+
+Sensory distribution
+1 [----------] 0
+2 [##########] 2
+3 [----------] 0
+4 [----------] 0
+5 [----------] 0
+Average sensory: 2.0/5
+Highest sensory: 2/5
+____________________________________________________________
+____________________________________________________________
+Recommendation proposal discarded. No changes were made.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: No recommendation proposal is currently active. Generate one with recommend.
+____________________________________________________________
+____________________________________________________________
+Recommended timetable preview
+Period: 2099-06-02
+
+Proposed placements:
+- [2] 2099-06-02 11:15 -> 12:15 | Recommend essay draft
+
+Daily Timetable
+Period: 2099-06-02
+
+TUESDAY | 2099-06-02
+  10:00-11:00  [F][1] Recommend fixed block
+      Status: Incomplete | Category: ACADEMIC | Energy: 2/5 | Sensory: 2/5
+  11:15-12:15  [R][2] Recommend essay draft
+      Status: Incomplete | Category: ACADEMIC | Energy: 4/5 | Sensory: 2/5
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  None in the selected period.
+
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
+
+Dashboard: 2099-06-02
+Period: 2099-06-02
+
+Activities: 2
+Planned workload: 2h 00m
+Nominal buffer: 22h 00m
+
+Energy demand: 6 points
+High-energy activities: 1
+
+Sensory load: 4 points
+High-sensory activities: 0
+
+Completion: No activities are due yet.
+
+Fixed activities: 1
+Flexible activities: 1
+
+Category breakdown
+ACADEMIC: 2
+CCA: 0
+WORK_INTERNSHIP: 0
+OTHERS: 0
+
+Energy distribution
+1 [----------] 0
+2 [##########] 1
+3 [----------] 0
+4 [##########] 1
+5 [----------] 0
+Average energy: 3.0/5
+Highest energy: 4/5
+
+Sensory distribution
+1 [----------] 0
+2 [##########] 2
+3 [----------] 0
+4 [----------] 0
+5 [----------] 0
+Average sensory: 2.0/5
+Highest sensory: 2/5
+____________________________________________________________
+____________________________________________________________
+Adopt this recommendation?
+Scheduled flexible activities: 1
+Unscheduled flexible activities: 0
+Proceed with adoption? (y/n)
+____________________________________________________________
+____________________________________________________________
+Recommendation adopted.
+Scheduled flexible activities: 1
+Unscheduled flexible activities: 0
+____________________________________________________________
+____________________________________________________________
+Activity [2]
+Description : Recommend essay draft
+Status      : Incomplete
+Type        : FLEXIBLE
+Date        : 2099-06-02
+Earliest    : 09:00
+Latest      : 14:00
+Duration    : 60 min
+Adopted     : 11:15 -> 12:15
+Category    : ACADEMIC
+Energy      : 4/5
+Sensory     : 2/5
+____________________________________________________________
+____________________________________________________________
+Daily Timetable
+Period: 2099-06-02
+
+TUESDAY | 2099-06-02
+  10:00-11:00  [F][1] Recommend fixed block
+      Status: Incomplete | Category: ACADEMIC | Energy: 2/5 | Sensory: 2/5
+  11:15-12:15  [R][2] Recommend essay draft
+      Status: Incomplete | Category: ACADEMIC | Energy: 4/5 | Sensory: 2/5
+
+UNSCHEDULED FLEXIBLE ACTIVITIES
+  None in the selected period.
+
+[F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: No recommendation proposal is currently active. Generate one with recommend.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: No recommendation proposal is currently active. Generate one with recommend.
 ____________________________________________________________
 ____________________________________________________________
 Your data has been saved.

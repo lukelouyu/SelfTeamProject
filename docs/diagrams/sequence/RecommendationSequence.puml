@@ -1,0 +1,141 @@
+@startuml
+title Generating and Adopting a Recommendation
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandDispatcher as Dispatcher
+participant RecommendCommandParser as Parser
+participant RecommendGenerateCommand as Generate
+participant RecommendationService as Service
+participant RecommendationManager as ProposalStore
+participant RecommendationFormatter as Formatter
+participant Ui
+participant RecommendAdoptCommand as Adopt
+participant RecommendViewCommand as View
+participant RecommendCancelCommand as Cancel
+participant ActivityManager as Manager
+participant Storage
+
+== Generate preview ==
+
+User -> Runner : recommend date/2099-06-02
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parse(activityManager, preferenceManager,\nrecommendationManager, now, args)
+Parser --> Dispatcher : RecommendGenerateCommand
+Dispatcher --> Runner : command
+
+note over Runner
+  recommend generation is read-only:
+  no snapshot, no save, no mutation
+  of stored activities.
+end note
+
+Runner -> Generate : execute()
+Generate -> Service : recommendDate(activityManager, profile, date)
+Service -> Manager : getAll()
+Manager --> Service : activities
+Service -> Service : build deterministic placements\nand unscheduled IDs
+Service --> Generate : RecommendationProposal
+Generate -> ProposalStore : setProposal(proposal)
+Generate -> Service : applyPreview(activityManager.getAll(), proposal)
+Service --> Generate : copied preview activities
+Generate -> Formatter : formatPreview(proposal, previewActivities)
+Formatter --> Generate : preview text
+Generate --> Runner : CommandResult
+Runner -> Ui : showFramed(feedback)
+Ui --> User : preview shown
+
+== Re-display proposal ==
+
+User -> Runner : recommend view
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parse(...)
+Parser --> Dispatcher : RecommendViewCommand
+Dispatcher --> Runner : command
+note over Runner
+  recommend view is read-only:
+  no snapshot and no save.
+end note
+Runner -> View : execute()
+View -> ProposalStore : getProposal()
+ProposalStore --> View : active proposal
+View -> Service : applyPreview(activityManager.getAll(), proposal)
+Service --> View : copied preview activities
+View -> Formatter : formatPreview(proposal, previewActivities)
+Formatter --> View : preview text
+View --> Runner : CommandResult
+Runner -> Ui : showFramed(feedback)
+Ui --> User : preview shown again
+
+== Cancel proposal ==
+
+User -> Runner : recommend cancel
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parse(...)
+Parser --> Dispatcher : RecommendCancelCommand
+Dispatcher --> Runner : command
+note over Runner
+  recommend cancel only clears the
+  in-memory proposal state. It does
+  not snapshot or save files.
+end note
+Runner -> Cancel : execute()
+Cancel -> ProposalStore : clear()
+Cancel --> Runner : CommandResult
+Runner -> Ui : showFramed(feedback)
+Ui --> User : proposal discarded
+
+== Adopt proposal ==
+
+User -> Runner : recommend adopt
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parse(...)
+Parser -> ProposalStore : getProposal()
+ProposalStore --> Parser : active proposal
+Parser --> Dispatcher : RecommendAdoptCommand
+Dispatcher --> Runner : command
+Runner -> Adopt : getConfirmation()
+Adopt --> Runner : ask("Proceed with adoption? (y/n)")
+Runner -> Ui : showFramed(prompt)
+Ui --> User : prompt shown
+User --> Runner : y
+
+note over Runner
+  recommend adopt is mutating, so the
+  runner snapshots activities/topics/
+  order/preferences before execute().
+end note
+
+Runner -> Adopt : execute()
+loop each proposed placement
+  Adopt -> Manager : getById(activityId)
+  Manager --> Adopt : FlexibleActivity
+  Adopt -> Adopt : setAdoptedStartTime(startTime)
+end
+Adopt -> Formatter : formatAdoptSuccess(proposal)
+Formatter --> Adopt : success text
+Adopt --> Runner : CommandResult
+Runner -> Storage : saveAll(...)
+
+alt save succeeds
+  Storage --> Runner : success
+  Runner -> ProposalStore : clear()
+  Runner -> Ui : showFramed(success)
+  Ui --> User : adoption saved
+else save fails
+  Storage --> Runner : StorageException
+  Runner -> Runner : restore snapshot
+  note over Runner
+    The proposal remains available because
+    adoption was rolled back and no success
+    feedback is shown.
+  end note
+  Runner -> Ui : showFramed("[Error] Storage error: ...")
+  Ui --> User : save failure shown
+end
+
+@enduml

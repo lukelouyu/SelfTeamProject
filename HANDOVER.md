@@ -2,14 +2,26 @@
 
 ## 1. Current state (as of this update)
 
-`main` is at `2cff382` locally and on `origin/main`
-(`github.com/lukelouyu/SelfTeamProject`) — pushed. No unmerged work-in-progress branches remain;
-`refactor/command-package-reorg` and `feature/recur-reset-v2` are both fully merged and safe to
-delete; `v2-dashboard` is still empty (0 commits ahead), untouched.
+`main` is at `a4aa683` locally, **7 commits ahead of `origin/main`** (last pushed commit:
+`003fbc2`) — **deliberately not pushed yet**, on explicit instruction, pending a final push
+decision after the consolidated review in this update. No unmerged work-in-progress branches
+remain; `refactor/command-package-reorg` and `feature/recur-reset-v2` are both fully merged and
+safe to delete; `v2-dashboard` is still empty (0 commits ahead), untouched.
 
-Since the previous revision of this handover (written right after `feature/recur-reset-v2`
-merged), four more things happened in the same continuous session — see Section 2 for full detail
-on each:
+Since `003fbc2`, this session executed the first phase of a supplied external hardening-plan
+document (`UniEnable_Claude_Codebase_Hardening_Plan.md`, from Downloads): a Phase-0 baseline audit
+(all green — see Section 2's newest bullet), three zero-risk cleanup commits, then two
+architectural changes the user explicitly approved (parser split, storage/parser decoupling),
+followed by a full consolidated post-refactoring-and-Javadoc review (a second supplied document,
+`UniEnable_Post_Refactoring_and_Javadoc_Review.md`) that found and fixed two small polish items
+before this handover was written. **No user-visible command syntax, validation rule, exception
+type, error message, or output changed anywhere in these 7 commits** — verified both by the full
+863→867 test suite passing unmodified/extended and by a direct string-literal diff across the
+parser-split commit specifically. Full detail in Section 2's newest bullet.
+
+The previous revision of this handover (written right after `feature/recur-reset-v2` merged)
+described four more things that happened in the session before that one — still accurate history,
+kept below:
 1. `command.activity` and `command.accessibility` were split into responsibility-based
    sub-packages (`crud`/`general`, `facility`/`connection`/`common`) on
    `refactor/command-package-reorg`, merged into `main`.
@@ -49,15 +61,93 @@ and README's "Distribution" section. A copy already sits at
 *before* the 3 message-quality fixes in point 4 above — rebuild if you need a JAR matching the
 exact current `main` tip).
 
-**Verification as of this handover (commit `2cff382`):** `./gradlew clean test checkstyleMain
-checkstyleTest` all green, **863 JUnit tests**, checkstyle clean, `text-ui-test/runtest.sh`
-passes. `releaseZip` not re-run since the last two small commits landed — the underlying code
-paths are unchanged (only `list`'s error messages and one doc line), so this is low-risk, but
-worth a fresh run before trusting a new release artifact.
+**Verification as of this handover (commit `a4aa683`):** `./gradlew clean check` all green,
+**867 JUnit tests** (863 + 4 new delegation-smoke tests from the parser-test split), checkstyle
+clean (main + test), `./gradlew javadoc` succeeds with the same **100 pre-existing warnings** as
+before this session — all in files this session didn't touch, all the permitted-omission kind
+(missing `@return`/enum-constant comments), zero new warnings from any of the 7 commits.
+`text-ui-test/runtest.sh` passes. `releaseZip` not re-run this session — none of the 7 commits
+touch command syntax, output, or the release build itself (`build.gradle`'s only change was
+adding explicit `sourceCompatibility`/`targetCompatibility`, additive), so this is low-risk, but
+worth a fresh run before trusting a new release artifact or before tagging v1.0.
 
 ## 2. Condensed history (compressed — see `git log` for full detail)
 
 Most recent sessions, newest first:
+
+- **Hardening-plan Phase 0 + parser/storage refactor + consolidated review** (7 commits directly
+  on `main`, `567116f`..`a4aa683`, per an externally-supplied hardening-plan document driving the
+  session): ran a Phase-0 baseline audit first (build/test/checkstyle/javadoc all green, release
+  ZIP smoke-tested from a clean folder including calendar-unchanged/restart-persistence checks),
+  which surfaced a small set of concrete findings, each turned into its own commit:
+  1. `build.gradle` declares explicit Java 17 `sourceCompatibility`/`targetCompatibility` — the
+     version constraint was previously enforced only by CI, not a local build.
+  2. Removed the unedited AB3-template `CONTRIBUTORS.md` (unrelated se-edu maintainer names,
+     referenced nowhere) — `docs/AboutUs.md`/`docs/team/lukelouyu.md` are the real contributor
+     pages.
+  3. Consolidated six small parsing helpers (`requireField`, category/status enum parsing,
+     `validateNoDelimiter`, the "no arguments"/"no unrecognised leading text" guards,
+     `extractPresentFields`) that had been copy-pasted near-identically across
+     `ActivityCommandParser`/`TopicCommandParser`/`FacilityCommandParser`/
+     `ConnectionCommandParser`/`CommandDispatcher` into `parser/common/FieldParser`, which already
+     existed for exactly this. No behavior change (verified by every existing parser test passing
+     unmodified).
+  4. **Split `ActivityCommandParser`** (was ~800 lines covering all ten activity commands) into a
+     thin router plus four new package-private classes for the commands with real grammar -
+     `AddCommandParser`, `EditCommandParser`, `ListCommandParser`, `FindCommandParser` - matching
+     the already-split `command/activity` packages. Delete/mark/unmark/view/next/order stayed
+     inline in the router since each is just a bare ID, no arguments, or a trivial two-branch
+     sub-command - deliberately **not** applying the split mechanically to every command. This
+     **revises** the `refactor/command-package-reorg` session's decision (recorded further below)
+     that `parser` should stay flat while `command` split - that decision is superseded for
+     `parser.activity` specifically, on explicit user approval; `parser.topic`/`parser.accessibility`
+     were deliberately left flat (each is small and cohesive enough that splitting further would
+     just be tiny classes for no reason, the exact thing the hardening plan's own guidance warns
+     against). `ActivityCommandParser`'s public method signatures are unchanged, so
+     `CommandDispatcher` needed zero changes, and the entire pre-existing test suite passed against
+     the new structure with zero modifications - the strongest available evidence that no behavior
+     moved. A handful of small parsing/validation helpers whose rules are genuinely shared across
+     2+ of the new classes (`blankToNull`, `parsePositiveInt`, `validateDurationFitsWindow`,
+     `validateTopicExists`, `parseActivityOrder`, the `ALL_ACTIVITY_MARKERS` constant) stayed
+     package-private in the router rather than being duplicated per class or pushed into a generic
+     `ParserUtils` - reviewed afterward and judged not a "dumping ground" since every one is
+     activity-domain-specific with 2+ real callers, not a generic grab-bag.
+  5. **Decoupled `ActivityStorage` from `parser.common`.** `ActivityStorage` imported
+     `parser.common.DateTimeParser`/`RatingParser` to parse persisted date/time/rating fields -
+     storage reaching into the CLI-parsing package tree, the specific smell the hardening plan's
+     package-dependency audit flags (§8.4). Corrected wording, checked during the later review:
+     **there was no literal circular Java import** - `parser.common` itself never imported
+     `storage`, so this was one-directional coupling crossing a responsibility boundary, not an
+     actual A→B→A cycle. Gave `ActivityStorage` its own local `parseDate`/`parseTime`
+     (same yyyy-MM-dd/HH:mm shapes, same `STRICT` resolver behavior, same exception types/messages)
+     and `parseEnergyRating`/`parseSensoryRating` (delegating range validation to
+     `EnergyRating.of`/`SensoryRating.of`, same as `RatingParser` did). `storage/` now imports
+     nothing from `parser/` at all. **Known, accepted trade-off, not yet acted on:** the
+     `parseDate`/`parseTime` formatter/resolver/shape-regex logic is now genuinely duplicated
+     between `DateTimeParser` and `ActivityStorage` (the rating helpers are not - both sides still
+     delegate the one thing worth centralizing, range validation, to
+     `EnergyRating.of`/`SensoryRating.of`). Flagged in Section 5 as a live risk rather than fixed
+     immediately, since fixing it means a genuine architectural call (where would a neutral
+     shared date/time-format parser live?) that wants its own explicit go-ahead, not a
+     reflexive re-fix.
+  6. **Split `ActivityCommandParserTest`** (2152 lines, 157 tests in one file) to mirror the new
+     production structure: `AddCommandParserTest`/`EditCommandParserTest`/`ListCommandParserTest`/
+     `FindCommandParserTest` each test their command-specific class directly (48/34/40/17 tests,
+     moved verbatim, zero duplicated or dropped); `ActivityCommandParserTest` kept its 18 tests for
+     the six inline commands plus 4 new smoke tests (one per delegated command) proving the router
+     wiring itself. 867 tests total.
+  7. **Consolidated review pass** (a second supplied document) re-examined all of the above before
+     allowing a push: confirmed via direct string-literal diffing (not just passing tests) that zero
+     command syntax/message text changed across the parser split; confirmed `FieldParser` stayed
+     cohesive (field-extraction mechanics plus a handful of small, genuinely-2+-caller domain-value
+     parsers, not a dumping ground); confirmed no `storage→ui`/`model→parser`/`model→ui`/`logic→ui`
+     dependencies exist; ran `./gradlew javadoc` and confirmed the same 100 pre-existing warnings,
+     zero new ones. Found and fixed two small items directly: the four new command-parser classes'
+     `parse()` methods were marked `public` on a package-private class (misleading - tightened to
+     package-private); `AddCommandParser`'s `requireField` Javadoc cited a specific bug ID and test
+     date, the only such reference in all of `src/main` - trimmed the traceability tag, kept the
+     actual rationale. **Not pushed as of this handover** - awaiting an explicit go-ahead in the
+     same session.
 
 - **Post-recur bug-fix pass** (2 commits directly on `main`, `83eb6b6`/`2cff382`, per explicit
   user request "fix the bugs in this report" after being shown `REGRESSION_REPORT.md`): fixed the
@@ -279,7 +369,18 @@ Guide's §11 (Data Storage) for the exact record schema.
   confirmation handling moved from a plain `instanceof` chain to `command.Confirmable` (technical
   debt hardening) with `command.MenuConfirmable` added alongside it, not replacing it, for the
   reset menu's more-than-two-outcomes shape (recur/reset-v2) — both were explicit, approved
-  requests, not unprompted redesigns.
+  requests, not unprompted redesigns. **Revised, explicit exception as of the hardening-plan
+  session:** `parser.activity` is no longer flat — `ActivityCommandParser`/`FacilityCommandParser`/
+  etc. being "not split when their command classes were" (`refactor/command-package-reorg`'s
+  original call, Section 2 below) held until this session, when `ActivityCommandParser`
+  specifically grew large enough (~800 lines, 10 commands) that the user approved splitting the
+  four commands with real grammar into their own package-private classes
+  (`AddCommandParser`/`EditCommandParser`/`ListCommandParser`/`FindCommandParser`), while
+  deliberately keeping `parser.topic`/`parser.accessibility` flat (each too small/cohesive to
+  benefit) and keeping trivial activity commands (delete/mark/unmark/view/next/order) inline in
+  the router rather than splitting mechanically. Read as "split when a file's actual size and
+  grammar complexity earns it, not as a blanket rule," not as silently abandoning the flat-parser
+  preference elsewhere.
 - **PR flow:** `gh` CLI is installed and authenticated as `lukelouyu` (needs
   `export PATH="/c/Program Files/GitHub CLI:$PATH"` in the same Bash call on this Windows/Git-Bash
   environment).
@@ -321,6 +422,28 @@ Guide's §11 (Data Storage) for the exact record schema.
   exactly the kind of sentence that quietly goes false the next time the underlying code grows a
   second code path. Worth a light skeptical read of superlative doc claims when touching the
   code they describe.
+- **`DateTimeParser`/`ActivityStorage` date-time-format duplication (new, hardening-plan
+  session):** `ActivityStorage.parseDate()`/`parseTime()` now duplicate `DateTimeParser`'s
+  formatter/`STRICT`-resolver/shape-regex logic verbatim, a deliberate trade-off accepted to
+  decouple storage from the CLI-parser package (Section 2's newest bullet, point 5) — not fixed
+  immediately since the actual fix (giving both a shared neutral home, e.g. under `model/`) is an
+  architectural call that wants its own explicit go-ahead. If either side's date/time shape ever
+  changes, **both `DateTimeParser` and `ActivityStorage` need updating together** — grep both
+  before assuming a format change is complete. (The rating side of the same decoupling did *not*
+  duplicate anything worth centralizing — both `RatingParser` and `ActivityStorage` still delegate
+  the one real rule, the 1-5 range check, to `EnergyRating.of`/`SensoryRating.of`.)
+- **Missing `serialVersionUID` on custom exceptions (pre-existing, not from this session):** none
+  of the 8 classes in `seedu.unienable.exception` declare one, though all extend the serializable
+  `Exception`. Flagged during the hardening-plan session's Javadoc/coding-standard audit but not
+  fixed — unrelated to that session's actual diff, low real-world impact (this app never
+  serializes an exception), safe to defer to a dedicated hardening pass rather than touching 8
+  unrelated files for one push.
+- **Minor boolean-naming nits carried over during the parser split, not fixed:**
+  `ListCommandParser.parseViewMode()` returns a boolean but is named as an action, not a
+  predicate (`is`/`has`/`can`/`was`/`should`), and the local variable holding its result
+  (`detail`) has the same issue — both pre-existing, just relocated verbatim from the old
+  `ActivityCommandParser` during the split, not something the split introduced. Cosmetic; worth a
+  rename only if that file is being touched for another reason anyway.
 
 ## 6. Product context (condensed, mostly unchanged from prior sessions)
 
@@ -346,13 +469,18 @@ Package root `seedu.unienable`: `app/` (`ApplicationRunner`, `CommandConfirmatio
 `activity.general` (Find/List/Mark/Next/OrderSet/OrderView/Unmark), `accessibility.facility` +
 `accessibility.connection` (4 commands each) + `accessibility.common`
 (`AccessibilityDisclaimer`/`ValidationReportFormatter`, both `public`), `topic/` and `recur/` left
-flat (too few classes each to split), `general/` (Guide/Reset/Bye). `parser/` mirrors `command/`
-one level up (still flat per domain — `ActivityCommandParser`/`FacilityCommandParser`/etc. were
-*not* split when their command classes were), plus `common/` for
+flat (too few classes each to split), `general/` (Guide/Reset/Bye). `parser/` mostly mirrors
+`command/` one level up, still flat per domain for `topic`/`accessibility` (`TopicCommandParser`/
+`FacilityCommandParser`/`ConnectionCommandParser` were *not* split), **except `parser.activity`**,
+split as of the hardening-plan session (Section 2) into a thin `ActivityCommandParser` router plus
+package-private `AddCommandParser`/`EditCommandParser`/`ListCommandParser`/`FindCommandParser` for
+the four commands with real grammar — delete/mark/unmark/view/next/order stayed inline in the
+router. Plus `common/` for
 `FieldParser`/`DateTimeParser`/`RatingParser`/`Parser`/`ArgumentTokenizer`/`ArgumentMarker`, plus
 `recur/`. `exception/` (flat, reused as-is by every feature including recur), `logic/` (the
 `*Manager` classes, plus `graph/` and `recur/`), `model/` (`classes`/`enums`/`recur`), `storage/`
-(plus `recur/` for the strictly-validated, read-only `AcademicCalendarStorage`), `ui/` (plus
+(plus `recur/` for the strictly-validated, read-only `AcademicCalendarStorage`; `storage/` imports
+nothing from `parser/` as of the hardening-plan session — see Section 2/5), `ui/` (plus
 `recur/` for `RecurrenceFormatter`), `accessibility/` (the read-only facility/connection domain
 model — a different, older package tree from `command.accessibility.*` above, don't conflate the
 two: this one is `seedu.unienable.accessibility.classes`/`.enums`, immutable read-only reference

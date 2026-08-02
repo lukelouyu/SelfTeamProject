@@ -99,6 +99,7 @@ class ActivityManagerTest {
         DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
                 () -> manager.add(newFixedActivity(manager.getNextId())));
         assertEquals("An identical activity already exists.", exception.getMessage());
+        assertEquals(2, manager.getNextId());
     }
 
     @Test
@@ -113,36 +114,92 @@ class ActivityManagerTest {
     }
 
     @Test
-    public void add_nonOverlappingFixedActivitiesSameDate_bothSucceed() throws Exception {
+    public void addAllAtomically_emptyBatch_doesNotMutateState() throws Exception {
         ActivityManager manager = new ActivityManager();
-        manager.add(newFixedActivity(manager.getNextId(), "Morning lecture", LocalTime.of(9, 0), LocalTime.of(11, 0)));
-        manager.add(newFixedActivity(manager.getNextId(), "Afternoon briefing",
-                LocalTime.of(14, 0), LocalTime.of(15, 0)));
 
-        assertEquals(2, manager.size());
+        manager.addAllAtomically(List.of());
+
+        assertEquals(0, manager.size());
+        assertEquals(1, manager.getNextId());
     }
 
     @Test
-    public void add_exactDuplicateFlexibleActivity_throwsDuplicateActivityException() throws Exception {
+    public void addAllAtomically_candidateConflictsWithExisting_rollsBackBatch() throws Exception {
         ActivityManager manager = new ActivityManager();
-        manager.add(newFlexibleActivity(manager.getNextId(), "Finish assignment 1",
-                LocalTime.of(10, 0), LocalTime.of(18, 0)));
+        manager.add(newFixedActivity(manager.getNextId(), "Existing", LocalTime.of(9, 0), LocalTime.of(11, 0)));
+        FixedActivity candidate = newFixedActivity(2, "Candidate", LocalTime.of(10, 0), LocalTime.of(12, 0));
+
+        assertThrows(DuplicateActivityException.class, () -> manager.addAllAtomically(List.of(candidate)));
+
+        assertEquals(1, manager.size());
+        assertEquals(2, manager.getNextId());
+    }
+
+    @Test
+    public void addAllAtomically_candidateConflictsWithEarlierCandidate_rollsBackBatch() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        FixedActivity first = newFixedActivity(1, "First", LocalTime.of(9, 0), LocalTime.of(11, 0));
+        FixedActivity second = newFixedActivity(2, "Second", LocalTime.of(10, 0), LocalTime.of(12, 0));
 
         assertThrows(DuplicateActivityException.class,
-                () -> manager.add(newFlexibleActivity(manager.getNextId(), "Finish assignment 1",
-                        LocalTime.of(10, 0), LocalTime.of(18, 0))));
+                () -> manager.addAllAtomically(List.of(first, second)));
+
+        assertEquals(0, manager.size());
+        assertEquals(1, manager.getNextId());
     }
 
     @Test
-    public void add_overlappingFlexibleActivities_bothSucceed() throws Exception {
+    public void addAllAtomically_duplicateCandidates_rollsBackBatch() throws Exception {
         ActivityManager manager = new ActivityManager();
-        manager.add(newFlexibleActivity(manager.getNextId(), "Finish assignment 1",
-                LocalTime.of(10, 0), LocalTime.of(18, 0)));
+        FixedActivity first = newFixedActivity(1);
+        FixedActivity duplicate = newFixedActivity(2);
 
-        manager.add(newFlexibleActivity(manager.getNextId(), "Finish assignment 1",
-                LocalTime.of(11, 0), LocalTime.of(19, 0)));
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> manager.addAllAtomically(List.of(first, duplicate)));
+
+        assertEquals("An identical activity already exists.", exception.getMessage());
+        assertEquals(0, manager.size());
+        assertEquals(1, manager.getNextId());
+    }
+
+    @Test
+    public void addAllAtomically_nonSequentialId_rejectsBeforeThatCandidateConflict() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId()));
+        FixedActivity wrongIdDuplicate = newFixedActivity(99);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> manager.addAllAtomically(List.of(wrongIdDuplicate)));
+
+        assertEquals("expected activity ID 2 but received 99", exception.getMessage());
+        assertEquals(1, manager.size());
+        assertEquals(2, manager.getNextId());
+    }
+
+    @Test
+    public void addAllAtomically_earlierConflictPrecedesLaterIdMismatch() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId()));
+        FixedActivity duplicate = newFixedActivity(2);
+        FixedActivity laterWrongId = newFixedActivity(99, "Later", LocalTime.of(12, 0), LocalTime.of(13, 0));
+
+        assertThrows(DuplicateActivityException.class,
+                () -> manager.addAllAtomically(List.of(duplicate, laterWrongId)));
+
+        assertEquals(1, manager.size());
+        assertEquals(2, manager.getNextId());
+    }
+
+    @Test
+    public void addAllAtomically_validSequentialIds_commitsWholeBatch() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        FixedActivity first = newFixedActivity(1, "First", LocalTime.of(9, 0), LocalTime.of(10, 0));
+        FixedActivity second = newFixedActivity(2, "Second", LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+        manager.addAllAtomically(List.of(first, second));
 
         assertEquals(2, manager.size());
+        assertEquals(3, manager.getNextId());
     }
 
     @Test
@@ -630,6 +687,24 @@ class ActivityManagerTest {
                 LocalTime.of(14, 0), LocalTime.of(15, 0)));
 
         FixedActivity replacement = newFixedActivity(2, "Second", LocalTime.of(9, 30), LocalTime.of(10, 30));
+
+        assertThrows(DuplicateActivityException.class, () -> manager.replace(2, replacement));
+        assertEquals(LocalTime.of(14, 0), ((FixedActivity) manager.getById(2)).getStartTime());
+    }
+
+    @Test
+    public void replace_stateChangesAfterPreflight_defensivelyRechecksConflict() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        FixedActivity first = newFixedActivity(manager.getNextId(), "First",
+                LocalTime.of(9, 0), LocalTime.of(10, 0));
+        manager.add(first);
+        manager.add(newFixedActivity(manager.getNextId(), "Second",
+                LocalTime.of(14, 0), LocalTime.of(15, 0)));
+        FixedActivity replacement = newFixedActivity(2, "Second",
+                LocalTime.of(11, 0), LocalTime.of(12, 0));
+        manager.checkNoConflicts(replacement, 2);
+
+        first.setEndTime(LocalTime.of(11, 30));
 
         assertThrows(DuplicateActivityException.class, () -> manager.replace(2, replacement));
         assertEquals(LocalTime.of(14, 0), ((FixedActivity) manager.getById(2)).getStartTime());

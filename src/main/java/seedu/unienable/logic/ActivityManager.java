@@ -18,10 +18,8 @@ import seedu.unienable.model.enums.ActivityOrder;
 
 /** Manages the in-memory collection of activities: stable ID assignment plus basic CRUD access. */
 public class ActivityManager {
-    private static final String DUPLICATE_MESSAGE = "An identical activity already exists.";
-    private static final String OVERLAP_MESSAGE = "This timing overlaps activity [%d], %s (%s -> %s).";
-
     private final List<Activity> activities = new ArrayList<>();
+    private final ActivityConflictChecker conflictChecker = new ActivityConflictChecker();
     private int nextId = 1;
     private ActivityOrder defaultOrder = ActivityOrder.CHRONOLOGICAL;
 
@@ -79,7 +77,7 @@ public class ActivityManager {
      *     FixedActivity) overlaps another fixed activity on the same date
      */
     public void add(Activity activity) throws DuplicateActivityException {
-        validateNoDuplicateOrOverlap(activity, -1);
+        conflictChecker.checkNoConflicts(activity, -1, activities);
         activities.add(activity);
         nextId++;
     }
@@ -106,7 +104,7 @@ public class ActivityManager {
                 throw new IllegalArgumentException("expected activity ID " + expectedId
                         + " but received " + candidate.getId());
             }
-            validateNoDuplicateOrOverlap(candidate, -1, validated);
+            conflictChecker.checkNoConflicts(candidate, -1, validated);
             validated.add(candidate);
         }
         activities.addAll(candidates);
@@ -131,7 +129,7 @@ public class ActivityManager {
         if (index == -1) {
             throw new InvalidIndexException("Activity [" + id + "] does not exist.");
         }
-        validateNoDuplicateOrOverlap(newActivity, id);
+        conflictChecker.checkNoConflicts(newActivity, id, activities);
         activities.set(index, newActivity);
     }
 
@@ -149,32 +147,7 @@ public class ActivityManager {
      *     (for a FixedActivity) overlaps another fixed activity on the same date
      */
     public void checkNoConflicts(Activity candidate, int excludeId) throws DuplicateActivityException {
-        validateNoDuplicateOrOverlap(candidate, excludeId);
-    }
-
-    private void validateNoDuplicateOrOverlap(Activity candidate, int excludeId) throws DuplicateActivityException {
-        validateNoDuplicateOrOverlap(candidate, excludeId, activities);
-    }
-
-    /**
-     * Same check as {@link #validateNoDuplicateOrOverlap(Activity, int)}, but against an
-     * explicitly supplied list instead of the manager's own stored activities. Used by
-     * {@link #addAllAtomically} to validate each batch candidate against both the existing
-     * activities and every candidate already accepted earlier in the same batch, without
-     * mutating the manager's real list until the whole batch has passed.
-     */
-    private void validateNoDuplicateOrOverlap(Activity candidate, int excludeId, List<Activity> activitiesToCheck)
-            throws DuplicateActivityException {
-        if (isDuplicate(candidate, excludeId, activitiesToCheck)) {
-            throw new DuplicateActivityException(DUPLICATE_MESSAGE);
-        }
-        if (candidate instanceof FixedActivity) {
-            FixedActivity overlapping = findOverlap((FixedActivity) candidate, excludeId, activitiesToCheck);
-            if (overlapping != null) {
-                throw new DuplicateActivityException(String.format(OVERLAP_MESSAGE, overlapping.getId(),
-                        overlapping.getDescription(), overlapping.getStartTime(), overlapping.getEndTime()));
-            }
-        }
+        conflictChecker.checkNoConflicts(candidate, excludeId, activities);
     }
 
     private int indexOfId(int id) {
@@ -184,55 +157,6 @@ public class ActivityManager {
             }
         }
         return -1;
-    }
-
-    private boolean isDuplicate(Activity candidate, int excludeId, List<Activity> activitiesToCheck) {
-        for (Activity existing : activitiesToCheck) {
-            if (existing.getId() == excludeId) {
-                continue;
-            }
-            if (hasSameSchedulingDetails(existing, candidate)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean hasSameSchedulingDetails(Activity existing, Activity candidate) {
-        if (!existing.getDescription().equals(candidate.getDescription())
-                || !existing.getDate().equals(candidate.getDate())) {
-            return false;
-        }
-        if (existing instanceof FixedActivity && candidate instanceof FixedActivity) {
-            FixedActivity a = (FixedActivity) existing;
-            FixedActivity b = (FixedActivity) candidate;
-            return a.getStartTime().equals(b.getStartTime()) && a.getEndTime().equals(b.getEndTime());
-        }
-        if (existing instanceof FlexibleActivity && candidate instanceof FlexibleActivity) {
-            FlexibleActivity a = (FlexibleActivity) existing;
-            FlexibleActivity b = (FlexibleActivity) candidate;
-            return a.getEarliestStart().equals(b.getEarliestStart()) && a.getLatestEnd().equals(b.getLatestEnd())
-                    && a.getDurationMinutes() == b.getDurationMinutes();
-        }
-        return false;
-    }
-
-    private FixedActivity findOverlap(FixedActivity candidate, int excludeId, List<Activity> activitiesToCheck) {
-        for (Activity existing : activitiesToCheck) {
-            if (existing.getId() == excludeId || !(existing instanceof FixedActivity)) {
-                continue;
-            }
-            FixedActivity fixedExisting = (FixedActivity) existing;
-            if (!fixedExisting.getDate().equals(candidate.getDate())) {
-                continue;
-            }
-            boolean overlaps = fixedExisting.getStartTime().isBefore(candidate.getEndTime())
-                    && candidate.getStartTime().isBefore(fixedExisting.getEndTime());
-            if (overlaps) {
-                return fixedExisting;
-            }
-        }
-        return null;
     }
 
     /**

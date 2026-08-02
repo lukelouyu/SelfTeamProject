@@ -114,9 +114,10 @@ so cancelled/failed commands never leave partial memory or disk state. `reset al
 the profile, option 2 retains it, and option 3 cancels. Tomato remains stored advisory data only;
 the recommender-side display belongs to `feature/v2-recommend`, which has not started.
 
-Commits before this handover update, oldest first: `a0c6ab2` (task specification), `8cb1d2e`
-(production and integration), `252e2af` (JUnit and Text-UI coverage), and `688370c` (guides and
-PlantUML/PNG diagrams). Final verification on 2026-08-03: **1,119 JUnit tests** passed with zero
+Core commits, oldest first: `a0c6ab2` (task specification), `8cb1d2e` (production and
+integration), `252e2af` (JUnit and Text-UI coverage), `688370c` (guides and PlantUML/PNG
+diagrams), `2bc282d` (handover), and `121b046` (final edge-coverage audit). Final verification on
+2026-08-03: **1,120 JUnit tests** passed with zero
 failures/errors/skips; Checkstyle main/test had zero findings; Javadoc succeeded with the unchanged
 100-warning baseline and no Preferences warning; the expanded Text-UI harness passed; all 19
 PlantUML sources have PNG counterparts and guide image links resolve; `releaseZip` produced only

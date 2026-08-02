@@ -422,7 +422,30 @@ class GuideCommandTest {
     public void execute_menuNumberFive_resolvesToDashboard() {
         CommandResult result = new GuideCommand("5").execute();
 
-        assertTrue(result.getFeedback().startsWith("Completion and daily load"));
+        assertTrue(result.getFeedback().startsWith("Dashboard"));
+    }
+
+    @Test
+    public void execute_menuNumberFiveAgreesWithItsOwnKeyword() {
+        assertEquals(new GuideCommand("5").execute().getFeedback(),
+                new GuideCommand("dashboard").execute().getFeedback());
+    }
+
+    @Test
+    public void execute_dashboardTopic_isAvailableAndHasDashboardExamples() {
+        CommandResult result = new GuideCommand("dashboard").execute();
+        String feedback = result.getFeedback();
+
+        assertTrue(feedback.startsWith("Dashboard"));
+        assertTrue(!feedback.contains("Coming soon"));
+        assertTrue(feedback.contains("dashboard today"));
+        assertTrue(feedback.contains("dashboard this week detail"));
+        assertTrue(feedback.contains("Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]"));
+    }
+
+    @Test
+    public void execute_dashboardTopicIsCaseInsensitive() {
+        assertTrue(new GuideCommand("DASHBOARD").execute().getFeedback().startsWith("Dashboard"));
     }
 
     @Test
@@ -480,7 +503,7 @@ class GuideCommandTest {
         assertTrue(new GuideCommand("2").execute().getFeedback().startsWith("Add, edit and delete activities"));
         assertTrue(new GuideCommand("3").execute().getFeedback().startsWith("List, find and view activities"));
         assertTrue(new GuideCommand("4").execute().getFeedback().startsWith("Categories and topics"));
-        assertTrue(new GuideCommand("5").execute().getFeedback().startsWith("Completion and daily load"));
+        assertTrue(new GuideCommand("5").execute().getFeedback().startsWith("Dashboard"));
         assertTrue(new GuideCommand("6").execute().getFeedback().startsWith("Recommended timetable"));
         assertTrue(new GuideCommand("7").execute().getFeedback().startsWith("Accessible facilities"));
         assertTrue(new GuideCommand("8").execute().getFeedback().startsWith("Accessible connections"));

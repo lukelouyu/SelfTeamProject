@@ -398,4 +398,19 @@ reset all
 list
 topic list
 order view
+
+add n/Dashboard Test Lecture c/ACADEMIC date/2099-06-01 type/FIXED from/09:00 to/11:00 energy/3 sensory/2
+add n/Dashboard Test Tutorial c/ACADEMIC date/2099-06-01 type/FIXED from/13:00 to/14:00 energy/2 sensory/2
+add n/Dashboard Test Flexible c/OTHERS date/2099-06-01 type/FLEXIBLE earliest/15:00 latest/18:00 dur/60 energy/4 sensory/5
+dashboard date/2099-06-01
+dashboard date/2099-06-01 detail
+dashboard date/2099-06-02
+dashboard
+dashboard date/
+dashboard date/2026-02-30
+dashboard 2099-06-01
+dashboard week
+dashboard date/2099-06-01 detail detail
+dashboard tomorrow extra
+
 bye

@@ -169,13 +169,27 @@ loaded once per run the first time you use recur, and never created,
 repaired, or changed by UniEnable itself - including by reset all.
 ____________________________________________________________
 ____________________________________________________________
-Completion and daily load
-Completion tracking is available now - see guide completion for
-mark, unmark, and list status/....
+Dashboard: a planning-load summary
+Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]
+Related commands: completion (see guide completion for mark/unmark/list status/)
 
-A dedicated completion/workload dashboard (dashboard today,
-tomorrow, YYYY-MM-DD, or this week, with a detail rating
-distribution) is coming soon in a future release.
+Shows how much is planned for a period, how much room is left, how
+energy/sensory-demanding it is, and how much of what's already due is
+complete - using only activity data you already entered. this week
+means Monday through Sunday of the current week, the same as list
+this week. detail adds fixed/flexible counts, a category breakdown,
+and the full 1-to-5 energy/sensory rating distribution.
+
+Examples:
+  dashboard today
+  dashboard tomorrow detail
+  dashboard date/2026-08-20
+  dashboard this week detail
+
+"Nominal buffer" is arithmetic capacity minus planned workload - not
+a promise that time is actually free or usable. Energy and sensory
+numbers are shown exactly as you entered them, as planning data only,
+never as a medical or performance judgement.
 ____________________________________________________________
 ____________________________________________________________
 Text timetable
@@ -539,13 +553,27 @@ Example - delete an unused topic:
 A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
-Completion and daily load
-Completion tracking is available now - see guide completion for
-mark, unmark, and list status/....
+Dashboard: a planning-load summary
+Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]
+Related commands: completion (see guide completion for mark/unmark/list status/)
 
-A dedicated completion/workload dashboard (dashboard today,
-tomorrow, YYYY-MM-DD, or this week, with a detail rating
-distribution) is coming soon in a future release.
+Shows how much is planned for a period, how much room is left, how
+energy/sensory-demanding it is, and how much of what's already due is
+complete - using only activity data you already entered. this week
+means Monday through Sunday of the current week, the same as list
+this week. detail adds fixed/flexible counts, a category breakdown,
+and the full 1-to-5 energy/sensory rating distribution.
+
+Examples:
+  dashboard today
+  dashboard tomorrow detail
+  dashboard date/2026-08-20
+  dashboard this week detail
+
+"Nominal buffer" is arithmetic capacity minus planned workload - not
+a promise that time is actually free or usable. Energy and sensory
+numbers are shown exactly as you entered them, as planning data only,
+never as a medical or performance judgement.
 ____________________________________________________________
 ____________________________________________________________
 Recommended timetable
@@ -2869,6 +2897,114 @@ ____________________________________________________________
 ____________________________________________________________
 Saved default activity order: chronological
 Activities are ordered by date, then start time, then ID.
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [1] has been added:
+[ ][F] 2099-06-01 09:00 -> 11:00 | Dashboard Test Lecture
+       ACADEMIC | Energy 3/5 | Sensory 2/5
+
+You now have 1 activity.
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [2] has been added:
+[ ][F] 2099-06-01 13:00 -> 14:00 | Dashboard Test Tutorial
+       ACADEMIC | Energy 2/5 | Sensory 2/5
+
+You now have 2 activities.
+____________________________________________________________
+____________________________________________________________
+Got it. Activity [3] has been added:
+[ ][L] 2099-06-01 15:00 -> 18:00 | Dashboard Test Flexible
+       Duration 60 min | OTHERS
+       Energy 4/5 | Sensory 5/5
+
+You now have 3 activities.
+____________________________________________________________
+____________________________________________________________
+Dashboard: 2099-06-01
+Period: 2099-06-01
+
+Activities: 3
+Planned workload: 4h 00m
+Nominal buffer: 20h 00m
+
+Energy demand: 9 points
+High-energy activities: 1
+
+Sensory load: 9 points
+High-sensory activities: 1
+
+Completion: No activities are due yet.
+____________________________________________________________
+____________________________________________________________
+Dashboard: 2099-06-01
+Period: 2099-06-01
+
+Activities: 3
+Planned workload: 4h 00m
+Nominal buffer: 20h 00m
+
+Energy demand: 9 points
+High-energy activities: 1
+
+Sensory load: 9 points
+High-sensory activities: 1
+
+Completion: No activities are due yet.
+
+Fixed activities: 2
+Flexible activities: 1
+
+Category breakdown
+ACADEMIC: 2
+CCA: 0
+WORK_INTERNSHIP: 0
+OTHERS: 1
+
+Energy distribution
+1 [----------] 0
+2 [##########] 1
+3 [##########] 1
+4 [##########] 1
+5 [----------] 0
+Average energy: 3.0/5
+Highest energy: 4/5
+
+Sensory distribution
+1 [----------] 0
+2 [##########] 2
+3 [----------] 0
+4 [----------] 0
+5 [#####-----] 1
+Average sensory: 3.0/5
+Highest sensory: 5/5
+____________________________________________________________
+____________________________________________________________
+Dashboard: 2099-06-02
+Period: 2099-06-02
+
+No activities found for the selected period.
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: dashboard requires a period: today, tomorrow, date/YYYY-MM-DD, or this week.
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: date/ requires a value in yyyy-MM-dd format.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown dashboard option "2099-06-01".
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown dashboard option "week".
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unexpected text after the dashboard period - only a single trailing "detail" is accepted.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unexpected text after the dashboard period - only a single trailing "detail" is accepted.
 ____________________________________________________________
 ____________________________________________________________
 Your data has been saved.

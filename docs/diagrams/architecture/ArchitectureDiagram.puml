@@ -31,6 +31,7 @@ package "Business logic" {
   [ConnectionManager] as ConnectionLogic
   [RecurrencePlanner] as RecurLogic
   [AccessibleRouteGraphFactory] as RouteLogic
+  [DashboardService] as DashboardLogic
 }
 
 package "Domain model" {
@@ -60,6 +61,8 @@ Commands --> ConnectionLogic
 Commands --> RouteLogic
 RouteLogic --> FacilityLogic
 RouteLogic --> ConnectionLogic
+Commands --> DashboardLogic
+DashboardLogic --> ActivityLogic
 Parsers --> RecurLogic
 ActivityLogic --> ActivityModel
 TopicLogic --> ActivityModel

@@ -22,6 +22,7 @@ import seedu.unienable.parser.activity.ActivityCommandParser;
 import seedu.unienable.parser.accessibility.ConnectionCommandParser;
 import seedu.unienable.parser.accessibility.FacilityCommandParser;
 import seedu.unienable.parser.accessibility.RouteCommandParser;
+import seedu.unienable.parser.dashboard.DashboardCommandParser;
 import seedu.unienable.parser.common.FieldParser;
 import seedu.unienable.parser.common.Parser;
 import seedu.unienable.parser.recur.RecurCommandParser;
@@ -42,6 +43,7 @@ public class CommandDispatcher {
     private final FacilityCommandParser facilityCommandParser = new FacilityCommandParser();
     private final ConnectionCommandParser connectionCommandParser = new ConnectionCommandParser();
     private final RouteCommandParser routeCommandParser = new RouteCommandParser();
+    private final DashboardCommandParser dashboardCommandParser = new DashboardCommandParser();
 
     /**
      * Creates a CommandDispatcher over the given managers.
@@ -117,6 +119,8 @@ public class CommandDispatcher {
             return dispatchConnection(args);
         case "route":
             return routeCommandParser.parse(facilityManager, connectionManager, args);
+        case "dashboard":
+            return dashboardCommandParser.parse(activityManager, now, args);
         case "guide":
             return new GuideCommand(args.isEmpty() ? null : args);
         case "reset":

@@ -5,18 +5,159 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
-**If you are picking this project up next (including a different tool, e.g. Codex):** v2.0
-development has formally started, following
-`UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md` (supplied 2026-08-02, outside the repo, in
-Downloads). `feature/v2-route` is complete and merged into `main`, per explicit instruction to
-continue the v2.0 sequence; the next required branch is `feature/v2-dashboard` (audit first, per
-the master prompt's own process - see Section 6). Separately, a release-packaging mistake in the
-`v1.0` GitHub Release was found and fixed directly on `main` while `feature/v2-route` was still
-unmerged - see the dated note early in Section 1 below for what that was. The
-`ActivityConflictChecker` review/extraction mentioned further below as "the next task" is also
-**done** (shipped at `e44f660`, before any of this).
+## 0. Handoff to Codex (2026-08-02) — start here
+
+The user is moving the rest of v2.0 development from Claude to **Codex**. This section is a
+mechanical, step-by-step starting point. Read it first, then read the rest of this file (it's the
+same continuity doc Claude was using — nothing below this section was written differently because
+the tool changed).
+
+**0.1 — Read the spec, in-repo now, no external access needed.** The full v2.0 master prompt
+(shared rules/sequence for all six features, plus every feature's detailed spec) is at
+[`docs/planning/UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md`](docs/planning/UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md).
+It used to live only outside the repo (in the user's Downloads folder); it was copied into the
+repo specifically so a tool without access to the user's local filesystem — Codex — can read it.
+Treat it as the authoritative v2.0 specification, exactly as Claude did.
+
+**0.2 — Exact current git state.**
+- `main` is at `ce71765` — `feature/v2-route` is merged in, plus a standalone release-packaging
+  fix commit (`4f040da`). `v1.0` is tagged and released on GitHub correctly (zip, not bare jar).
+- `feature/v2-dashboard` (5 commits ahead of `main`, tip `4de6776`) is **fully implemented,
+  tested, documented, and verified — but NOT merged, NOT pushed.** It is waiting on the user's
+  review/approval to merge. **Do not merge it yourself without the user explicitly saying so in
+  chat.** Section 1 below has the complete detail of what's on it, what was found/decided during
+  its audit, and its exact verification results.
+- No v2.0 git tag or GitHub Release exists yet. `feature/v2-timetable` (the next required branch
+  per the master prompt's sequence) has not been started.
+- A stale local branch `v2-dashboard` (no `feature/` prefix, tip `9829911`) also exists with
+  content unrelated to the current `feature/v2-dashboard` work — confirmed in earlier sessions to
+  have zero unique commits worth keeping relative to `main`. Left untouched, not deleted, per
+  standing instruction not to take destructive git actions without explicit approval. Don't
+  confuse the two branches by name.
+
+**0.3 — What to actually do, in order:**
+1. Confirm with the user whether `feature/v2-dashboard` should be merged into `main` now. If yes,
+   merge it (only after the user says so), then ask whether to push.
+2. Only after that decision is resolved, start `feature/v2-timetable`: a **read-only audit first**
+   (see Section 0.4 and the master prompt's own "Start now" section), then propose a plan and
+   **wait for explicit approval before writing any code** — this is not optional; it is how every
+   prior branch in this project was run, including by Claude.
+3. Create `docs/tasks/v2/timetable/{README.md,ACCEPTANCE_CRITERIA.md,TEST_PLAN.md,
+   IMPLEMENTATION_NOTES.md}` before implementation, following the exact pattern already on disk at
+   [`docs/tasks/v2/route/`](docs/tasks/v2/route/) and
+   [`docs/tasks/v2/dashboard/`](docs/tasks/v2/dashboard/) — read both folders as worked examples of
+   the expected depth and format before writing timetable's.
+4. After timetable: `feature/v2-preferences`, then `feature/v2-recommend`, then
+   `feature/v2-export`, then the final v2.0 integration/documentation/regression pass — same
+   process every time: audit → proposed plan → explicit approval → task-spec folder → implement →
+   full quality gate (Section 4) → completion report → **stop and wait**. Never chain straight into
+   the next feature branch without a fresh explicit go-ahead, even if the master prompt lists it as
+   the obvious next step.
+
+**0.4 — Hard-won lessons from the Claude sessions that produced `route` and `dashboard` — do not
+repeat these:**
+- **A feature-specific reading of the master prompt can be wrong about the actual codebase; verify
+  before implementing.** This bit twice already: `route`'s exact YES-only-filter architecture
+  needed a real user decision rather than trusting the prompt's rough sketch (see
+  `docs/tasks/v2/route/README.md`'s "Approved design decisions"), and `dashboard`'s guide-menu
+  numbering was assumed to need a new menu number (mirroring `route`) when in fact
+  `GuideCommand.MENU_NUMBER_TOPICS` already had `"dashboard"` at item 5 since v1.0 — an
+  in-progress numbering change had to be fully reverted once this was caught (Section 1). Always
+  check the actual current code before assuming a spec's generic description is precise.
+- **Release distributables must always be `./gradlew releaseZip`'s zip, never a bare
+  `build/libs/*.jar`.** A bare-jar release broke `recur` for a real user (missing
+  `data/academic-calendar.txt`, which the app never creates itself) and required deleting a
+  short-lived `v1.0.1` tag/release and rebuilding `v1.0`'s release from scratch. Smoke-test the
+  *exact uploaded asset* (fresh extraction, run the jar, exercise a feature needing the external
+  file) before considering any release done.
+- **`text-ui-test/input.txt` insertion position matters.** Activity IDs auto-increment; inserting
+  new scenarios mid-file shifts every later ID-dependent assertion. Insert new blocks either at the
+  very end, or immediately after a `reset all` full-data-wipe (IDs restart at 1) — that's where
+  `dashboard`'s scenarios were placed after an earlier mid-file attempt broke unrelated later
+  assertions.
+- **Verify pipe-delimited fixture field order against the actual `*Storage.parseLine()` code, not
+  a manual read.** `route`'s test scenario initially assumed the wrong field
+  (`accessibility` vs. `shelter`) was `NO` for a bundled connection, because of a quick manual
+  miscount of `connections.txt`'s columns.
+- **Never call `LocalDate.now()`/`LocalDateTime.now()`/`Instant.now()` directly in production
+  code.** `now` is captured once at parse time in `CommandDispatcher.dispatch(input, now)` and
+  threaded through everywhere — `DashboardCommand` briefly violated this during drafting and was
+  fixed before commit (Section 1). Grep for direct `.now()` calls in `src/main` if ever unsure.
+- **Standing approval gates are not loosened by convenience.** Never push, merge, tag, delete a
+  branch, delete a release, or start the next feature branch without the user explicitly saying so
+  in that turn, even if a previous turn approved something that looks similar. This project has had
+  exactly one on-record exception (`feature/recur-reset-v2`, where the user asked for test+docs+
+  commit+merge+push all in one message) — that doesn't loosen the default; keep asking.
+- **A same-session PlantUML permission grant doesn't need re-asking within that session, but a new
+  session (or a new tool) should treat file-download permission as unasked.** Diagrams were
+  rendered via the public `plantuml.com` server (no local PlantUML/Graphviz toolchain available);
+  if Codex has its own way to render `.puml` → `.png` locally, prefer that over a network fetch.
+
+**0.5 — Everything else you need is already in this file.** Section 1 has the full, current state
+of `feature/v2-dashboard` including two real audit findings and their resolutions. Section 2 is
+the condensed project history. Section 4 is the standing working conventions (commit/push
+discipline, verification commands, design taste). Section 5 is known live risks. Section 6 is
+product/package-layout context. Update Section 1 (and this Section 0) again after
+`feature/v2-dashboard` is resolved and before/after each subsequent branch — this file's whole
+point is staying current across a tool handoff, not just a session handoff.
 
 ## 1. Current state (as of this update)
+
+**`feature/v2-dashboard`, 5 commits ahead of `main` (`ce71765`), not yet merged or pushed.**
+Implements `dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]`: a read-only planning-load
+summary computed fresh from `ActivityManager` every time - no persistence, no confirmation, cannot
+mutate anything by construction (`DashboardCommand` implements neither `Confirmable`/
+`MenuConfirmable` and isn't in `ApplicationRunner.mutatesState`). Metrics: planned workload (fixed
+activities clipped to the period; flexible activities count their full requested duration once,
+never clipped to window overlap - a stated, tested limitation), "Nominal buffer"/"Overloaded by"
+(period capacity - derived generically via `Duration.between`, never hardcoded per period "kind" -
+minus workload), energy/sensory totals plus a named `HIGH_RATING_THRESHOLD = 4`, and completion as
+a secondary metric where an activity not yet due is excluded from the denominator entirely (never
+counted as incomplete). `detail` adds fixed/flexible counts, a deterministic category breakdown,
+and 1-5 rating distributions with average (`BigDecimal`/`HALF_UP`) and highest.
+
+**Real audit finding, confirmed and handled exactly as approved, not silently reinterpreted:** the
+current v1.0 activity model cannot represent a genuine cross-midnight activity - both
+`FixedActivity` and `FlexibleActivity` constrain start/end to one calendar date, constructor-
+enforced. The master prompt's cross-midnight requirement was satisfied by implementing the
+interval-clipping calculation (`logic.dashboard.DashboardService`'s package-private `clip(...)`)
+generically over raw `LocalDateTime` boundaries, and testing it directly with synthetic boundaries
+simulating a Monday 23:00 -> Tuesday 01:00 interval (60/60/120-minute contributions against
+day/day/week periods) - not by constructing an activity the model's own invariants would reject.
+No change was made to `FixedActivity`/`FlexibleActivity`, their parsers, storage format, or
+conflict-checking to support cross-date activities - explicitly declined as outside this branch's
+scope. Full account in `docs/tasks/v2/dashboard/IMPLEMENTATION_NOTES.md`.
+
+**Second real finding, also confirmed and handled: `dashboard` needed no new guide menu number.**
+The originally-assumed plan (mirroring `route`, which genuinely added a new numbered item) was
+wrong - `GuideCommand.MENU_NUMBER_TOPICS` already had `"dashboard"` at menu item **5**
+("Completion and dashboard") since v1.0, just showing "Coming soon" content. This branch replaces
+only that item's topic *text*; no `MAIN_MENU`/`MENU_NUMBER_TOPICS`/`CommandDispatcher` bare-number
+change was needed, and nothing was renumbered - a stricter reading of "do not renumber existing
+entries" than taking a new number would have been. (This was caught mid-session: an earlier pass
+had already added a new item 12 and a corresponding renumbering of Return to 13 before the mistake
+was found; those changes were fully reverted before committing anything.)
+
+**Verification (commit `8abcadc`):** `./gradlew clean test checkstyleMain checkstyleTest` all
+green, **1031 JUnit tests** (up from 950 after `feature/v2-route` merged - 81 new, zero deleted/
+weakened), checkstyle clean (main + test). `bash text-ui-test/runtest.sh` passes -
+`dashboard date/...` scenarios added at a safe insertion point (right after `reset all` wipes
+state, so no later ID-dependent command shifts); `dashboard today`/`tomorrow`/`this week` are
+deliberately **not** covered by `text-ui-test`, matching the existing `list today`/`tomorrow`/
+`this week` exclusion (the harness runs the real jar against the real wall clock, no fixed-clock
+injection point) - covered instead by `DashboardServiceTest`'s injected-`now` tests.
+`./gradlew releaseZip` builds; a clean-extraction smoke test exercised `dashboard`'s default/
+detail/empty-period/error paths plus `guide dashboard`/`guide 5` and all matched expectations.
+
+Two diagram PNGs (`DashboardClassDiagram.png`, `DashboardSequence.png`) plus a re-rendered
+`ArchitectureDiagram.png` (added a `DashboardService` component in "Business logic", mirroring
+`route`'s `AccessibleRouteGraphFactory` addition) were rendered via the same public-PlantUML-server
+approach as `route`'s diagrams - no separate permission prompt this session (likely still in
+recent memory from the same conversation's earlier approval for `route`'s diagrams).
+
+Everything below this point, through the rest of this section, describes `feature/v2-route`'s
+merge and the `v1.0` release-packaging fix - both already landed on `main` before
+`feature/v2-dashboard` started, kept as historical record per this file's rolling convention.
 
 **Update (2026-08-02, after `feature/v2-route` below had already been fully committed on its own
 branch): a release-packaging mistake was found and fixed on `main` directly, while the route
@@ -640,52 +781,64 @@ project) helping two personas — Sam (ASD/ADHD, wants concise/predictable outpu
 routines. v2.0 command surface so far: activity add/list/view/find/edit/delete/mark/unmark/next/
 order, topic add/list/rename/delete, read-only facility/connection lookups (plus `facility
 validate`/`connection validate`), `recur TASK_ID week WEEK_SPEC`, the three-option `reset all`,
-`route from/FACILITY to/FACILITY` (Section 1, on `feature/v2-route`, not yet merged), `guide`,
-`bye`. **No git tag or GitHub Release exists yet** — v1.0 has
-been through a full 14-batch manual regression pass with all findings fixed (Sections 1-2), so
-it's realistically tag-ready, but creating the tag is still the user's explicit call, not
-something to do unprompted (see Section 1's last paragraph for exactly what's pending).
+`route from/FACILITY to/FACILITY` (merged into `main`), `dashboard today|tomorrow|date/YYYY-MM-DD|
+this week [detail]` (Section 1, on `feature/v2-dashboard`, not yet merged), `guide`, `bye`.
+**No git tag or GitHub Release exists yet for v2.0** — `v1.0` itself is tagged and released (see
+the historical part of Section 1 below for the release-packaging fix applied to it).
 
 **v2.0 status, per the approved master prompt
 (`UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md`, supplied 2026-08-02, now the authoritative
 v2.0 spec):** the required branch sequence is route -> dashboard -> timetable -> preferences ->
 recommend -> export -> final integration pass. Recurrence and technical-debt hardening already
-shipped before this sequence started (Section 2). **Route is now implemented** on
-`feature/v2-route` (Section 1) - the first v2.0 feature in the sequence, complete but awaiting
-review/merge approval; do not start `feature/v2-dashboard` (the next required branch) until
-`feature/v2-route` is merged and the user gives an explicit go-ahead for the next feature, per the
-master prompt's own "one feature branch at a time... stop and present a review report" rule.
-Dashboard, timetable, preferences, recommend, and export remain untouched backlog - approved in
-principle by the master prompt, but each still needs its own audit-confirm-implement pass in its
-own turn, not started proactively just because route is done.
+shipped before this sequence started (Section 2). **Route is merged into `main`. Dashboard is
+implemented on `feature/v2-dashboard`** (Section 1) - complete but awaiting review/merge approval;
+do not start `feature/v2-timetable` (the next required branch) until `feature/v2-dashboard` is
+merged and the user gives an explicit go-ahead for the next feature, per the master prompt's own
+"one feature branch at a time... stop and present a review report" rule. Timetable, preferences,
+recommend, and export remain untouched backlog - approved in principle by the master prompt, but
+each still needs its own audit-confirm-implement pass in its own turn, not started proactively
+just because route/dashboard are done. Each feature so far has also come with its own
+feature-specific master prompt (not just the shared v2.0 one) - check
+`docs/tasks/v2/<feature>/README.md` for what was actually supplied and approved for that feature
+before assuming the shared prompt's rough sketch is authoritative on a point the feature-specific
+one addressed more precisely (this has mattered twice already: route's exact-date marker syntax
+and `this week` definition, and dashboard's cross-midnight handling and guide-numbering reality).
 
 Package root `seedu.unienable`: `app/` (`ApplicationRunner`, `CommandConfirmationHandler`,
 `command.MenuConfirmable`/`MenuOutcome`), `command/` — `activity.crud` (Add/Delete/Edit/View) +
 `activity.general` (Find/List/Mark/Next/OrderSet/OrderView/Unmark), `accessibility.facility` +
 `accessibility.connection` (4 commands each) + `accessibility.common`
 (`AccessibilityDisclaimer`/`ValidationReportFormatter`, both `public`) + `accessibility.route`
-(new, `feature/v2-route`: `RouteCommand`), `topic/` and `recur/` left flat (too few classes each
-to split), `general/` (Guide/Reset/Bye). `parser/` mostly mirrors `command/` one level up, still
-flat per domain for `topic`/`accessibility` (`TopicCommandParser`/`FacilityCommandParser`/
-`ConnectionCommandParser`/`RouteCommandParser` all live directly in `parser.accessibility`, none
-split further), **except `parser.activity`**,
-split as of the hardening-plan session (Section 2) into a thin `ActivityCommandParser` router plus
+(`RouteCommand`) + `dashboard/` (new, `feature/v2-dashboard`: `DashboardCommand` - flat, one
+class, not nested under `accessibility` since dashboard reads activities, not accessibility
+data), `topic/` and `recur/` left flat (too few classes each to split), `general/`
+(Guide/Reset/Bye). `parser/` mostly mirrors `command/` one level up, still flat per domain for
+`topic`/`accessibility` (`TopicCommandParser`/`FacilityCommandParser`/`ConnectionCommandParser`/
+`RouteCommandParser` all live directly in `parser.accessibility`, none split further), plus new
+`dashboard/` (`DashboardCommandParser`), **except `parser.activity`**, split as of the
+hardening-plan session (Section 2) into a thin `ActivityCommandParser` router plus
 package-private `AddCommandParser`/`EditCommandParser`/`ListCommandParser`/`FindCommandParser` for
 the four commands with real grammar — delete/mark/unmark/view/next/order stayed inline in the
 router. Plus `common/` for
 `FieldParser`/`DateTimeParser`/`RatingParser`/`Parser`/`ArgumentTokenizer`/`ArgumentMarker`, plus
-`recur/`. `exception/` (flat, reused as-is by every feature including recur and route), `logic/`
-(the `*Manager` classes, plus `graph/` [Dijkstra-prep, generic, policy-free - see Section 1] and
-`recur/` and, new, `route/` [`AccessibleRouteGraphFactory`, the route-specific `YES`-only filter
-that deliberately does *not* live in `logic.graph`]), `model/` (`classes`/`enums`/`recur` - no
-`model/route`, route needs no new persistent domain type), `storage/` (plus `recur/` for the
+`recur/`. `exception/` (flat, reused as-is by every feature including recur/route/dashboard),
+`logic/` (the `*Manager` classes, plus `graph/` [Dijkstra-prep, generic, policy-free - see
+Section 1], `recur/`, `route/` [`AccessibleRouteGraphFactory`, the route-specific `YES`-only
+filter that deliberately does *not* live in `logic.graph`], and new `dashboard/`
+[`DashboardService`, stateless, mirrors `AccessibleRouteGraphFactory`'s shape - owns period
+resolution and every metric calculation, including the package-private interval-clipping helper]),
+`model/` (`classes`/`enums`/`recur`, and new `dashboard/` [`DashboardPeriod`/`RatingSummary`/
+`DashboardSummary`, all immutable - no `model/route`, since route needed no new persistent
+type, but dashboard's richer result shape earned one]), `storage/` (plus `recur/` for the
 strictly-validated, read-only `AcademicCalendarStorage`; `storage/` imports nothing from
-`parser/` as of the hardening-plan session — see Section 2/5), `ui/` (plus `recur/` for
-`RecurrenceFormatter` and, new, `accessibility/` for `RouteFormatter`), `accessibility/` (the
-read-only facility/connection domain model — a different, older package tree from
-`command.accessibility.*` above, don't conflate the two: this one is
-`seedu.unienable.accessibility.classes`/`.enums`, immutable read-only reference data, unchanged
-by route - route only reads it).
+`parser/` as of the hardening-plan session — see Section 2/5; dashboard adds **no** storage
+package at all - it is a derived view, never persisted), `ui/` (plus `recur/` for
+`RecurrenceFormatter`, `accessibility/` for `RouteFormatter`, and new `dashboard/` for
+`DashboardFormatter`), `accessibility/` (the read-only facility/connection domain model — a
+different, older package tree from `command.accessibility.*` above, don't conflate the two: this
+one is `seedu.unienable.accessibility.classes`/`.enums`, immutable read-only reference data,
+unchanged by route or dashboard - both only read it, and dashboard doesn't even do that, reading
+`ActivityManager` instead).
 
 **`docs/planning/`** holds four reference documents, added so a different tool (e.g. Codex)
 picking this project up doesn't need access to the user's local Downloads folder. Read what each

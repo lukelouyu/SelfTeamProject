@@ -1,0 +1,92 @@
+@startuml
+title Accessible Planning Dashboard (dashboard)
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+class DashboardCommandParser {
+  + parse(activityManager : ActivityManager, now : LocalDateTime, args : String) : DashboardCommand
+}
+
+class DashboardCommand <<Command>> {
+  - activityManager : ActivityManager
+  - period : DashboardPeriod
+  - now : LocalDateTime
+  - detail : boolean
+  + execute() : CommandResult
+}
+
+class DashboardService <<static>> {
+  + {static} resolveToday(now : LocalDateTime) : DashboardPeriod
+  + {static} resolveTomorrow(now : LocalDateTime) : DashboardPeriod
+  + {static} resolveDate(date : LocalDate) : DashboardPeriod
+  + {static} resolveThisWeek(now : LocalDateTime) : DashboardPeriod
+  + {static} summarize(activityManager : ActivityManager, period : DashboardPeriod, now : LocalDateTime) : DashboardSummary
+  ~ {static} clip(start, end, periodStart, periodEnd : LocalDateTime) : long
+}
+
+class DashboardFormatter <<static>> {
+  + {static} format(summary : DashboardSummary, detail : boolean) : String
+}
+
+class DashboardPeriod <<immutable>> {
+  - label : String
+  - start : LocalDateTime
+  - end : LocalDateTime
+  + getCapacityMinutes() : long
+}
+
+class RatingSummary <<immutable>> {
+  - total : int
+  - highCount : int
+  - hasData : boolean
+  - average : double
+  - highest : int
+  - distribution : int[5]
+}
+
+class DashboardSummary <<immutable>> {
+  - period : DashboardPeriod
+  - totalActivityCount : int
+  - plannedWorkloadMinutes : long
+  - nominalBufferMinutes : long
+  - overloadMinutes : long
+  - energy : RatingSummary
+  - sensory : RatingSummary
+  - eligibleCount : int
+  - completedEligibleCount : int
+  - completionPercentage : OptionalInt
+  - fixedCount : int
+  - flexibleCount : int
+  - categoryCounts : Map<ActivityCategory, Integer>
+}
+
+class ActivityManager <<read-only-here>>
+class FixedActivity <<immutable-fields>>
+class FlexibleActivity <<immutable-fields>>
+
+DashboardCommandParser ..> DashboardCommand : creates
+DashboardCommandParser ..> DashboardService : resolve...()
+DashboardCommand --> DashboardService : summarize()
+DashboardCommand --> DashboardFormatter : format()
+DashboardCommand --> ActivityManager
+DashboardService ..> ActivityManager : reads getAll()
+DashboardService ..> FixedActivity : reads
+DashboardService ..> FlexibleActivity : reads
+DashboardService ..> DashboardSummary : builds
+DashboardFormatter ..> DashboardSummary : reads
+DashboardSummary "1" *-- "2" RatingSummary : energy, sensory
+DashboardSummary "1" *-- "1" DashboardPeriod
+
+note bottom of DashboardService
+  Stateless. Owns period resolution and
+  every metric calculation - the only
+  place duration/rating/completion
+  arithmetic happens. clip() is
+  package-private, tested directly.
+end note
+
+@enduml

@@ -1,0 +1,61 @@
+@startuml
+title Viewing a Planning Dashboard
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandDispatcher as Dispatcher
+participant DashboardCommandParser as Parser
+participant DashboardCommand as Command
+participant DashboardService as Service
+participant ActivityManager as Manager
+participant DashboardFormatter as Formatter
+participant Ui
+
+User -> Runner : dashboard today detail
+Runner -> Dispatcher : dispatch(input, now)
+
+alt malformed selector or trailing text
+    Dispatcher -> Parser : parse(activityManager, now, args)
+    Parser --> Dispatcher : throws MissingInputException / InvalidCommandException / InvalidDateTimeException
+    Dispatcher --> Runner : propagates exception
+    Runner -> Ui : showFramed("[Error] ...")
+    Ui --> User : error shown
+else valid selector
+    Dispatcher -> Parser : parse(activityManager, now, args)
+    Parser -> Service : resolveToday(now)
+    Service --> Parser : DashboardPeriod
+    Parser --> Dispatcher : DashboardCommand
+    Dispatcher --> Runner : command
+    note over Runner
+      dashboard is read-only: no
+      Confirmable/MenuConfirmable,
+      no snapshot, no save.
+    end note
+    Runner -> Command : execute()
+    Command -> Service : summarize(activityManager, period, now)
+    Service -> Manager : getAll()
+    Manager --> Service : activities
+    Service -> Service : filter, clip, aggregate ratings and completion
+    Service --> Command : DashboardSummary
+
+    alt period has no activities at all
+        Command -> Formatter : format(summary, detail)
+        Formatter --> Command : "No activities found for the selected period."
+    else activities exist, none completion-eligible yet
+        Command -> Formatter : format(summary, detail)
+        Formatter --> Command : "...Completion: No activities are due yet."
+    else activities exist, some completion-eligible
+        Command -> Formatter : format(summary, detail)
+        Formatter --> Command : full report with completion bar/percentage
+    end
+
+    Command --> Runner : CommandResult
+    Runner -> Ui : showFramed(feedback)
+    Ui --> User : dashboard shown
+end
+
+@enduml

@@ -27,6 +27,7 @@ import seedu.unienable.command.accessibility.facility.FacilityListCommand;
 import seedu.unienable.command.accessibility.facility.FacilityValidateCommand;
 import seedu.unienable.command.accessibility.facility.FacilityViewCommand;
 import seedu.unienable.command.accessibility.route.RouteCommand;
+import seedu.unienable.command.dashboard.DashboardCommand;
 import seedu.unienable.command.activity.general.FindCommand;
 import seedu.unienable.command.general.GuideCommand;
 import seedu.unienable.command.general.ResetCommand;
@@ -214,6 +215,18 @@ class CommandDispatcherTest {
     }
 
     @Test
+    public void dispatch_dashboard_returnsDashboardCommandWiredToLiveManager() throws Exception {
+        Command command = dispatcher.dispatch("dashboard today", NOW);
+
+        assertTrue(command instanceof DashboardCommand);
+    }
+
+    @Test
+    public void dispatch_dashboardMissingSelector_throwsMissingInputException() {
+        assertThrows(MissingInputException.class, () -> dispatcher.dispatch("dashboard", NOW));
+    }
+
+    @Test
     public void dispatch_guide_returnsGuideCommand() throws Exception {
         assertTrue(dispatcher.dispatch("guide", NOW) instanceof GuideCommand);
     }
@@ -251,6 +264,16 @@ class CommandDispatcherTest {
     }
 
     @Test
+    public void dispatch_bareMenuNumberFive_returnsGuideCommandForDashboard() throws Exception {
+        // Item 5 ("Completion and dashboard") was already reserved for the dashboard topic in
+        // v1.0's menu; v2.0's dashboard fills that existing slot rather than taking a new number.
+        Command command = dispatcher.dispatch("5", NOW);
+
+        assertTrue(command instanceof GuideCommand);
+        assertTrue(command.execute().getFeedback().startsWith("Dashboard"));
+    }
+
+    @Test
     public void dispatch_bareMenuNumberTwelve_returnsGuideCommandForReturn() throws Exception {
         Command command = dispatcher.dispatch("12", NOW);
 
@@ -267,7 +290,7 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareThirteen_throwsInvalidCommandException() {
-        // "13" is the new out-of-range boundary now that 1-12 are all recognised menu numbers.
+        // "13" is the out-of-range boundary - unchanged, since dashboard did not take a new number.
         assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("13", NOW));
     }
 

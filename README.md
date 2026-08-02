@@ -5,7 +5,8 @@ with ASD or ADHD, and tertiary students who use wheelchairs, prepare for unfamil
 internship, or entry-level work routines. It combines fixed/flexible activity planning with
 energy-demand and sensory-load ratings, category and topic organisation, a deterministic "next
 relevant activity" lookup, read-only local facility/connection reference information, and — new
-in v2.0 — Dijkstra-based accessible route search (`route`) over that same reference data.
+in v2.0 — Dijkstra-based accessible route search (`route`) and a planning-load dashboard
+(`dashboard`) over that same activity and reference data.
 
 Useful links:
 * [User Guide](docs/UserGuide.md)

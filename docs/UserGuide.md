@@ -1,8 +1,9 @@
 # UniEnable — User Guide
 
-**Status:** v1.0, plus v2.0's accessible route search (`route`). Every command in Sections 5–14,
-including recurring class sessions, the three-option `reset all`, and `route`, is implemented.
-Section 15 lists remaining v2.0 work that is explicitly **not** implemented yet.
+**Status:** v1.0, plus v2.0's accessible route search (`route`) and planning dashboard
+(`dashboard`). Every command in Sections 5–15, including recurring class sessions, the
+three-option `reset all`, `route`, and `dashboard`, is implemented. Section 16 lists remaining
+v2.0 work that is explicitly **not** implemented yet.
 
 ## 1. Introduction
 
@@ -105,7 +106,8 @@ accessibility information, or medical advice.
 | Accessibility | `facility validate` / `connection validate` | v1.0 |
 | Accessibility | `connection list/view/find ...` | v1.0 |
 | Accessibility | `route from/FACILITY to/FACILITY` | v2.0 |
-| Dashboard, timetable, preferences, recommendation, export | various | **Coming soon (v2.0)** |
+| Dashboard | `dashboard today\|tomorrow\|date/YYYY-MM-DD\|this week [detail]` | v2.0 |
+| Timetable, preferences, recommendation, export | various | **Coming soon (v2.0)** |
 
 ## 6. Activity Commands
 
@@ -498,7 +500,7 @@ example `1 to 6; 7 to 13` or `3;7;9;11`. Week numbers, whitespace around `;`/`to
 `to` itself are all case-insensitive and flexible; zero/negative numbers, a reversed range (e.g.
 `5 to 3`), blank items, commas, hyphens, duplicate or overlapping weeks, and trailing text are all
 rejected. There is no fixed maximum week number in the application itself — every week you list is
-checked against `data/academic-calendar.txt` (see Section 11), so what's valid depends entirely on
+checked against `data/academic-calendar.txt` (see Section 12), so what's valid depends entirely on
 what that file defines for the target activity's academic year and semester. The specification
 must include the instructional week containing the source activity; omitting it is rejected.
 
@@ -556,7 +558,7 @@ copying the source's description, category, topic, timing, ratings, and note. Fr
 — there is no linked series to keep in sync.
 
 If `data/academic-calendar.txt` is missing or cannot be parsed, `recur` reports the problem and
-every other command keeps working normally (see Section 11).
+every other command keeps working normally (see Section 12).
 
 ## 7. Topic Commands
 
@@ -802,7 +804,68 @@ route exists. An unrecognised facility name is reported as an error.
 accessibility, or current usability — only that the local dataset records a confirmed-accessible
 path. It is read-only: it never adds, edits, or deletes a facility or connection record.
 
-## 9. Built-In Guide: `guide`
+## 9. Accessible Planning Dashboard: `dashboard`
+
+```text
+dashboard today [detail]
+dashboard tomorrow [detail]
+dashboard date/YYYY-MM-DD [detail]
+dashboard this week [detail]
+```
+
+Shows how much is planned for a period, how much room is left, how energy/sensory-demanding it
+is, and how much of what's already due is complete — using only activity data you already
+entered. Read-only: it never adds, edits, or deletes an activity, never writes any file, and
+never shows a confirmation prompt.
+
+`this week` means Monday through Sunday of the current week — the same definition `list this
+week` already uses, not a rolling seven-day window. `date/YYYY-MM-DD` accepts only that exact
+marker form (not a bare date); an invalid or non-existent date is rejected the same way `add`/`edit`
+already reject one. `detail` is a single optional trailing keyword.
+
+Default output example:
+
+```text
+Dashboard: Today
+Period: 2026-08-17
+
+Activities: 10
+Planned workload: 8h 30m
+Nominal buffer: 15h 30m
+
+Energy demand: 24 points
+High-energy activities: 3
+
+Sensory load: 19 points
+High-sensory activities: 2
+
+Completion  [######----] 60% (6/10)
+```
+
+`detail` additionally shows fixed/flexible activity counts, a category breakdown, and the full
+1-to-5 energy/sensory rating distribution with average and highest.
+
+An overloaded period (more planned than the period's capacity) shows an extra line:
+
+```text
+Nominal buffer: 0h 00m
+Overloaded by: 2h 30m
+```
+
+If nothing in the period has reached its scheduled end time yet, completion shows
+`Completion: No activities are due yet.` instead of a percentage — an activity only counts toward
+completion once its own time has fully passed, so something not due yet is never counted as
+behind schedule. An empty period (no activities at all) shows
+`No activities found for the selected period.` instead of the usual metrics.
+
+**"Nominal buffer" is arithmetic capacity minus planned workload — not a guarantee that time is
+actually free or usable.** Overlapping fixed activities each count individually toward planned
+workload (not merged), a flexible activity counts its full requested duration once it's included
+(not clipped to however much of its window falls in the period), and travel time/route
+accessibility are not considered. Energy and sensory numbers are shown exactly as you entered
+them — self-reported planning data only, never a medical or performance judgement.
+
+## 10. Built-In Guide: `guide`
 
 ```text
 guide
@@ -813,11 +876,9 @@ guide NUMBER
 `guide` alone shows a 12-item numbered menu. `guide TOPIC` shows one topic's text directly.
 Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`,
 `list`, `edit`, `delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`,
-`recur`, `topic`, `facility`, `connection`, `route`, `storage`. Topics for v2.0-only features
-still awaiting implementation (`timetable`, `recommend`, `export`) are still listed but end with
-`(Coming soon in a future release.)` where the underlying command isn't built yet; `dashboard`
-explains that completion tracking itself is already available (see `completion`) while the
-aggregate dashboard view is still coming.
+`recur`, `topic`, `facility`, `connection`, `route`, `dashboard`, `storage`. Topics for v2.0-only
+features still awaiting implementation (`timetable`, `recommend`, `export`) are still listed but
+end with `(Coming soon in a future release.)` where the underlying command isn't built yet.
 
 Each menu item can also be selected by its number, either as `guide NUMBER` or by entering the
 bare number as its own command right after the menu is shown (e.g. `1` selects "Getting
@@ -828,11 +889,13 @@ points onward to the individual command's own topic (`add`, `edit`, `delete`, `l
 `view`) for full detail. `facility` (item `7`), `connection` (item `8`), and `route` (item `11`,
 added when v2.0's `route` shipped) are separate, independently and uniquely numbered topics -
 each describes only its own command family, with no combined item grouping them together. Item
-`12` ("Return") is not a topic; it just acknowledges the selection and returns to the command
-prompt — it moved from `11` to `12` solely because `route` took the next available number; every
-other item's number is unchanged from v1.0.
+`5` ("Completion and dashboard") was already reserved for the `dashboard` topic in v1.0's menu -
+unlike `route`, `dashboard` did not need a new number; only its text changed, from "Coming soon"
+to real syntax. Item `12` ("Return") is not a topic; it just acknowledges the selection and
+returns to the command prompt — it moved from `11` to `12` solely because `route` took the next
+available number; every other item's number is unchanged from v1.0.
 
-## 10. Exit: `bye`
+## 11. Exit: `bye`
 
 ```text
 bye
@@ -845,7 +908,7 @@ Bye! Take care and see you again.
 ____________________________________________________________
 ```
 
-## 11. Data Storage
+## 12. Data Storage
 
 ```text
 data/
@@ -911,7 +974,7 @@ If you'd rather check a hand-edited `facilities.txt`/`connections.txt` without r
 application, `facility validate`/`connection validate` (Sections 8.7–8.8) run the exact same
 checks on demand.
 
-## 12. Error Handling
+## 13. Error Handling
 
 ```text
 [Error] Invalid input: ...
@@ -931,7 +994,7 @@ ____________________________________________________________
 ____________________________________________________________
 ```
 
-## 13. Frequently Asked Questions
+## 14. Frequently Asked Questions
 
 **What is the difference between a fixed and flexible activity?**
 A fixed activity has a confirmed start and end time. A flexible activity has an allowed window
@@ -961,7 +1024,7 @@ Yes, while the application is closed. Changes are validated and loaded the next 
 the application. If you want to check your edit is well-formed without restarting, run `facility
 validate`/`connection validate` (Sections 8.7–8.8) any time while the application is running.
 
-## 14. Complete Command Summary
+## 15. Complete Command Summary
 
 ```text
 guide
@@ -999,12 +1062,17 @@ connection find [from/FACILITY] [to/FACILITY] [type/TYPE] [status/YES|NO|UNKNOWN
 connection validate
 
 route from/FACILITY to/FACILITY
+
+dashboard today [detail]
+dashboard tomorrow [detail]
+dashboard date/YYYY-MM-DD [detail]
+dashboard this week [detail]
 ```
 
-## 15. Coming in a Future Release (v2.0 — not yet implemented)
+## 16. Coming in a Future Release (v2.0 — not yet implemented)
 
 The following were planned in the original product scope but have no working command yet: a
-completion/workload dashboard, a text-based weekly timetable, recommendation preferences, a
-deterministic schedule recommender, and CSV export. `guide` will point this out if you ask about
-one of these topics directly. Accessible route search (`route`) shipped in v2.0 — see Section
-8.9.
+text-based weekly timetable, recommendation preferences, a deterministic schedule recommender, and
+CSV export. `guide` will point this out if you ask about one of these topics directly. Accessible
+route search (`route`, Section 8.9) and the accessible planning dashboard (`dashboard`, Section 9)
+have both shipped in v2.0.

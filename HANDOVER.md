@@ -8,17 +8,42 @@ a new session repeats a mistake an earlier one already made and documented here.
 **If you are picking this project up next (including a different tool, e.g. Codex):** v2.0
 development has formally started, following
 `UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md` (supplied 2026-08-02, outside the repo, in
-Downloads). `feature/v2-route` (this update) is complete, committed, **not yet merged or pushed**
-- it needs review/approval before merging, and before the next feature (`feature/v2-dashboard`
-per the master prompt's required sequence) starts. See Section 1 for exactly what's on the branch
-and Section 6 for the full v2.0 sequence/status.
+Downloads). `feature/v2-route` is complete and merged into `main`, per explicit instruction to
+continue the v2.0 sequence; the next required branch is `feature/v2-dashboard` (audit first, per
+the master prompt's own process - see Section 6). Separately, a release-packaging mistake in the
+`v1.0` GitHub Release was found and fixed directly on `main` while `feature/v2-route` was still
+unmerged - see the dated note early in Section 1 below for what that was. The
+`ActivityConflictChecker` review/extraction mentioned further below as "the next task" is also
+**done** (shipped at `e44f660`, before any of this).
 
 ## 1. Current state (as of this update)
 
-**On branch `feature/v2-route`, 4 commits ahead of `main` (`59a9c4a`), not yet merged or pushed.**
-`main`/`origin/main` are unchanged at `59a9c4a`, clean. `v2-dashboard` remains a stale local
-branch with zero unique commits (confirmed again this session) - not touched, not deleted per
-explicit instruction.
+**Update (2026-08-02, after `feature/v2-route` below had already been fully committed on its own
+branch): a release-packaging mistake was found and fixed on `main` directly, while the route
+branch sat unmerged.** `v1.0` was tagged with a GitHub Release whose only asset was a **bare
+`unienable.jar`**. That's broken for `recur`, which needs `data/academic-calendar.txt` shipped
+alongside the jar - the app never creates that file itself, and the documented distributable has
+always been `./gradlew releaseZip`'s zip (jar + calendar file), never a bare jar (see README's
+"Distribution" section). A user who downloaded the bare jar hit exactly this:
+`[Error] Storage error: academic calendar file not found: data/academic-calendar.txt` on `recur`.
+A short-lived `v1.0.1` tag/release was created with the identical mistake (copied from `v1.0`'s
+own asset without cross-checking it against this project's own documented rule), then corrected in
+place, then - per explicit instruction, rather than keeping two tags pointing at variously-fixed
+states of identical code - **deleted entirely** (release and tag, local and remote). `v1.0`'s tag
+was moved to the fix commit (`4f040da`, deleted and recreated - git tags aren't normally
+force-moved on a published repo, but this was explicitly requested), and `v1.0`'s GitHub Release
+was rebuilt with the correct `unienable.zip` as its only asset, verified via a clean-extraction
+smoke test that `add` then `recur` both work. **Lesson: when creating a GitHub Release for a
+jar-based distributable, always attach `releaseZip`'s output zip, never a bare `build/libs/*.jar`
+- and smoke-test the exact uploaded asset (extract fresh, run, exercise the feature that depends
+on the external file) before considering a release done, not just the local build.** This fix
+landed as a standalone commit directly on `main` (not through a feature branch, since it wasn't
+v2.0 work), then `feature/v2-route` was updated with it (this merge) before being merged into
+`main` itself.
+
+**`feature/v2-route` is merged into `main`.** It was 4 commits ahead of the `main` it branched
+from (`59a9c4a`); `v2-dashboard` remains a stale local branch with zero unique commits (confirmed
+again this session) - not touched, not deleted per explicit instruction.
 
 Commits on `feature/v2-route`, oldest first: `e1a54ac` (production code), `530bd98` (JUnit
 tests), `9c4046e` (`text-ui-test`), `3f69338` (docs/diagrams). Implements
@@ -85,7 +110,8 @@ that review happened and Phase 2 (the actual extraction) has since shipped direc
 `e44f660` ("refactor: extract activity conflict validation from ActivityManager"), in a session
 this revision has no other record of. `logic.ActivityConflictChecker` exists in the current
 codebase and Section 14 of `docs/DeveloperGuide.md` documents it, confirming it's real, not
-aspirational.**
+aspirational. This paragraph, and everything historical below it, also predates the
+release-packaging fix and the `feature/v2-route` merge described earlier in this section.**
 
 Since the previous revision of this handover (`a4aa683`, mid-review, not yet pushed), three more
 small hardening batches landed and were pushed, each reviewed and approved before pushing, per the

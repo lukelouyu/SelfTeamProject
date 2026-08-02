@@ -3,9 +3,10 @@
 ## 1. Introduction
 
 UniEnable is a single-user, offline Java 17 command-line application for planning activities and
-consulting local accessibility reference data. This guide describes the implemented v1.0 system at
-commit `e44f660`, with emphasis on its activity-conflict refactor, recurrence workflow, persistence
-guarantees, and read-only accessibility features.
+consulting local accessibility reference data. This guide describes the implemented v1.0 system,
+with emphasis on its activity-conflict refactor, recurrence workflow, persistence guarantees, and
+read-only accessibility features, plus v2.0's first shipped feature: accessible route search
+(`route`), covered in Section 12.
 
 The project began from the se-education.org Duke template. Its Gradle setup, Checkstyle rules, and
 text-UI harness follow that ecosystem; the application design and domain behaviour described here
@@ -230,7 +231,53 @@ accessibility.
 `FacilityManager` supports list, case-insensitive name lookup, and feature/status filtering.
 `ConnectionManager` supports list and permanent-ID lookup; connection commands perform their own
 documented filters. `facility validate` and `connection validate` rerun the same storage checks on
-demand without replacing loaded records or modifying either file. Route search is future work.
+demand without replacing loaded records or modifying either file.
+
+### Accessible route search (`route`)
+
+`route from/FACILITY to/FACILITY` finds the shortest confirmed-accessible path between two known
+facilities, using each connection's `distanceInMetres` as the Dijkstra weight and only connections
+with `accessibility == YES` as eligible edges.
+
+<p align="center"><img src="diagrams/class/RouteClassDiagram.png" width="700" alt="Route class diagram"></p>
+
+**Why the `YES`-only filter lives in `logic.route.AccessibleRouteGraphFactory`, not in
+`logic.graph.AccessibilityGraph`.** `AccessibilityGraph` was built during v1.0 hardening as
+generic, policy-free Dijkstra-prep infrastructure over *any* facility/connection dataset - its own
+class Javadoc says so, and its existing test suite builds graphs from datasets that mix accessible
+and non-existent connections without any status opinion. Folding "only `YES` connections are
+usable" into it would collapse a reusable graph algorithm and one command's business rule into a
+single class, and would silently narrow what any future caller of `AccessibilityGraph` could do
+with it. `AccessibleRouteGraphFactory.build(FacilityManager, ConnectionManager)` instead filters
+`connectionManager.list()` down to `AccessibilityStatus.YES` connections and builds the existing
+graph over exactly that filtered list - route policy and graph algorithm stay in separate classes,
+and `AccessibilityGraph` itself gained only a policy-neutral `(List<Facility>, List<Connection>)`
+constructor overload (the manager-based constructor now delegates to it) so the factory never
+needs to manufacture a throwaway `ConnectionManager` purely to hold a filtered list. Every existing
+`AccessibilityGraphTest` case is unaffected, since the manager-based constructor's own behaviour is
+unchanged.
+
+Because `FacilityStorage`/`ConnectionStorage` already reject non-positive/duplicate IDs, malformed
+lines, and unknown-facility endpoints at load time (Section 11), and `ApplicationRunner` only ever
+builds `FacilityManager`/`ConnectionManager` from an already-validated `LoadResult`, the route
+graph factory performs no second validation pass of its own - by the time any command runs, the
+managers can only contain trusted, self-consistent records. `route`'s source and destination
+naming the same known facility is a successful zero-length result (single-facility chain, `0 m`),
+not an error, since `AccessibilityGraph.getShortestPath` already returns that result correctly for
+matching endpoints. Two known facilities with no confirmed-accessible path between them get a
+"No supported accessible route was found..." message rather than an exception, worded to state
+only that UniEnable's local dataset has no confirmed path - never that no real-world accessible
+route exists. Only an unrecognised facility name raises `InvalidIndexException`.
+
+`RouteCommand` resolves each consecutive pair in the returned path's facility chain against the
+same `YES`-only connection list the graph was built from, to recover each segment's own distance,
+traversal type, shelter status, and optional barrier/notes for display - segment display direction
+always follows the path's own travel direction, not a connection's stored (and irrelevant, since
+every connection is two-way) `from`/`to` order. `ui.accessibility.RouteFormatter` is pure text
+formatting with no routing decisions of its own. `route` never estimates travel time and never
+claims real-time verification or a guarantee of real-world accessibility.
+
+<p align="center"><img src="diagrams/sequence/RouteSequence.png" width="760" alt="Route sequence diagram"></p>
 
 ## 13. Logging and assertions
 
@@ -288,8 +335,10 @@ contract and preserve each caller's distinct error and recovery behaviour.
   recurrence dates.
 - Accessibility records remain separate from activities; activities do not store route state.
 - `reset all` and recurrence use the same class-schedule eligibility policy.
-- Preparatory graph and tokenisation utilities have no v1.0 command integration. They are not part
-  of the implemented user workflow.
+- `parser.common.ArgumentTokenizer`/`ArgumentMarker` remain prepared but unused by any shipped
+  command as of this guide. `logic.graph.AccessibilityGraph`, the other preparatory utility from
+  the same hardening session, is no longer unused - v2.0's `route` is its first real caller, via
+  `logic.route.AccessibleRouteGraphFactory` (Section 12).
 
 ## 15. Testing
 
@@ -305,7 +354,13 @@ duplicate-before-overlap precedence, adjacency, permanent-ID exclusion, and firs
 Recurrence tests should cover source-week inclusion, no-class and identical skips, planning
 preflight, final batch revalidation, candidate-to-candidate validation, IDs, and no partial
 mutation. Storage tests should independently exercise malformed records and three-file commit
-rollback. Runner tests should force save failures for each category of mutation.
+rollback. Runner tests should force save failures for each category of mutation. Route tests
+should cover Dijkstra correctness (direct vs. multi-edge, distance-optimal vs. hop-optimal),
+`YES`-only edge exclusion, disconnected pairs, the same-facility zero-length case, unknown
+facilities, and malformed/duplicate/negative-distance reference data - all against small
+synthetic fixtures (`docs/tasks/v2/route/TEST_PLAN.md`), never the real bundled dataset, so
+algorithmic edge cases stay independent of what the shipped `facilities.txt`/`connections.txt`
+happen to contain.
 
 ## 16. Product scope
 
@@ -316,8 +371,9 @@ and explicit uncertainty in accessibility information.
 
 Implemented v1.0 scope includes activity and topic management, completion and ordering, next-item
 selection, academic-calendar recurrence, reset choices, read-only facility/connection lookup, and
-reference-file validation. CSV export, route search, a dashboard, a timetable, and recommendation
-features remain future work.
+reference-file validation. v2.0 has so far added accessible route search (`route`, Section 12).
+CSV export, a dashboard, a timetable, recommendation preferences, and a schedule recommender
+remain future work.
 
 ## 17. User stories
 
@@ -329,6 +385,7 @@ features remain future work.
 | Must | wheelchair user | inspect local facility and connection information | I can prepare for known barriers. |
 | Should | student with weekly classes | generate semester occurrences from a supplied calendar | I avoid repetitive entry while retaining independent activities. |
 | Should | student starting a new period | reset all data or retain class schedules | I can clear obsolete planning state safely. |
+| Should | wheelchair user | find the shortest confirmed-accessible route between two facilities | I do not have to guess whether a shorter-looking path is actually usable. |
 
 ## 18. Use cases
 
@@ -364,6 +421,17 @@ saving failure leaves no partial batch.
 The user lists, views, finds, or validates facilities/connections. UniEnable returns local
 reference data plus its disclaimer and never modifies the dataset.
 
+### UC05: Find an accessible route
+
+**Main success scenario:** The user supplies two known facility names. UniEnable computes the
+shortest path using only confirmed-accessible connections and reports the ordered chain, each
+segment's detail, and the total distance.
+
+**Extensions:** The same facility for both ends succeeds with a zero-length result. An
+unrecognised facility name is rejected before any pathing occurs. Two known facilities with no
+confirmed-accessible path between them get an explicit no-route message rather than a suggested,
+unconfirmed route.
+
 ## 19. Non-functional requirements
 
 - The application must run on Java 17 and use primarily object-oriented design.
@@ -389,6 +457,8 @@ reference data plus its disclaimer and never modifies the dataset.
 - **Academic calendar:** The supplied read-only file mapping teaching weeks and no-class dates.
 - **Snapshot:** A deep in-memory copy used to restore state after a failed save.
 - **Reference data:** Facility, connection, and calendar information that commands do not mutate.
+- **Confirmed-accessible connection:** A connection whose `accessibility` field is `YES`; `route`
+  uses only these as graph edges, never `NO` or `UNKNOWN`.
 
 ## 21. Instructions for manual testing
 
@@ -413,11 +483,15 @@ Start with a separate test directory if existing personal data must be preserved
 7. Run every facility and connection list/view/find/validate command and verify the disclaimer.
    Introduce a malformed reference line while the app is closed, restart, and confirm a warning;
    restore the file afterward.
-8. Force a save failure in a disposable copy by making a planning-state destination unwritable.
+8. Run `route` between two facilities with a known confirmed-accessible path and verify the
+   segment detail and total distance. Run it with the same facility twice and confirm a
+   zero-length success, not an error. Run it with an unrecognised facility name and confirm the
+   error. `route` never mutates state, so no restart check is needed for it.
+9. Force a save failure in a disposable copy by making a planning-state destination unwritable.
    Confirm the error is shown, the attempted mutation is absent from subsequent views, and `bye`
    does not falsely claim it was saved.
-9. Restart after successful mutations and confirm activities, topics, completion, and default
-   order were persisted together.
+10. Restart after successful mutations and confirm activities, topics, completion, and default
+    order were persisted together.
 
 Before a release, also run:
 

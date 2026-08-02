@@ -30,6 +30,7 @@ package "Business logic" {
   [FacilityManager] as FacilityLogic
   [ConnectionManager] as ConnectionLogic
   [RecurrencePlanner] as RecurLogic
+  [AccessibleRouteGraphFactory] as RouteLogic
 }
 
 package "Domain model" {
@@ -56,6 +57,9 @@ Commands --> ActivityLogic
 Commands --> TopicLogic
 Commands --> FacilityLogic
 Commands --> ConnectionLogic
+Commands --> RouteLogic
+RouteLogic --> FacilityLogic
+RouteLogic --> ConnectionLogic
 Parsers --> RecurLogic
 ActivityLogic --> ActivityModel
 TopicLogic --> ActivityModel

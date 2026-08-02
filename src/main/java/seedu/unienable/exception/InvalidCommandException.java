@@ -2,6 +2,8 @@ package seedu.unienable.exception;
 
 /** Signals that the entered command word or syntax is not recognised. */
 public class InvalidCommandException extends UniEnableException {
+    private static final long serialVersionUID = 1L;
+
     /**
      * Creates an InvalidCommandException with the given detail message.
      *

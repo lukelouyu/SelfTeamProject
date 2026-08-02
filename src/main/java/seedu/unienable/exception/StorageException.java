@@ -2,6 +2,8 @@ package seedu.unienable.exception;
 
 /** Signals that a local data file could not be read or written. */
 public class StorageException extends UniEnableException {
+    private static final long serialVersionUID = 1L;
+
     /**
      * Creates a StorageException with the given detail message.
      *

@@ -2,6 +2,8 @@ package seedu.unienable.exception;
 
 /** Signals that a UniEnable operation could not be completed. */
 public class UniEnableException extends Exception {
+    private static final long serialVersionUID = 1L;
+
     /**
      * Creates a UniEnableException with the given detail message.
      *

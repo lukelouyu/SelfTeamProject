@@ -2,6 +2,8 @@ package seedu.unienable.exception;
 
 /** Signals that a referenced stable activity ID does not exist. */
 public class InvalidIndexException extends UniEnableException {
+    private static final long serialVersionUID = 1L;
+
     /**
      * Creates an InvalidIndexException with the given detail message.
      *

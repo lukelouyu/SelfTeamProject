@@ -13,13 +13,15 @@ class Storage <<facade>> {
   - facilityStorage : FacilityStorage
   - connectionStorage : ConnectionStorage
   - settingsStorage : SettingsStorage
+  - preferenceStorage : PreferenceStorage
   + prepareDataFiles() : void
   + loadActivities(validTopics : List<Topic>) : LoadResult<Activity>
   + loadTopics() : LoadResult<Topic>
   + loadFacilities() : LoadResult<Facility>
   + loadConnections(knownFacilities : List<Facility>) : LoadResult<Connection>
   + loadSettings() : LoadResult<ActivityOrder>
-  + saveAll(activities : List<Activity>, topics : List<Topic>, order : ActivityOrder) : void
+  + loadPreferences() : LoadResult<PreferenceProfile>
+  + saveAll(activities : List<Activity>, topics : List<Topic>, order : ActivityOrder, preferences : PreferenceProfile) : void
 }
 
 class ActivityStorage {
@@ -30,6 +32,7 @@ class TopicStorage
 class FacilityStorage
 class ConnectionStorage
 class SettingsStorage
+class PreferenceStorage
 class AcademicCalendarStorage <<separate, read-only>> {
   + load(filePath : Path) : AcademicCalendar
 }
@@ -40,11 +43,13 @@ class Topic
 class Facility
 class Connection
 enum ActivityOrder
+class PreferenceProfile
 class AcademicCalendar
 
 class "activities.txt" as ActivitiesFile <<file>>
 class "topics.txt" as TopicsFile <<file>>
 class "settings.txt" as SettingsFile <<file>>
+class "preferences.txt" as PreferencesFile <<file>>
 class "facilities.txt" as FacilitiesFile <<file>>
 class "connections.txt" as ConnectionsFile <<file>>
 class "academic-calendar.txt" as CalendarFile <<file>>
@@ -54,6 +59,7 @@ Storage *-- TopicStorage
 Storage *-- FacilityStorage
 Storage *-- ConnectionStorage
 Storage *-- SettingsStorage
+Storage *-- PreferenceStorage
 Storage ..> LoadResult
 ActivityStorage ..> Activity
 ActivityStorage ..> Topic
@@ -61,9 +67,11 @@ TopicStorage ..> Topic
 FacilityStorage ..> Facility
 ConnectionStorage ..> Connection
 SettingsStorage ..> ActivityOrder
+PreferenceStorage ..> PreferenceProfile
 ActivityStorage --> ActivitiesFile
 TopicStorage --> TopicsFile
 SettingsStorage --> SettingsFile
+PreferenceStorage --> PreferencesFile
 FacilityStorage --> FacilitiesFile : reads
 ConnectionStorage --> ConnectionsFile : reads
 AcademicCalendarStorage --> CalendarFile : reads
@@ -71,7 +79,7 @@ AcademicCalendarStorage ..> AcademicCalendar
 
 note bottom of Storage
   saveAll stages and commits activities, topics,
-  and settings together. If a later file commit fails,
+  settings, and preferences together. If a later file commit fails,
   prior file states are restored.
 end note
 

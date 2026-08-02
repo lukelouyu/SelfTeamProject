@@ -6,8 +6,8 @@ internship, or entry-level work routines. It combines fixed/flexible activity pl
 energy-demand and sensory-load ratings, category and topic organisation, a deterministic "next
 relevant activity" lookup, read-only local facility/connection reference information, and — new
 in v2.0 — Dijkstra-based accessible route search (`route`), a planning-load dashboard
-(`dashboard`), and deterministic read-only day/week timetables (`timetable`) over that same
-activity and reference data.
+(`dashboard`), deterministic read-only day/week timetables (`timetable`), and one persisted global
+planning-preference profile (`preference`) over that same activity and reference data.
 
 Useful links:
 * [User Guide](docs/UserGuide.md)
@@ -64,14 +64,14 @@ To run it: unzip anywhere, `cd` into the extracted folder, and run `java -jar un
 there (so the app's own `data/` directory resolves next to the calendar file already provided).
 `academic-calendar.txt` is a supplied, human-maintained resource. UniEnable reads it when `recur`
 is first used in a run, but never creates, repairs, or modifies it — see the
-[User Guide](docs/UserGuide.md#11-data-storage) for its lifecycle and how to extend it to a new
+[User Guide](docs/UserGuide.md#14-data-storage) for its lifecycle and how to extend it to a new
 academic year.
 
 ## Testing
 
 ### I/O redirection tests
 
-* To run _I/O redirection_ tests (aka _Text UI tests_), navigate to `text-ui-test` and run the `runtest(.bat/.sh)` script. It scripts the v1.0 command surface, boundary cases, and error paths end-to-end against a freshly built JAR, including `recur`, the three-option `reset all`, `facility validate`, and `connection validate`. The script copies a small synthetic `academic-calendar-test.txt` fixture into `data/academic-calendar.txt` before each run, so `recur` results stay deterministic instead of depending on the real, date-bound calendar. It deliberately does **not** cover `list today`/`list tomorrow`/`list this week`, since their result depends on the current date; those are covered by JUnit tests with an injected fixed `now` instead (see `ActivityCommandParserTest`).
+* To run _I/O redirection_ tests (aka _Text UI tests_), navigate to `text-ui-test` and run the `runtest(.bat/.sh)` script. It scripts the v1.0 command surface, boundary cases, and error paths end-to-end against a freshly built JAR, including `recur`, the three-option `reset all`, preference view/set/reset and validation, `facility validate`, and `connection validate`. The script copies a small synthetic `academic-calendar-test.txt` fixture into `data/academic-calendar.txt` before each run, so `recur` results stay deterministic instead of depending on the real, date-bound calendar. It deliberately does **not** cover `list today`/`list tomorrow`/`list this week`, since their result depends on the current date; those are covered by JUnit tests with an injected fixed `now` instead (see `ActivityCommandParserTest`).
 
 ### JUnit tests
 

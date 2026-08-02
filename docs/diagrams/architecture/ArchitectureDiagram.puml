@@ -33,6 +33,7 @@ package "Business logic" {
   [AccessibleRouteGraphFactory] as RouteLogic
   [DashboardService] as DashboardLogic
   [TimetableService] as TimetableLogic
+  [PreferenceManager] as PreferenceLogic
 }
 
 package "Domain model" {
@@ -40,6 +41,7 @@ package "Domain model" {
   [Recurrence model] as RecurModel
   [Accessibility records] as AccessModel
   [Timetable view model] as TimetableModel
+  [Preference profile] as PreferenceModel
 }
 
 package "Persistence" {
@@ -66,8 +68,10 @@ RouteLogic --> ConnectionLogic
 Commands --> DashboardLogic
 DashboardLogic --> ActivityLogic
 Commands --> TimetableLogic
+Commands --> PreferenceLogic
 TimetableLogic --> ActivityLogic
 TimetableLogic --> TimetableModel
+PreferenceLogic --> PreferenceModel
 Parsers --> RecurLogic
 ActivityLogic --> ActivityModel
 TopicLogic --> ActivityModel
@@ -78,6 +82,7 @@ ConnectionLogic --> AccessModel
 Runner --> Storage
 Storage --> ActivityModel
 Storage --> AccessModel
+Storage --> PreferenceModel
 Storage --> Files
 CalendarStorage --> Files : reads only
 Parsers --> CalendarStorage

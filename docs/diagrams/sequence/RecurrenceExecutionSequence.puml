@@ -34,7 +34,7 @@ end
 Manager -> Manager : append whole batch; advance nextId
 Manager --> Command
 Command --> Runner : CommandResult
-Runner -> Storage : saveAll(activities, topics, order)
+Runner -> Storage : saveAll(activities, topics, order, preferences)
 Storage --> Runner : saved
 Runner -> Ui : showFramed(feedback)
 Ui --> User : success

@@ -42,7 +42,7 @@ Manager -> Checker : checkNoConflicts(replacement, 1, activities)
 Checker --> Manager : accepted
 Manager -> Manager : replace at existing index
 Command --> Runner : CommandResult
-Runner -> Storage : saveAll(activities, topics, order)
+Runner -> Storage : saveAll(activities, topics, order, preferences)
 Storage --> Runner : saved
 Runner -> Ui : showFramed(feedback)
 Ui --> User : success

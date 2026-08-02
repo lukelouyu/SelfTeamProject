@@ -1,0 +1,66 @@
+@startuml
+title Global Planning Preferences
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+class CommandDispatcher
+class PreferenceCommandParser {
+  + parse(manager : PreferenceManager, args : String) : Command
+}
+class PreferenceViewCommand
+class PreferenceSetCommand <<confirmable>>
+class PreferenceResetCommand <<confirmable>>
+class PreferenceManager {
+  - profile : PreferenceProfile
+  + getProfile() : PreferenceProfile
+  + setProfile(profile : PreferenceProfile) : void
+  + reset() : void
+  + isDefault() : boolean
+}
+class PreferenceProfile <<immutable>> {
+  - preferredStart : LocalTime
+  - preferredEnd : LocalTime
+  - minimumBufferMinutes : int
+  - tomatoSuggestion : TomatoSuggestion
+  + defaults() : PreferenceProfile
+  + of(start, end, buffer, tomato) : PreferenceProfile
+}
+enum TomatoSuggestion {
+  ON
+  OFF
+}
+class PreferenceStorage {
+  + load(path : Path) : LoadResult<PreferenceProfile>
+  + save(path : Path, profile : PreferenceProfile) : void
+}
+class PreferenceFormatter
+class Storage
+class "preferences.txt" as PreferenceFile <<file>>
+
+CommandDispatcher --> PreferenceCommandParser
+PreferenceCommandParser ..> PreferenceViewCommand : creates
+PreferenceCommandParser ..> PreferenceSetCommand : creates
+PreferenceCommandParser ..> PreferenceResetCommand : creates
+PreferenceViewCommand --> PreferenceManager
+PreferenceSetCommand --> PreferenceManager
+PreferenceResetCommand --> PreferenceManager
+PreferenceManager --> PreferenceProfile
+PreferenceProfile --> TomatoSuggestion
+PreferenceViewCommand ..> PreferenceFormatter
+PreferenceSetCommand ..> PreferenceFormatter
+PreferenceResetCommand ..> PreferenceFormatter
+Storage *-- PreferenceStorage
+PreferenceStorage ..> PreferenceProfile
+PreferenceStorage --> PreferenceFile
+
+note bottom of PreferenceStorage
+  Missing file -> silent complete defaults.
+  Any malformed profile -> complete defaults
+  plus startup warnings (never partial mixing).
+end note
+
+@enduml

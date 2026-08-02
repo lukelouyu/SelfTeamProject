@@ -10,6 +10,7 @@ participant ApplicationRunner as Runner
 participant "Mutating Command" as Command
 participant ActivityManager
 participant TopicManager
+participant PreferenceManager
 participant Storage
 participant Ui
 
@@ -17,15 +18,16 @@ Runner -> Runner : mutatesState(command)
 Runner -> Runner : capture deep ApplicationStateSnapshot
 Runner -> Command : execute()
 Command --> Runner : CommandResult
-Runner -> Storage : saveAll(activities, topics, order)
-Storage -> Storage : stage three temporary files
-Storage -> Storage : commit activities, topics, settings
+Runner -> Storage : saveAll(activities, topics, order, preferences)
+Storage -> Storage : stage four temporary files
+Storage -> Storage : commit activities, topics, settings, preferences
 alt a file commit fails
   Storage -> Storage : restore prior file states
   Storage --> Runner : throw StorageException
   Runner -> Runner : snapshot.restore()
   Runner -> ActivityManager : restoreState(activities, nextId, order)
   Runner -> TopicManager : loadAll(topics)
+  Runner -> PreferenceManager : setProfile(preferences)
   Runner -> Ui : show storage error
   Ui --> User : failure; no success feedback
   note over Runner

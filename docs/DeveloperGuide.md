@@ -5,8 +5,9 @@
 UniEnable is a single-user, offline Java 17 command-line application for planning activities and
 consulting local accessibility reference data. This guide describes the implemented v1.0 system,
 with emphasis on its activity-conflict refactor, recurrence workflow, persistence guarantees, and
-read-only accessibility features, plus v2.0's first two shipped features: accessible route search
-(`route`, Section 12) and the accessible planning dashboard (`dashboard`, Section 13).
+read-only accessibility features, plus v2.0's shipped accessible route search (`route`, Section
+12), planning dashboard (`dashboard`, Section 13), read-only timetable (`timetable`, Section 14),
+and global planning preferences (`preference`, Section 15).
 
 The project began from the se-education.org Duke template. Its Gradle setup, Checkstyle rules, and
 text-UI harness follow that ecosystem; the application design and domain behaviour described here
@@ -55,10 +56,10 @@ application-owned files and the accessibility reference dataset.
 | `ui` | Frames console output and formats activities and recurrence previews; it contains no business rules. |
 | `parser` | Routes a line through `CommandDispatcher`, validates syntax and values, and constructs a command. |
 | `command` | Represents one user action through `execute()`; confirmable commands also provide a prompt or menu. |
-| `logic` | Owns in-memory activity/topic state, read-only accessibility lookups, filters, conflict policy, and recurrence planning. |
-| `model` | Defines activities, topics, ratings, enums, academic-calendar records, and recurrence plans. |
+| `logic` | Owns in-memory activity/topic/preference state, read-only accessibility lookups, filters, conflict policy, and recurrence planning. |
+| `model` | Defines activities, topics, preferences, ratings, enums, academic-calendar records, and recurrence plans. |
 | `accessibility` | Defines immutable facility, feature, connection, and three-state accessibility records. |
-| `storage` | Loads validated text records and atomically saves activities, topics, and settings. |
+| `storage` | Loads validated text records and atomically saves activities, topics, settings, and preferences. |
 | `exception` | Provides user-facing checked exception categories such as invalid input, conflict, and storage error. |
 
 `ActivityManager` owns the activity list, permanent-ID counter, saved ordering, CRUD operations,
@@ -179,12 +180,13 @@ state changed after planning. Any failure leaves the real activity list and ID c
 ## 10. Atomic mutation and rollback
 
 `ApplicationRunner` classifies these as state-changing commands: activity add, edit, delete, mark,
-unmark, `order set`, recurrence, topic add/rename/delete, and `reset all` when reset would actually
-change state. Before executing one, it captures deep copies of activities and topics plus the exact
-`nextId` and saved order.
+unmark, `order set`, recurrence, topic add/rename/delete, preference set/reset, and `reset all`
+when reset would actually change state. Before executing one, it captures deep copies of
+activities and topics plus the exact `nextId`, saved order, and immutable preference profile.
 
 Success feedback is withheld until `Storage.saveAll` succeeds. If saving fails, the runner restores
-the snapshot through `ActivityManager.restoreState` and `TopicManager.loadAll`; the attempted
+the snapshot through `ActivityManager.restoreState`, `TopicManager.loadAll`, and
+`PreferenceManager.setProfile`; the attempted
 command is therefore not left visible only in memory. The unsaved-change flag remains set so `bye`
 retries and cannot falsely claim that data was saved.
 
@@ -198,9 +200,10 @@ There are two complementary rollback layers:
 
 ## 11. Storage
 
-The `Storage` facade owns loaders for activities, topics, settings, facilities, and connections.
-Application-owned planning state is pipe-delimited in `activities.txt`, `topics.txt`, and
-`settings.txt`. `saveAll` stages all three temporary files, checks destinations, retains backups,
+The `Storage` facade owns loaders for activities, topics, settings, preferences, facilities, and
+connections. Application-owned planning state is pipe-delimited in `activities.txt`,
+`topics.txt`, `settings.txt`, and `preferences.txt`. `saveAll` stages all four temporary files,
+checks destinations, retains backups,
 and commits them as one operation; a later failure triggers restoration of earlier file states.
 
 <p align="center"><img src="diagrams/class/StorageClassDiagram.png" width="760" alt="Storage class diagram"></p>
@@ -441,7 +444,41 @@ nested overlaps, adjacency, immutable projections, every parser rejection, exact
 restart consistency, zero file mutation, dispatcher and guide wiring, and Text-UI scenarios. The
 wall-clock-relative `this week` path is tested with injected time rather than the Text-UI harness.
 
-## 15. Logging and assertions
+## 15. Global planning preferences
+
+`preference view`, `preference set`, and `preference reset` manage one global profile for the
+future deterministic recommender. `PreferenceProfile` is an immutable validated value containing
+a preferred daily start/end, a minimum buffer in minutes, and an advisory Tomato/Pomodoro
+suggestion flag. `PreferenceProfile.defaults()` is the single production source for the
+backward-compatible defaults: `08:00`, `20:00`, `15`, and `OFF`.
+
+<p align="center"><img src="diagrams/class/PreferenceClassDiagram.png" width="760" alt="Preference class diagram"></p>
+
+`PreferenceCommandParser` uses declared markers and rejects unknown, empty, trailing, and
+duplicate fields. For a partial set, it combines supplied values with unchanged current values,
+then constructs one complete `PreferenceProfile`; start-before-end and buffer-range validation
+therefore occurs before confirmation and cannot partially update the manager. Marker order has no
+meaning. A set/reset preview is side-effect-free, and cancellation never reaches execution or
+storage.
+
+<p align="center"><img src="diagrams/sequence/PreferenceSetSequence.png" width="760" alt="Preference set sequence diagram"></p>
+
+`PreferenceStorage` uses a deterministic four-line `KEY|VALUE` format. Loading is deliberately
+all-or-default: a missing file silently returns the complete default profile, while a malformed,
+incomplete, duplicate, unknown, invalid, or internally inconsistent profile returns all defaults
+with concise startup warnings. Valid fields from a broken profile are never mixed with defaults.
+
+Preferences participate in the four-file `Storage.saveAll` transaction and in
+`ApplicationStateSnapshot`, so a persistence failure restores both disk state and the prior
+in-memory profile before any success feedback. `reset all` option 1 restores profile defaults;
+option 2 retains the profile while keeping class schedules; option 3 cancels without change.
+
+Tomato/Pomodoro is data only in this feature. It is a future advisory display preference and does
+not change activities, Dashboard calculations, timetable rendering, route feasibility,
+energy/sensory interpretation, or recommendation ranking. No recommender, preview, or adoption
+workflow is introduced here.
+
+## 16. Logging and assertions
 
 `LoggingConfig` removes default console handlers and attaches one append-mode `FileHandler` at
 `data/unienable.log`. It records `INFO` and above with `SimpleFormatter`; operational logs do not
@@ -462,7 +499,7 @@ Assertions are not used for user or persisted input. Parsers and storage validat
 raise checked domain exceptions or load warnings, so behaviour does not depend on whether `-ea` is
 enabled.
 
-## 16. Design considerations
+## 17. Design considerations
 
 ### Extracting conflict validation
 
@@ -497,12 +534,13 @@ contract and preserve each caller's distinct error and recovery behaviour.
   recurrence dates.
 - Accessibility records remain separate from activities; activities do not store route state.
 - `reset all` and recurrence use the same class-schedule eligibility policy.
-- `parser.common.ArgumentTokenizer`/`ArgumentMarker` remain prepared but unused by any shipped
-  command as of this guide. `logic.graph.AccessibilityGraph`, the other preparatory utility from
-  the same hardening session, is no longer unused - v2.0's `route` is its first real caller, via
+- `parser.common.ArgumentTokenizer`/`ArgumentMarker` now provide declared-marker parsing and
+  duplicate-marker rejection for `preference set`. `logic.graph.AccessibilityGraph`, the other
+  preparatory utility from the same hardening session, is no longer unused - v2.0's `route` is its
+  first real caller, via
   `logic.route.AccessibleRouteGraphFactory` (Section 12).
 
-## 17. Testing
+## 18. Testing
 
 The automated strategy has four layers:
 
@@ -515,8 +553,12 @@ Conflict tests should cover both activity types, ignored metadata, completed act
 duplicate-before-overlap precedence, adjacency, permanent-ID exclusion, and first-overlap order.
 Recurrence tests should cover source-week inclusion, no-class and identical skips, planning
 preflight, final batch revalidation, candidate-to-candidate validation, IDs, and no partial
-mutation. Storage tests should independently exercise malformed records and three-file commit
-rollback. Runner tests should force save failures for each category of mutation. Route tests
+mutation. Storage tests should independently exercise malformed records and four-file commit
+rollback. Runner tests should force save failures for each category of mutation. Preference tests
+cover exact defaults, immutable complete-profile validation, independent and reordered
+multi-field updates, invalid markers/values, cancellation and no-op behaviour, all-or-default
+storage recovery, deterministic round-trip, restart persistence, read-only no-write behaviour,
+reset options, and save-failure rollback. Route tests
 should cover Dijkstra correctness (direct vs. multi-edge, distance-optimal vs. hop-optimal),
 `YES`-only edge exclusion, disconnected pairs, the same-facility zero-length case, unknown
 facilities, and malformed/duplicate/negative-distance reference data - all against small
@@ -530,7 +572,7 @@ deterministic ordering - all in `docs/tasks/v2/dashboard/TEST_PLAN.md`, with `te
 restricted to `dashboard date/...` scenarios for the same real-wall-clock-determinism reason
 `list today`/`tomorrow`/`this week` are.
 
-## 18. Product scope
+## 19. Product scope
 
 UniEnable serves tertiary students with ASD or ADHD and tertiary students who use wheelchairs as
 they prepare for unfamiliar university, internship, or entry-level work routines. It prioritises
@@ -540,11 +582,11 @@ and explicit uncertainty in accessibility information.
 Implemented v1.0 scope includes activity and topic management, completion and ordering, next-item
 selection, academic-calendar recurrence, reset choices, read-only facility/connection lookup, and
 reference-file validation. v2.0 has added accessible route search (`route`, Section 12), the
-accessible planning dashboard (`dashboard`, Section 13), and the read-only timetable
-(`timetable`, Section 14). CSV export, recommendation preferences, and a schedule recommender
-remain future work.
+accessible planning dashboard (`dashboard`, Section 13), the read-only timetable (`timetable`,
+Section 14), and global planning preferences (`preference`, Section 15). CSV export and a schedule
+recommender remain future work.
 
-## 19. User stories
+## 20. User stories
 
 | Priority | As a ... | I want to ... | So that ... |
 |---|---|---|---|
@@ -557,8 +599,9 @@ remain future work.
 | Should | wheelchair user | find the shortest confirmed-accessible route between two facilities | I do not have to guess whether a shorter-looking path is actually usable. |
 | Should | student sensitive to workload and environment | see a summary of how full a day or week is | I can gauge my planning load without manually adding it up myself. |
 | Should | student planning a week | view fixed and unscheduled activities by day | I can scan my commitments without assigning invented times. |
+| Should | student planning around personal limits | save one daily range, buffer, and advisory Tomato preference | I can reuse consistent planning inputs without re-entering them. |
 
-## 20. Use cases
+## 21. Use cases
 
 ### UC01: Add an activity
 
@@ -626,7 +669,18 @@ unscheduled section.
 dates, modes, or trailing text are rejected without mutation. Defensive overlap detection marks
 all affected fixed entries instead of omitting them.
 
-## 21. Non-functional requirements
+### UC08: Manage global planning preferences
+
+**Main success scenario:** The user views the current profile, supplies one or more valid changes,
+reviews the exact old/new preview, confirms with `y`, and UniEnable saves the complete profile as
+part of the coordinated planning-state transaction.
+
+**Extensions:** Missing, duplicate, unknown, malformed, out-of-range, or internally inconsistent
+input is rejected before confirmation. A no-op or `n` leaves state and files unchanged. A save
+failure restores the old profile and withholds success. `preference reset` follows the same
+confirmation and rollback rules while restoring all documented defaults.
+
+## 22. Non-functional requirements
 
 - The application must run on Java 17 and use primarily object-oriented design.
 - It must operate offline as a single-user CLI without a DBMS or private remote service.
@@ -638,7 +692,7 @@ all affected fixed entries instead of omitting them.
 - User errors must be specific and must not terminate the command loop.
 - Unknown accessibility status must remain distinguishable from confirmed inaccessibility.
 
-## 22. Glossary
+## 23. Glossary
 
 - **Activity:** A fixed or flexible user planning item with a permanent ID.
 - **Exact scheduling duplicate:** Same exact description, date, type, and that type's timing fields.
@@ -657,8 +711,10 @@ all affected fixed entries instead of omitting them.
   actually-usable free time.
 - **Completion-eligible:** An activity whose own scheduled time has fully passed as of the
   injected `now`; only eligible activities count toward `dashboard`'s completion percentage.
+- **Preference profile:** One immutable, global set of preferred daily bounds, minimum buffer, and
+  advisory Tomato/Pomodoro flag saved for future recommendation use.
 
-## 23. Instructions for manual testing
+## 24. Instructions for manual testing
 
 Build and extract the release ZIP, then run `java -jar unienable.jar` from its extracted root.
 Start with a separate test directory if existing personal data must be preserved.
@@ -691,11 +747,16 @@ Start with a separate test directory if existing personal data must be preserved
    date with no activities and confirm "No activities found for the selected period." Run
    `dashboard this week` and confirm the range matches `list this week`'s own Monday-Sunday week.
    `dashboard` never mutates state, so no restart check is needed for it.
-10. Force a save failure in a disposable copy by making a planning-state destination unwritable.
+10. Run `preference view`, set each field (including a reordered multi-field update), cancel once,
+    confirm once, restart, and verify the complete profile persisted. Run `preference reset`, then
+    exercise all three `reset all` options and verify their documented retain/reset behaviour.
+11. Run daily and weekly timetable views in compact/detail modes. Verify fixed chronology,
+    unscheduled flexible activities, empty-day handling, and overlap markers.
+12. Force a save failure in a disposable copy by making a planning-state destination unwritable.
     Confirm the error is shown, the attempted mutation is absent from subsequent views, and `bye`
     does not falsely claim it was saved.
-11. Restart after successful mutations and confirm activities, topics, completion, and default
-    order were persisted together.
+13. Restart after successful mutations and confirm activities, topics, completion, default order,
+    and preferences were persisted together.
 
 Before a release, also run:
 

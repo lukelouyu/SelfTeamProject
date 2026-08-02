@@ -7,7 +7,8 @@ internship, or entry-level work routines. It combines fixed and flexible activit
 organisation), a deterministic "next relevant activity" lookup, read-only local
 facility/connection accessibility reference data, and — new in v2.0 — Dijkstra-based accessible
 route search (`route`), a read-only planning-load dashboard (`dashboard`), and deterministic
-day/week timetable views (`timetable`) — all in a fast, offline CLI.
+day/week timetable views (`timetable`), plus one persisted global everyday planning-preference
+profile (`preference`) — all in a fast, offline CLI.
 
 It is explicitly not a general calendar, a medical tool, a NUSMods clone, a live GPS/navigation
 tool, or a multi-user system.

@@ -1,0 +1,46 @@
+@startuml
+title Confirmed Preference Update
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandDispatcher as Dispatcher
+participant PreferenceCommandParser as Parser
+participant PreferenceManager as Manager
+participant PreferenceSetCommand as Command
+participant CommandConfirmationHandler as Confirmation
+participant Storage
+participant Ui
+
+User -> Runner : preference set FIELD/VALUE ...
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parse(manager, args)
+Parser -> Manager : getProfile()
+Manager --> Parser : current immutable profile
+Parser -> Parser : merge supplied + unchanged fields
+Parser -> Parser : validate one complete PreferenceProfile
+Parser --> Runner : PreferenceSetCommand(proposed)
+Runner -> Confirmation : confirmIfNeeded(command)
+Confirmation -> Command : getConfirmation()
+Command --> Confirmation : changed-field preview
+Confirmation -> Ui : show preview and y/n prompt
+Ui --> User : preview
+User --> Confirmation : y
+Runner -> Runner : capture ApplicationStateSnapshot
+Runner -> Command : execute()
+Command -> Manager : setProfile(proposed)
+Command --> Runner : success result (withheld)
+Runner -> Storage : saveAll(activities, topics, order, preferences)
+alt save succeeds
+  Storage --> Runner : saved
+  Runner -> Ui : show success
+else save fails
+  Storage --> Runner : StorageException
+  Runner -> Manager : setProfile(snapshot.preferences)
+  Runner -> Ui : show storage error (no success)
+end
+
+@enduml

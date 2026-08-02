@@ -238,6 +238,8 @@ class StorageTest {
 
         assertFalse(Files.exists(tempDir.resolve("activities.txt")));
         assertFalse(Files.exists(tempDir.resolve("settings.txt")));
+        assertFalse(Files.exists(tempDir.resolve("preferences.txt")));
+        assertFalse(Files.exists(tempDir.resolve("preferences.txt.tmp")));
     }
 
     @Test

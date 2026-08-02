@@ -58,6 +58,16 @@ class PreferenceCommandParserTest {
     public void parse_multiFieldAndReorderedMarkers_buildOneProfile() throws Exception {
         assertProfile("set end/18:00 start/09:00", LocalTime.of(9, 0), LocalTime.of(18, 0), 15,
                 TomatoSuggestion.OFF);
+        assertProfile("set buffer/20 start/09:00", LocalTime.of(9, 0), LocalTime.of(20, 0), 20,
+                TomatoSuggestion.OFF);
+        assertProfile("set tomato/on start/09:00", LocalTime.of(9, 0), LocalTime.of(20, 0), 15,
+                TomatoSuggestion.ON);
+        assertProfile("set buffer/20 end/18:00", LocalTime.of(8, 0), LocalTime.of(18, 0), 20,
+                TomatoSuggestion.OFF);
+        assertProfile("set tomato/on end/18:00", LocalTime.of(8, 0), LocalTime.of(18, 0), 15,
+                TomatoSuggestion.ON);
+        assertProfile("set tomato/on buffer/20", LocalTime.of(8, 0), LocalTime.of(20, 0), 20,
+                TomatoSuggestion.ON);
         assertProfile("set buffer/20 tomato/on start/09:00", LocalTime.of(9, 0),
                 LocalTime.of(20, 0), 20, TomatoSuggestion.ON);
         assertProfile("set tomato/on buffer/20 end/18:00 start/09:00", LocalTime.of(9, 0),

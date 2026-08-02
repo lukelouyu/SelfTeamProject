@@ -450,6 +450,26 @@ class ApplicationRunnerTest {
     }
 
     @Test
+    public void resetAllOptionOne_saveFails_restoresCompleteCustomPreferenceProfile() throws Exception {
+        String input = String.join("\n",
+                "preference set start/09:00 end/18:00 buffer/20 tomato/on",
+                "y",
+                "reset all",
+                "1",
+                "preference view",
+                "bye") + "\n";
+
+        String output = run(input, new FailAfterStorage(dataDirectory, 1));
+
+        assertFalse(output.contains("All user data has been reset."));
+        assertTrue(output.contains("[Error] Storage error:"));
+        assertTrue(output.contains("Preferred daily start: 09:00"));
+        assertTrue(output.contains("Preferred daily end: 18:00"));
+        assertTrue(output.contains("Minimum buffer: 20 minutes"));
+        assertTrue(output.contains("Tomato suggestion: ON"));
+    }
+
+    @Test
     public void resetAll_nothingToReset_doesNotInvokeSave() throws Exception {
         String input = String.join("\n", "reset all", "bye") + "\n";
         SaveCallCountingStorage storage = new SaveCallCountingStorage(dataDirectory);

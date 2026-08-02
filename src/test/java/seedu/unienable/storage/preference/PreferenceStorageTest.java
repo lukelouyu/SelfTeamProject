@@ -53,6 +53,10 @@ class PreferenceStorageTest {
     public void load_everyMalformedShapeFallsBackToWholeDefaults() throws Exception {
         List<List<String>> invalidFiles = List.of(
                 List.of(),
+                List.of("PREFERRED_START09:00", "PREFERRED_END|18:00",
+                        "MINIMUM_BUFFER|20", "TOMATO_SUGGESTION|ON"),
+                List.of("PREFERRED_START|", "PREFERRED_END|18:00",
+                        "MINIMUM_BUFFER|20", "TOMATO_SUGGESTION|ON"),
                 List.of("PREFERRED_START|09:00|extra", "PREFERRED_END|18:00",
                         "MINIMUM_BUFFER|20", "TOMATO_SUGGESTION|ON"),
                 List.of("PREFERRED_END|18:00", "MINIMUM_BUFFER|20", "TOMATO_SUGGESTION|ON"),

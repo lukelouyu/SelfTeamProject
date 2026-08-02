@@ -6,11 +6,15 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidDateTimeException;
@@ -23,8 +27,6 @@ import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.CompletionStatus;
-import seedu.unienable.parser.common.DateTimeParser;
-import seedu.unienable.parser.common.RatingParser;
 
 /**
  * Loads and saves Activity records from/to a pipe-delimited activities.txt-format file.
@@ -46,6 +48,17 @@ public class ActivityStorage {
     private static final String FIXED_TAG = "FIXED";
     private static final String FLEXIBLE_TAG = "FLEXIBLE";
     private static final String DELIMITER = "|";
+
+    // Storage owns its persistence-format parsing independently of parser.common.DateTimeParser,
+    // even though the wire format happens to use the same yyyy-MM-dd/HH:mm shapes - a codec must
+    // keep loading the exact bytes it already wrote regardless of how the CLI parser's input
+    // rules evolve (e.g. DateTimeParser.parseNotBeforeDate's "not before today" rule is a live-
+    // input-only concern that must never apply when restoring a previously-saved activity).
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd")
+            .withResolverStyle(ResolverStyle.STRICT);
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
+            .withResolverStyle(ResolverStyle.STRICT);
+    private static final Pattern DATE_SHAPE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
 
     /**
      * Loads activities from the given file.
@@ -214,14 +227,14 @@ public class ActivityStorage {
         int id = parsePositiveWholeNumber(fields[1], "id");
         String description = requireNonBlank(fields[2], "description");
         ActivityCategory category = parseCategory(fields[3]);
-        LocalDate date = DateTimeParser.parseDate(fields[4]);
-        LocalTime startTime = DateTimeParser.parseTime(fields[5]);
-        LocalTime endTime = DateTimeParser.parseTime(fields[6]);
+        LocalDate date = parseDate(fields[4]);
+        LocalTime startTime = parseTime(fields[5]);
+        LocalTime endTime = parseTime(fields[6]);
         if (!endTime.isAfter(startTime)) {
             throw new InvalidActivityException("end time must be later than start time");
         }
-        EnergyRating energy = RatingParser.parseEnergyRating(fields[7]);
-        SensoryRating sensory = RatingParser.parseSensoryRating(fields[8]);
+        EnergyRating energy = parseEnergyRating(fields[7]);
+        SensoryRating sensory = parseSensoryRating(fields[8]);
         CompletionStatus status = parseCompletionStatus(fields[9]);
         String topic = optionalField(fields, 10);
         String notes = optionalField(fields, 11);
@@ -239,9 +252,9 @@ public class ActivityStorage {
         int id = parsePositiveWholeNumber(fields[1], "id");
         String description = requireNonBlank(fields[2], "description");
         ActivityCategory category = parseCategory(fields[3]);
-        LocalDate date = DateTimeParser.parseDate(fields[4]);
-        LocalTime earliestStart = DateTimeParser.parseTime(fields[5]);
-        LocalTime latestEnd = DateTimeParser.parseTime(fields[6]);
+        LocalDate date = parseDate(fields[4]);
+        LocalTime earliestStart = parseTime(fields[5]);
+        LocalTime latestEnd = parseTime(fields[6]);
         if (!latestEnd.isAfter(earliestStart)) {
             throw new InvalidActivityException("latest end time must be after earliest start time");
         }
@@ -251,8 +264,8 @@ public class ActivityStorage {
             throw new InvalidActivityException("dur must fit inside the earliest/latest window ("
                     + windowMinutes + " min available)");
         }
-        EnergyRating energy = RatingParser.parseEnergyRating(fields[8]);
-        SensoryRating sensory = RatingParser.parseSensoryRating(fields[9]);
+        EnergyRating energy = parseEnergyRating(fields[8]);
+        SensoryRating sensory = parseSensoryRating(fields[9]);
         CompletionStatus status = parseCompletionStatus(fields[10]);
         String topic = optionalField(fields, 11);
         String notes = optionalField(fields, 12);
@@ -314,6 +327,62 @@ public class ActivityStorage {
             return ActivityCategory.valueOf(field);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("invalid category \"" + field + "\"");
+        }
+    }
+
+    /**
+     * Parses a date field in the persisted yyyy-MM-dd shape, distinguishing text that does not
+     * even match that shape from text that matches it but names a calendar date that does not
+     * exist - the same distinction {@code DateTimeParser.parseDate} makes for live input, kept
+     * independently here since storage must never apply that parser's "not before today" rule to
+     * a previously-saved date.
+     *
+     * @param field the raw date field text
+     * @return the parsed date
+     * @throws InvalidDateTimeException if field does not match yyyy-MM-dd shape, or matches the
+     *     shape but names a calendar date that does not exist
+     */
+    private LocalDate parseDate(String field) throws InvalidDateTimeException {
+        String trimmed = field.trim();
+        if (!DATE_SHAPE.matcher(trimmed).matches()) {
+            throw new InvalidDateTimeException("date must be in yyyy-MM-dd format.");
+        }
+        try {
+            return LocalDate.parse(trimmed, DATE_FORMAT);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDateTimeException(
+                    "date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.");
+        }
+    }
+
+    /**
+     * Parses a time field in the persisted 24-hour HH:mm shape.
+     *
+     * @param field the raw time field text
+     * @return the parsed time
+     * @throws InvalidDateTimeException if field is not a valid HH:mm time
+     */
+    private LocalTime parseTime(String field) throws InvalidDateTimeException {
+        try {
+            return LocalTime.parse(field.trim(), TIME_FORMAT);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDateTimeException("time must be in 24-hour HH:mm format.");
+        }
+    }
+
+    private EnergyRating parseEnergyRating(String field) throws InvalidActivityException {
+        return EnergyRating.of(parseRatingValue(field, "energy"));
+    }
+
+    private SensoryRating parseSensoryRating(String field) throws InvalidActivityException {
+        return SensoryRating.of(parseRatingValue(field, "sensory"));
+    }
+
+    private int parseRatingValue(String field, String fieldName) throws InvalidActivityException {
+        try {
+            return Integer.parseInt(field.trim());
+        } catch (NumberFormatException e) {
+            throw new InvalidActivityException(fieldName + " must be a whole number from 1 to 5.");
         }
     }
 

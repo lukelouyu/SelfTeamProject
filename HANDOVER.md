@@ -20,13 +20,14 @@ repo specifically so a tool without access to the user's local filesystem — Co
 Treat it as the authoritative v2.0 specification, exactly as Claude did.
 
 **0.2 — Exact current git state.**
-- `main` and `origin/main` are at `4b9978e` — `feature/v2-route` and
-  `feature/v2-dashboard` are merged and pushed. `v1.0` is tagged and released on GitHub correctly
-  (zip, not bare jar).
-- `feature/v2-timetable` was created from `4b9978e`. Its read-only audit and design were approved,
-  and its implementation, tests, Text-UI coverage, guides, and diagrams are complete. It must
-  remain unmerged and unpushed until the user separately reviews and approves that action.
-- No v2.0 git tag or GitHub Release exists yet. `feature/v2-preferences` has not been started.
+- `main` and `origin/main` are at `ada0f5f` — `feature/v2-route`,
+  `feature/v2-dashboard`, and `feature/v2-timetable` are merged and pushed. `v1.0` is tagged and
+  released on GitHub correctly (zip, not bare jar).
+- `feature/v2-preferences` was created from `ada0f5f`. Its approved four-field global profile,
+  parser/commands, all-or-default storage, four-file transaction, reset integration, tests,
+  Text-UI coverage, guides, and diagrams are complete. It must remain unmerged and unpushed until
+  the user separately reviews and approves that action.
+- No v2.0 git tag or GitHub Release exists yet. `feature/v2-recommend` has not been started.
 - A stale local branch `v2-dashboard` (no `feature/` prefix, tip `9829911`) also exists with
   content unrelated to the current `feature/v2-dashboard` work — confirmed in earlier sessions to
   have zero unique commits worth keeping relative to `main`. Left untouched, not deleted, per
@@ -34,10 +35,10 @@ Treat it as the authoritative v2.0 specification, exactly as Claude did.
   confuse the two branches by name.
 
 **0.3 — What to actually do, in order:**
-1. Review the `feature/v2-timetable` completion report and current diff. Merge and push only if the
+1. Review the `feature/v2-preferences` completion report and current diff. Merge and push only if the
    user explicitly approves both actions.
-2. After timetable: `feature/v2-preferences`, then `feature/v2-recommend`, then
-   `feature/v2-export`, then the final v2.0 integration/documentation/regression pass — same
+2. After Preferences: `feature/v2-recommend`, then `feature/v2-export`, then the final v2.0
+   integration/documentation/regression pass — same
    process every time: audit → proposed plan → explicit approval → task-spec folder → implement →
    full quality gate (Section 4) → completion report → **stop and wait**. Never chain straight into
    the next feature branch without a fresh explicit go-ahead, even if the master prompt lists it as
@@ -98,19 +99,38 @@ point is staying current across a tool handoff, not just a session handoff.
 
 ## 1. Current state (as of this update)
 
-**Current work: `feature/v2-timetable`, based on merged Dashboard commit `4b9978e`.** Timetable is
-implemented as a read-only day/week projection with normal, compact, and detail modes. It keeps
-flexible activities unscheduled, uses permanent numeric IDs, marks defensive fixed-activity
-overlaps, and performs no persistence. The branch has focused production, parser/service/
-formatter/integration/dispatcher, guide, and Text-UI coverage plus task specs and PlantUML class,
-sequence, and architecture updates. It is awaiting review and explicit merge/push approval;
-`feature/v2-preferences` has not been started. Final verification on 2026-08-02: 1,079 JUnit tests
-passed with zero failures/errors/skips; Checkstyle main/test reported zero findings; Javadoc built
-successfully with the unchanged 100-warning baseline and no Timetable warning; the Text-UI harness
-passed; `releaseZip` produced only `unienable.jar` and external
-`data/academic-calendar.txt`; and two fresh-extraction JAR runs covered startup, adjacent fixed
-activities, overlap rejection, day/week normal/compact/detail views, guide entries 12/topic,
-save/restart/list, and confirmed no `activities.txt` hash change across read-only Timetable use.
+**Current work: `feature/v2-preferences`, based on merged Timetable commit `ada0f5f`.** Preferences
+implements one immutable global everyday profile: preferred start/end (`08:00`/`20:00` defaults),
+minimum buffer (`15`, range 0–1440), and advisory Tomato/Pomodoro suggestion (`OFF` default).
+Exact grammar is `preference view`, `preference set` followed by one or more of `start/HH:mm`,
+`end/HH:mm`, `buffer/MINUTES`, and `tomato/on|off` (in any order, each at most once), and
+`preference reset`.
+
+`PreferenceStorage` writes deterministic uppercase four-line `data/preferences.txt`. A missing file
+silently loads all defaults; every malformed/incomplete/duplicate/unknown/invalid/inconsistent
+profile produces startup warnings and falls back to the complete defaults with no partial-field
+retention. Preferences are the fourth member of `Storage.saveAll` and the application snapshot,
+so cancelled/failed commands never leave partial memory or disk state. `reset all` option 1 resets
+the profile, option 2 retains it, and option 3 cancels. Tomato remains stored advisory data only;
+the recommender-side display belongs to `feature/v2-recommend`, which has not started.
+
+Commits before this handover update, oldest first: `a0c6ab2` (task specification), `8cb1d2e`
+(production and integration), `252e2af` (JUnit and Text-UI coverage), and `688370c` (guides and
+PlantUML/PNG diagrams). Final verification on 2026-08-03: **1,119 JUnit tests** passed with zero
+failures/errors/skips; Checkstyle main/test had zero findings; Javadoc succeeded with the unchanged
+100-warning baseline and no Preferences warning; the expanded Text-UI harness passed; all 19
+PlantUML sources have PNG counterparts and guide image links resolve; `releaseZip` produced only
+`unienable.jar` and external `data/academic-calendar.txt`; and a fresh extraction plus restart run
+covered view, every approved set shape, Tomato on/off, `guide preference`, `guide 6`, option-2
+retention, option-1 reset, explicit preference reset, exact disk lines, and restart persistence.
+The branch is complete and awaiting review/explicit merge-and-push approval.
+
+**Timetable history.** Timetable is implemented as a read-only day/week projection with normal,
+compact, and detail modes. It keeps flexible activities unscheduled, uses permanent numeric IDs,
+marks defensive fixed-activity overlaps, and performs no persistence. Final verification before
+merge on 2026-08-02: 1,079 JUnit tests passed with zero failures/errors/skips; Checkstyle main/test
+reported zero findings; Javadoc built successfully with the unchanged 100-warning baseline and no
+Timetable warning; the Text-UI harness passed; and `releaseZip`/fresh-extraction smoke tests passed.
 
 **Dashboard history.** `feature/v2-dashboard` was merged and pushed to `main` as merge commit
 `4b9978e`. It implements `dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]`: a read-only planning-load

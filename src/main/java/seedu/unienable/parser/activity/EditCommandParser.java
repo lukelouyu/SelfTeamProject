@@ -55,7 +55,7 @@ class EditCommandParser {
      * @throws DuplicateActivityException if the resulting activity exactly duplicates another,
      *     or (for a FixedActivity) overlaps another fixed activity on the same date
      */
-    public EditCommand parse(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
+    EditCommand parse(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
             String args)
             throws MissingInputException, InvalidCommandException, InvalidIndexException, InvalidActivityException,
             InvalidDateTimeException, DuplicateActivityException {

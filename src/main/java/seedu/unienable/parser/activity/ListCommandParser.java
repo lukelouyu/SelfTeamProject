@@ -40,7 +40,7 @@ class ListCommandParser {
      *     phrase
      * @throws InvalidDateTimeException if the date is invalid
      */
-    public ListCommand parse(ActivityManager activityManager, LocalDateTime now, String args)
+    ListCommand parse(ActivityManager activityManager, LocalDateTime now, String args)
             throws InvalidActivityException, InvalidCommandException, InvalidDateTimeException {
         RelativeDateAndRemainder parsed = extractRelativeDate(now, args);
         Map<String, String> fields = FieldParser.extractPresentFields(parsed.remainder, LIST_MARKERS);

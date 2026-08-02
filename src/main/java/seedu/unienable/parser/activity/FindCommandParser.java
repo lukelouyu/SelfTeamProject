@@ -33,7 +33,7 @@ class FindCommandParser {
      * @throws InvalidCommandException if order is invalid, or k/ contains more than two words
      * @throws InvalidDateTimeException if the date is invalid
      */
-    public FindCommand parse(ActivityManager activityManager, String args)
+    FindCommand parse(ActivityManager activityManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidCommandException,
             InvalidDateTimeException {
         FieldParser.rejectUnrecognisedLeadingText(args, FIND_MARKERS);

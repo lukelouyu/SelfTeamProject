@@ -41,7 +41,7 @@ class AddCommandParser {
      * @throws InvalidCommandException if type is neither FIXED nor FLEXIBLE
      * @throws InvalidIndexException if topic/ does not exist under the category
      */
-    public AddCommand parse(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
+    AddCommand parse(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
             String args)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
@@ -134,7 +134,7 @@ class AddCommandParser {
      * swallow the rest of the command text - {@link FieldParser#extractField} reads to the end of
      * input whenever its end marker isn't found - producing a misleading validation failure on
      * startMarker's now-oversized value instead of correctly reporting that endMarker itself is
-     * missing (BUG-04, v1.0 manual release test, 2026-08-01).
+     * missing.
      *
      * @param args the full argument text
      * @param startMarker the marker just before the value

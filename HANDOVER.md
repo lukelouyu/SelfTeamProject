@@ -2,36 +2,109 @@
 
 ## 1. Current state (as of this update)
 
-`main` now includes the recurring-class-sessions feature and the three-option `reset all` redesign
-(the "3b" workstream from the previous handover's Section 3 — see Section 2 below for what
-shipped). It was developed on `feature/recur-reset-v2`, branched from `c148220`, then merged into
-`main` and pushed to `origin/main` (`github.com/lukelouyu/SelfTeamProject`) this session, per
-explicit user instruction to merge and push. `fix/technical-debt-hardening` (the "3d" workstream)
-was already merged into `main` **before** `feature/recur-reset-v2` was branched, so both are now
-in `main` together; `fix/technical-debt-hardening` itself is safe to ignore or delete. No other
-unmerged work-in-progress branches remain; `v2-dashboard` is still empty (0 commits ahead),
-untouched.
+`main` is at `2cff382` locally and on `origin/main`
+(`github.com/lukelouyu/SelfTeamProject`) — pushed. No unmerged work-in-progress branches remain;
+`refactor/command-package-reorg` and `feature/recur-reset-v2` are both fully merged and safe to
+delete; `v2-dashboard` is still empty (0 commits ahead), untouched.
 
-Any standalone `unienable.jar` copied out of the repo in an earlier session (e.g. to
-`C:\Users\lukel\Downloads\AY2627_Sem1 Prep\CS2113\unienable.jar`) is now stale — it predates recur
-entirely. **The distributable is now `./gradlew releaseZip`'s
-`build/distributions/unienable.zip`** (jar + external `data/academic-calendar.txt`), not a bare
-jar — see the User Guide's Quick Start and README's "Distribution" section.
+Since the previous revision of this handover (written right after `feature/recur-reset-v2`
+merged), four more things happened in the same continuous session — see Section 2 for full detail
+on each:
+1. `command.activity` and `command.accessibility` were split into responsibility-based
+   sub-packages (`crud`/`general`, `facility`/`connection`/`common`) on
+   `refactor/command-package-reorg`, merged into `main`.
+2. A real CI failure (a checkstyle `MethodName` violation in a just-added test) was found and
+   fixed directly on `main`, alongside finally committing this very `HANDOVER.md` file (left
+   uncommitted on purpose in the previous revision).
+3. A release JAR was built, relocated to
+   `C:\Users\lukel\Downloads\AY2627_Sem1 Prep\CS2113\jar\v1.0.0\`, and put through the full 14-batch
+   manual regression pass from `UniEnable_Post_Recur_ListNextWeek_Regression_Batches.md` (supplied
+   in Downloads) — see `C:\Users\lukel\Downloads\AY2627_Sem1 Prep\CS2113\jar\v1.0.0\
+   REGRESSION_REPORT.md` for the full batch-by-batch report. All 14 batches passed their
+   documented checkpoints; 3 minor, non-functional findings turned up (2 message-clarity bugs, 1
+   documentation overclaim) plus one new permanent JUnit test (`RecurNextWeekIntegrationTest`,
+   B09 coverage — no existing test combined recur output with `list next week` under an injected
+   clock).
+4. All 3 findings from that report were fixed and pushed (2 small commits): the `list` relative-
+   date rejection messages (stray trailing space on bare `next`/`this`; a specific message instead
+   of a generic one when two relative-date phrases are combined, e.g. `list next week today`), and
+   the User Guide's overclaim that every calendar error names a line number (only per-line checks
+   can; the two whole-file structural checks — duplicate key, overlapping ranges — can't).
 
-**Verification as of this handover:** `./gradlew clean test checkstyleMain checkstyleTest` all
-green, **857 JUnit tests**, checkstyle clean, `text-ui-test/runtest.sh` passes,
-`./gradlew releaseZip` produces the correct ZIP layout with the calendar confirmed absent from the
-jar. Full manual smoke test (sparse recurrence against the real AY2026/2027 calendar, restart
-persistence, repeat-is-idempotent, all three reset options, missing calendar, malformed calendar
-with line-numbered error, and a real forced storage failure via a read-only `activities.txt`) all
-passed against a clean extraction of the release ZIP. See Section 2's newest entry for exactly what
-was verified and how.
+Also fixed along the way: `text-ui-test`'s "Far past overdue" scenario embedded the real
+wall-clock date in its expected output (add's "date has passed... from `TODAY` onwards" message),
+making `EXPECTED.TXT` silently go stale every day. Removed — the identical scenario is already
+covered deterministically with an injected clock in `DateTimeParserTest`/`ActivityCommandParserTest`.
+
+**The v1.0 git tag has not been created.** The user's condition was "tag v1.0 if no bugs found";
+3 were found (all now fixed, all minor/non-functional) — flagged rather than auto-tagging, and the
+user hasn't given an explicit go-ahead since the fixes landed. This is the most likely next
+question a new session will be asked to resolve.
+
+Any standalone `unienable.jar` copied out of the repo before this session predates recur entirely
+and is stale. **The distributable is `./gradlew releaseZip`'s `build/distributions/unienable.zip`**
+(jar + external `data/academic-calendar.txt`), not a bare jar — see the User Guide's Quick Start
+and README's "Distribution" section. A copy already sits at
+`C:\Users\lukel\Downloads\AY2627_Sem1 Prep\CS2113\jar\v1.0.0\unienable.jar` (built from `5988dcf`,
+*before* the 3 message-quality fixes in point 4 above — rebuild if you need a JAR matching the
+exact current `main` tip).
+
+**Verification as of this handover (commit `2cff382`):** `./gradlew clean test checkstyleMain
+checkstyleTest` all green, **863 JUnit tests**, checkstyle clean, `text-ui-test/runtest.sh`
+passes. `releaseZip` not re-run since the last two small commits landed — the underlying code
+paths are unchanged (only `list`'s error messages and one doc line), so this is low-risk, but
+worth a fresh run before trusting a new release artifact.
 
 ## 2. Condensed history (compressed — see `git log` for full detail)
 
 Most recent sessions, newest first:
 
-- **`feature/recur-reset-v2`** (merged into `main` this session, per explicit user instruction to
+- **Post-recur bug-fix pass** (2 commits directly on `main`, `83eb6b6`/`2cff382`, per explicit
+  user request "fix the bugs in this report" after being shown `REGRESSION_REPORT.md`): fixed the
+  3 findings from the 14-batch regression pass below. `docs/UserGuide.md` no longer claims
+  unconditionally that calendar errors name a line number (only per-line ones can).
+  `ActivityCommandParser.extractRelativeDate()`: bare `list next`/`list this` used to render as
+  `Unknown list option "next "` (literal trailing space baked into the string, unconditionally
+  appended even with nothing to append) — now conditional. Combining two relative-date phrases
+  (`list next week today`) used to fall through to the generic `Unknown list option "today"`
+  message (the leading phrase was already consumed before the check ran) instead of a specific
+  one, unlike combining with `date/` which already had one — both cases now get:
+  `"today, tomorrow, this week, next week, and overdue cannot be combined with each other."` 5
+  new regression tests lock in both fixes plus the still-generic case for genuinely unrelated
+  trailing text. 863 tests, checkstyle clean, `text-ui-test` unaffected.
+- **Release-JAR regression pass** (no branch — ran against the built jar, not the repo directly;
+  fixes from it are the bullet above): built `./gradlew releaseZip`, copied
+  `unienable.jar`+`data/academic-calendar.txt` to
+  `C:\Users\lukel\Downloads\AY2627_Sem1 Prep\CS2113\jar\v1.0.0\`, then ran all 14 batches from
+  `UniEnable_Post_Recur_ListNextWeek_Regression_Batches.md` (supplied in Downloads) in fresh
+  scratch folders, per that file's own "testing task first, do not fix mid-batch" rule. Full
+  batch-by-batch report at `...\jar\v1.0.0\REGRESSION_REPORT.md`. All 14 passed their documented
+  checkpoints (sparse/mixed/full-semester recurrence, cancellation/idempotency, parser/eligibility
+  rejection, atomic conflict detection, independent-occurrence management, the three reset
+  options, previously-fixed-bug regression, restart persistence, and 10-step external-calendar
+  single-source-of-truth checks including a synthetic AY2027/2028 term and Week-14 add/remove).
+  B09 (clock-controlled `recur`+`list next week` integration) couldn't run against the real JAR
+  since its wall clock can't be frozen — covered instead with a new permanent test,
+  `RecurNextWeekIntegrationTest`. Found the 3 findings fixed in the bullet above; no repo file was
+  touched by the batches themselves (all scratch-folder work).
+- **`refactor/command-package-reorg` + CI hotfix** (merged into `main` at `5988dcf`, then two more
+  direct-to-`main` commits `f77c1fa`/`d41c9dc`): split `command.activity` (11 classes) into
+  `command.activity.crud` (Add/Delete/Edit/View) and `command.activity.general` (Find/List/Mark/
+  Next/OrderSet/OrderView/Unmark), and `command.accessibility` (10 classes) into
+  `command.accessibility.facility`/`.connection` (4 each) plus `.common` (`AccessibilityDisclaimer`,
+  `ValidationReportFormatter` — the latter promoted package-private→public, a pure visibility
+  change, since its two callers now live in sibling packages). `command.topic` (4 classes) and
+  `command.recur` (1 class) deliberately left flat, per explicit user confirmation, since neither
+  has enough classes to justify sub-packages. Also duplicated `data/academic-calendar.txt` into
+  `src/main/resources/` (excluded from `shadowJar` via `exclude 'academic-calendar.txt'`, so the
+  jar-absence guarantee from the original approved recur spec still holds) and updated the
+  Developer Guide's package-layout description. Separately, CI caught a `checkstyleTest`
+  `MethodName` violation in `ApplicationRunnerTest` (a just-added test method had 4
+  underscore-separated segments; the rule allows 3) — fixed directly on `main`, and `HANDOVER.md`
+  (left uncommitted in the previous revision, at the user's explicit request at the time) was
+  finally committed alongside it. A concurrent README edit made directly on GitHub (removing the
+  "simulated CS2113 team project" sentence) was merged in cleanly with no conflicts.
+- **`feature/recur-reset-v2`** (merged into `main`, per explicit user instruction to
   merge and push): implemented the full "3b" spec the previous handover's Section 3 described —
   `recur TASK_ID week WEEK_SPEC`, the strictly-validated external `data/academic-calendar.txt`
   loader, and the three-option `reset all` menu (`[1]` delete all / `[2]` keep class schedules /
@@ -220,17 +293,34 @@ Guide's §11 (Data Storage) for the exact record schema.
   parseTime()` still conflates "wrong shape" and "hour 25"/"minute 60" into one message, the same
   shape of issue `parseDate()` had before the latest fix (Section 2) — not flagged as a bug yet,
   worth a look if touching that file again.
-- **The "hardcoded near-future date used as a placeholder" family**: see Section 2's "Known
-  fragility" note — real, live risk in `UniEnableTest.java`, not yet mitigated. Same shape of risk
-  now also applies to the recur/reset-v2 JUnit fixtures that use concrete 2026/2027 dates
-  (`RecurrenceTestData`, `ApplicationRunnerTest`, `ScreenshotRecurrenceRegressionTest`) and to
-  `text-ui-test/academic-calendar-test.txt`'s 2027 dates — none are expected to expire soon, but
-  it's the same category of fragility if real time ever catches up to them.
+- **The "hardcoded near-future date used as a placeholder" family**: still a real, live risk in
+  `UniEnableTest.java`'s ~60 scenarios using `date/2026-08-15`-style placeholders, not yet
+  mitigated. **This family already bit once this session** — `text-ui-test/input.txt`'s "Far past
+  overdue" scenario (date/2000-01-01) triggered `add`'s "date has passed... from `TODAY` onwards"
+  message, whose text embeds the real wall-clock date; since `text-ui-test` compares against a
+  *static* committed `EXPECTED.TXT`, that was the only line in the whole suite whose expected
+  output silently went stale every calendar day (or sooner, across a timezone boundary) — it broke
+  in CI right after a push. Fixed by removing the line, since the identical scenario was already
+  covered deterministically elsewhere (with an injected clock) in `DateTimeParserTest`/
+  `ActivityCommandParserTest` — no coverage lost. **The lesson generalises: any text-ui-test line
+  whose expected output would itself change based on real wall-clock time (not just a scenario
+  that stops being "in the future" one day) must not exist in `text-ui-test` at all — move it to a
+  JUnit test with an injected clock instead**, this is a stricter version of the plain
+  "near-future placeholder" risk. The recur/reset-v2 JUnit fixtures using concrete 2026/2027 dates
+  (`RecurrenceTestData`, `ApplicationRunnerTest`, `ScreenshotRecurrenceRegressionTest`) and
+  `text-ui-test/academic-calendar-test.txt`'s 2027 dates are the plain version of this risk (not
+  yet expired, but will be eventually) — those all use *injected* clocks/fixed dates, so they're
+  fine architecturally; they'll just need bumping forward someday.
 - **The "topic/command exists in name but not in the reachability graph" family**: the guide-topic
-  bug (Section 2) was an instance of this, and it recurred once more — `guide recur` and the
-  rewritten `guide reset` were both still missing/stale when this session started, despite this
-  exact risk having been flagged in the previous handover revision. Both are now fixed and wired
-  into `GuideCommand`'s `TOPICS` map. Worth double-checking again for any *future* new command.
+  bug was an instance of this, and it recurred once (`guide recur`/`guide reset` were missing/stale
+  for one session despite being flagged in advance) before being fixed and wired into
+  `GuideCommand`'s `TOPICS` map. Worth double-checking again for any *future* new command.
+- **Documentation claims outliving what the code actually does**: the "always names the line
+  number" overclaim (Section 2) is an instance of a general risk — this project's docs are written
+  carefully and in detail, which is good, but a confident, specific claim ("always", "every") is
+  exactly the kind of sentence that quietly goes false the next time the underlying code grows a
+  second code path. Worth a light skeptical read of superlative doc claims when touching the
+  code they describe.
 
 ## 6. Product context (condensed, mostly unchanged from prior sessions)
 
@@ -241,8 +331,10 @@ routines. v1.0 command surface: activity add/list/view/find/edit/delete/mark/unm
 topic add/list/rename/delete, read-only facility/connection lookups (plus `facility
 validate`/`connection validate`), `guide`, `bye`. v2.0-so-far adds `recur TASK_ID week WEEK_SPEC`
 and the three-option `reset all` (previously a single binary-confirmation v1.0 command, now
-superseded by the menu — see Section 1). No git tag or GitHub Release exists yet; that's the
-user's call, not something to do unprompted.
+superseded by the menu — see Section 1). **No git tag or GitHub Release exists yet** — v1.0 has
+been through a full 14-batch manual regression pass with all findings fixed (Sections 1-2), so
+it's realistically tag-ready, but creating the tag is still the user's explicit call, not
+something to do unprompted (see Section 1's last paragraph for exactly what's pending).
 
 v2.0 scope was previously "not started, don't add unprompted" — recurrence and technical-debt
 hardening have now both **shipped** (Section 2), so those two are done, not just approved.
@@ -250,14 +342,21 @@ Dashboard, timetable, preferences, recommendation, route, and CSV export remain
 untouched/unapproved backlog — still don't start any of those unprompted.
 
 Package root `seedu.unienable`: `app/` (`ApplicationRunner`, `CommandConfirmationHandler`,
-`command.MenuConfirmable`/`MenuOutcome`), `command/` (`activity`/`topic`/`accessibility`/`general`
-subpackages, plus `recur/`), `parser/` (mirrors `command/`, plus `common/` for
+`command.MenuConfirmable`/`MenuOutcome`), `command/` — `activity.crud` (Add/Delete/Edit/View) +
+`activity.general` (Find/List/Mark/Next/OrderSet/OrderView/Unmark), `accessibility.facility` +
+`accessibility.connection` (4 commands each) + `accessibility.common`
+(`AccessibilityDisclaimer`/`ValidationReportFormatter`, both `public`), `topic/` and `recur/` left
+flat (too few classes each to split), `general/` (Guide/Reset/Bye). `parser/` mirrors `command/`
+one level up (still flat per domain — `ActivityCommandParser`/`FacilityCommandParser`/etc. were
+*not* split when their command classes were), plus `common/` for
 `FieldParser`/`DateTimeParser`/`RatingParser`/`Parser`/`ArgumentTokenizer`/`ArgumentMarker`, plus
-`recur/`), `exception/` (flat, reused as-is by every feature including recur), `logic/` (the
+`recur/`. `exception/` (flat, reused as-is by every feature including recur), `logic/` (the
 `*Manager` classes, plus `graph/` and `recur/`), `model/` (`classes`/`enums`/`recur`), `storage/`
 (plus `recur/` for the strictly-validated, read-only `AcademicCalendarStorage`), `ui/` (plus
 `recur/` for `RecurrenceFormatter`), `accessibility/` (the read-only facility/connection domain
-model).
+model — a different, older package tree from `command.accessibility.*` above, don't conflate the
+two: this one is `seedu.unienable.accessibility.classes`/`.enums`, immutable read-only reference
+data).
 
 Other attached reference materials (requirements baseline, user stories, original draft user
 guide, kickoff prompt, campus map PDF) are in the user's Downloads folder outside this repo, per

@@ -25,6 +25,7 @@ public class DateTimeParser {
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
             .withResolverStyle(ResolverStyle.STRICT);
     private static final Pattern DATE_SHAPE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+    private static final Pattern TIME_SHAPE = Pattern.compile("\\d{2}:\\d{2}");
 
     /**
      * Parses a date string in yyyy-MM-dd format, distinguishing text that does not even match the
@@ -74,17 +75,28 @@ public class DateTimeParser {
     }
 
     /**
-     * Parses a time string in 24-hour HH:mm format.
+     * Parses a time string in 24-hour HH:mm format, distinguishing text that does not even match
+     * the expected shape (e.g. "9:30am") from text that matches the shape but names an hour or
+     * minute outside the valid range (e.g. "25:00", "12:60") - the same distinction
+     * {@link #parseDate} makes for a malformed date versus a nonexistent calendar date, with a
+     * different, specific message for each rather than one generic "wrong format" message
+     * covering both.
      *
      * @param time the time text to parse
      * @return the parsed time
-     * @throws InvalidDateTimeException if time is not a valid HH:mm time
+     * @throws InvalidDateTimeException if time does not match HH:mm shape, or matches the shape
+     *     but names an hour or minute outside the valid range
      */
     public static LocalTime parseTime(String time) throws InvalidDateTimeException {
-        try {
-            return LocalTime.parse(time.trim(), TIME_FORMAT);
-        } catch (DateTimeParseException e) {
+        String trimmed = time.trim();
+        if (!TIME_SHAPE.matcher(trimmed).matches()) {
             throw new InvalidDateTimeException("time must be in 24-hour HH:mm format.");
+        }
+        try {
+            return LocalTime.parse(trimmed, TIME_FORMAT);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDateTimeException(
+                    "time must have an hour from 00-23 and a minute from 00-59.");
         }
     }
 

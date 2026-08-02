@@ -37,6 +37,15 @@ class DateTimeParserTest {
     }
 
     @Test
+    public void parseTime_missingLeadingZero_throwsWithFormatMessageNotOutOfRangeMessage() {
+        // "9:30" is a realistic typo (forgetting the leading zero) that must be reported as a
+        // shape problem, not mistaken for a valid-shape-but-out-of-range value.
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> DateTimeParser.parseTime("9:30"));
+        assertEquals("time must be in 24-hour HH:mm format.", exception.getMessage());
+    }
+
+    @Test
     public void parseDate_nonExistentCalendarDate_throwsWithNonExistentDateMessage() {
         // Regression test: DateTimeFormatter's default SMART resolver style silently normalises
         // an out-of-range day-of-month instead of rejecting it, so "2026-02-30" previously became
@@ -136,20 +145,30 @@ class DateTimeParserTest {
     }
 
     @Test
-    public void parseTime_twentyFourHundredHours_throwsInvalidDateTimeException() {
+    public void parseTime_twentyFourHundredHours_throwsWithOutOfRangeMessage() {
         // Regression test: the SMART resolver previously accepted "24:00" and silently normalised
         // it to 00:00 instead of rejecting it, since the documented HH:mm range is 00:00-23:59.
-        assertThrows(InvalidDateTimeException.class, () -> DateTimeParser.parseTime("24:00"));
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> DateTimeParser.parseTime("24:00"));
+        assertEquals("time must have an hour from 00-23 and a minute from 00-59.", exception.getMessage());
     }
 
     @Test
-    public void parseTime_hourTwentyFive_throwsInvalidDateTimeException() {
-        assertThrows(InvalidDateTimeException.class, () -> DateTimeParser.parseTime("25:00"));
+    public void parseTime_hourTwentyFive_throwsWithOutOfRangeMessage() {
+        // "25:00" matches the HH:mm shape exactly, so it must not be reported with the generic
+        // "must be in 24-hour HH:mm format" message (the shape is correct, the hour is just out
+        // of range) - the same distinction parseDate() already makes for a malformed date versus
+        // a nonexistent calendar date.
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> DateTimeParser.parseTime("25:00"));
+        assertEquals("time must have an hour from 00-23 and a minute from 00-59.", exception.getMessage());
     }
 
     @Test
-    public void parseTime_minuteSixty_throwsInvalidDateTimeException() {
-        assertThrows(InvalidDateTimeException.class, () -> DateTimeParser.parseTime("23:60"));
+    public void parseTime_minuteSixty_throwsWithOutOfRangeMessage() {
+        InvalidDateTimeException exception = assertThrows(InvalidDateTimeException.class,
+                () -> DateTimeParser.parseTime("23:60"));
+        assertEquals("time must have an hour from 00-23 and a minute from 00-59.", exception.getMessage());
     }
 
     @Test

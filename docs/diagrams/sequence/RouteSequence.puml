@@ -1,0 +1,57 @@
+@startuml
+title Finding an Accessible Route
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandDispatcher as Dispatcher
+participant RouteCommandParser as Parser
+participant RouteCommand as Command
+participant AccessibleRouteGraphFactory as Factory
+participant AccessibilityGraph as Graph
+participant RouteFormatter as Formatter
+participant Ui
+
+User -> Runner : route from/AS6 to/AS8
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parse(facilityManager, connectionManager, args)
+Parser --> Dispatcher : RouteCommand
+Dispatcher --> Runner : command
+note over Runner
+  route is read-only: no
+  Confirmable/MenuConfirmable,
+  no snapshot, no save.
+end note
+Runner -> Command : execute()
+Command -> Factory : build(facilityManager, connectionManager)
+Factory -> Factory : filterConfirmedAccessible(connections)
+Factory -> Graph : new AccessibilityGraph(facilities, accessibleOnly)
+Factory --> Command : graph
+Command -> Graph : getShortestPath(from, to)
+
+alt both facilities known, confirmed-accessible path exists
+    Graph --> Command : GraphPath
+    Command -> Command : resolveSegments(path, accessibleConnections)
+    Command -> Formatter : formatRoute(path, segments)
+    Formatter --> Command : route report text
+    Command --> Runner : CommandResult
+    Runner -> Ui : showFramed(feedback)
+    Ui --> User : route report shown
+else both facilities known, no confirmed-accessible path
+    Graph --> Command : null
+    Command -> Formatter : formatNoRoute(normalizedFrom, normalizedTo)
+    Formatter --> Command : no-route fallback text
+    Command --> Runner : CommandResult
+    Runner -> Ui : showFramed(feedback)
+    Ui --> User : no-route fallback shown
+else a facility name is not recognised
+    Graph --> Command : throws InvalidIndexException
+    Command --> Runner : propagates InvalidIndexException
+    Runner -> Ui : showFramed("[Error] Not found: ...")
+    Ui --> User : error shown
+end
+
+@enduml

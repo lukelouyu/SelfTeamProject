@@ -17,16 +17,17 @@ import seedu.unienable.logic.ConnectionManager;
 import seedu.unienable.logic.FacilityManager;
 
 /**
- * An immutable, weighted, undirected graph over the facility/connection reference dataset, built
- * once at construction time from an already-loaded {@link FacilityManager} and
- * {@link ConnectionManager}. Provides Dijkstra-based shortest-path lookups by total distance.
+ * An immutable, weighted, undirected graph over a facility/connection reference dataset, built
+ * once at construction time. Provides Dijkstra-based shortest-path lookups by total distance.
  *
- * <p>This is preparatory v2.0 infrastructure: v1.0's {@code FacilityManager} and
- * {@code ConnectionManager} stay completely independent read-only lookups with no cross-reference
- * between them, exactly as before. This class is an add-on that only <em>reads</em> from both -
- * neither manager is modified, and this class is not referenced by any v1.0 command or by
- * {@code CommandDispatcher}/{@code ApplicationRunner}. v2.0's {@code route} command will be the
- * first caller of {@link #getShortestPath}.
+ * <p>This class applies no accessibility-status or other filtering policy of its own - it builds
+ * an edge for every connection it is given. v1.0's {@code FacilityManager}/{@code
+ * ConnectionManager} stay completely independent read-only lookups with no cross-reference between
+ * them; this class only <em>reads</em> from whatever facility/connection lists it is constructed
+ * with, never modifying either. v2.0's {@code route} command is the first caller of {@link
+ * #getShortestPath}, via {@code logic.route.AccessibleRouteGraphFactory}, which builds a graph
+ * over a YES-only-filtered connection list rather than every connection - that filtering is
+ * route-specific policy and deliberately lives in the factory, not here.
  */
 public final class AccessibilityGraph {
     private final Map<String, List<Edge>> adjacency;
@@ -40,14 +41,29 @@ public final class AccessibilityGraph {
      * @param connectionManager the connection reference data to build edges from
      */
     public AccessibilityGraph(FacilityManager facilityManager, ConnectionManager connectionManager) {
+        this(facilityManager.list(), connectionManager.list());
+    }
+
+    /**
+     * Builds the graph directly from facility/connection lists rather than manager objects, so a
+     * caller that has already filtered or otherwise derived a connection list (e.g. v2.0's
+     * {@code route} command, which needs only confirmed-accessible connections) can build a graph
+     * over exactly that list without constructing a manager purely to hold it. This constructor
+     * applies no filtering or policy of its own - every given connection becomes an edge, exactly
+     * like the manager-based constructor.
+     *
+     * @param facilities the facility reference data to build nodes from
+     * @param connections the connection reference data to build edges from
+     */
+    public AccessibilityGraph(List<Facility> facilities, List<Connection> connections) {
         Map<String, String> names = new HashMap<>();
         Map<String, List<Edge>> graph = new HashMap<>();
-        for (Facility facility : facilityManager.list()) {
+        for (Facility facility : facilities) {
             String key = facility.getName().toLowerCase(Locale.ROOT);
             names.put(key, facility.getName());
             graph.put(key, new ArrayList<>());
         }
-        for (Connection connection : connectionManager.list()) {
+        for (Connection connection : connections) {
             addDirectedEdge(graph, connection.getFrom(), connection.getTo(), connection.getDistanceInMetres());
             addDirectedEdge(graph, connection.getTo(), connection.getFrom(), connection.getDistanceInMetres());
         }

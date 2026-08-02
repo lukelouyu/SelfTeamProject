@@ -1,0 +1,70 @@
+@startuml
+title Accessible Route Search (route)
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+hide empty members
+
+class RouteCommandParser {
+  + parse(facilityManager : FacilityManager, connectionManager : ConnectionManager, args : String) : RouteCommand
+}
+
+class RouteCommand <<Command>> {
+  - facilityManager : FacilityManager
+  - connectionManager : ConnectionManager
+  - from : String
+  - to : String
+  + execute() : CommandResult
+}
+
+class AccessibleRouteGraphFactory <<static>> {
+  + {static} build(facilityManager : FacilityManager, connectionManager : ConnectionManager) : AccessibilityGraph
+  + {static} filterConfirmedAccessible(connections : List<Connection>) : List<Connection>
+}
+
+class RouteFormatter <<static>> {
+  + {static} formatRoute(path : GraphPath, segments : List<Connection>) : String
+  + {static} formatNoRoute(from : String, to : String) : String
+}
+
+class AccessibilityGraph <<read-only>> {
+  + getShortestPath(from : String, to : String) : GraphPath
+}
+
+class GraphPath <<immutable>> {
+  - facilityNames : List<String>
+  - totalDistanceInMetres : int
+}
+
+class FacilityManager <<read-only>>
+class ConnectionManager <<read-only>>
+class Connection <<immutable>>
+class Facility <<immutable>>
+
+RouteCommandParser ..> RouteCommand : creates
+RouteCommand --> AccessibleRouteGraphFactory : build()
+RouteCommand --> RouteFormatter : format...()
+RouteCommand --> FacilityManager
+RouteCommand --> ConnectionManager
+AccessibleRouteGraphFactory --> AccessibilityGraph : builds
+AccessibleRouteGraphFactory ..> FacilityManager : reads
+AccessibleRouteGraphFactory ..> ConnectionManager : reads
+AccessibilityGraph ..> GraphPath : returns
+AccessibilityGraph "1" o-- "0..*" Facility
+AccessibilityGraph "1" o-- "0..*" Connection
+RouteFormatter ..> GraphPath : reads
+RouteFormatter ..> Connection : reads
+FacilityManager "1" o-- "0..*" Facility
+ConnectionManager "1" o-- "0..*" Connection
+
+note bottom of AccessibleRouteGraphFactory
+  Filters to accessibility == YES only.
+  This route-specific policy is deliberately
+  kept out of the general-purpose
+  AccessibilityGraph - see DeveloperGuide.md
+  Section 12.
+end note
+
+@enduml

@@ -1,8 +1,8 @@
 # UniEnable — User Guide
 
-**Status:** v1.0. Every command in Sections 5–14, including recurring class sessions and the
-three-option `reset all`, is implemented. Section 15 lists future work that is explicitly **not**
-implemented yet.
+**Status:** v1.0, plus v2.0's accessible route search (`route`). Every command in Sections 5–14,
+including recurring class sessions, the three-option `reset all`, and `route`, is implemented.
+Section 15 lists remaining v2.0 work that is explicitly **not** implemented yet.
 
 ## 1. Introduction
 
@@ -104,7 +104,8 @@ accessibility information, or medical advice.
 | Accessibility | `facility list/view/find ...` | v1.0 |
 | Accessibility | `facility validate` / `connection validate` | v1.0 |
 | Accessibility | `connection list/view/find ...` | v1.0 |
-| Dashboard, timetable, preferences, recommendation, route, export | various | **Coming soon (v2.0)** |
+| Accessibility | `route from/FACILITY to/FACILITY` | v2.0 |
+| Dashboard, timetable, preferences, recommendation, export | various | **Coming soon (v2.0)** |
 
 ## 6. Activity Commands
 
@@ -770,6 +771,37 @@ Works the same way as `facility validate`, for `data/connections.txt` — includ
 every connection's `from`/`to` endpoint still names a facility that actually exists in
 `facilities.txt`. Read-only; changes nothing.
 
+### 8.9 Find an Accessible Route: `route`
+
+```text
+route from/FACILITY to/FACILITY
+```
+
+`from/` and `to/` may appear in either order. Finds the shortest path between the two named
+facilities by total distance, using only connections whose accessibility status is confirmed
+`YES` — a connection marked `NO` or `UNKNOWN` is never used, not even as a last resort when no
+`YES` path exists. Names are matched case-insensitively; the report always shows the canonical
+stored name.
+
+Example:
+
+```text
+route from/AS6 to/AS8
+```
+
+Output shows the ordered facility chain, each segment's own distance, traversal type, shelter
+status, and any recorded barrier/notes, plus the total distance — followed by the same disclaimer
+every facility/connection command ends with. `from`/`to` naming the same known facility is a
+**successful** zero-length result (single-facility chain, `0 m`, no travel required), not an
+error. Two known facilities with no confirmed-accessible path between them get a clear message
+beginning "No supported accessible route was found..." rather than suggesting an unconfirmed one;
+this means UniEnable's local dataset has no confirmed path, not that no real-world accessible
+route exists. An unrecognised facility name is reported as an error.
+
+`route` never estimates travel time and never claims real-time verification, a guarantee of
+accessibility, or current usability — only that the local dataset records a confirmed-accessible
+path. It is read-only: it never adds, edits, or deletes a facility or connection record.
+
 ## 9. Built-In Guide: `guide`
 
 ```text
@@ -778,14 +810,14 @@ guide TOPIC
 guide NUMBER
 ```
 
-`guide` alone shows an 11-item numbered menu. `guide TOPIC` shows one topic's text directly.
+`guide` alone shows a 12-item numbered menu. `guide TOPIC` shows one topic's text directly.
 Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`,
 `list`, `edit`, `delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`,
-`recur`, `topic`, `facility`, `connection`, `storage`. Topics for v2.0-only features (`timetable`,
-`recommend`, `route`, `export`) are still listed but end with `(Coming soon in a future
-release.)` where the underlying command isn't built yet; `dashboard` explains that completion
-tracking itself is already available (see `completion`) while the aggregate dashboard view is
-still coming.
+`recur`, `topic`, `facility`, `connection`, `route`, `storage`. Topics for v2.0-only features
+still awaiting implementation (`timetable`, `recommend`, `export`) are still listed but end with
+`(Coming soon in a future release.)` where the underlying command isn't built yet; `dashboard`
+explains that completion tracking itself is already available (see `completion`) while the
+aggregate dashboard view is still coming.
 
 Each menu item can also be selected by its number, either as `guide NUMBER` or by entering the
 bare number as its own command right after the menu is shown (e.g. `1` selects "Getting
@@ -793,10 +825,12 @@ started"). Menu items that span more than one command topic use a dedicated over
 instead of picking just one: item `2` ("Add, edit and delete activities") is the `activities`
 topic, and item `3` ("List, find and view activities") is the `browse` topic; each overview
 points onward to the individual command's own topic (`add`, `edit`, `delete`, `list`, `find`,
-`view`) for full detail. `facility` (item `7`) and `connection` (item `8`) are separate,
-independently and uniquely numbered topics - each describes only its own command family, with
-no combined item grouping them together. Item `11` ("Return") is not a topic; it just
-acknowledges the selection and returns to the command prompt.
+`view`) for full detail. `facility` (item `7`), `connection` (item `8`), and `route` (item `11`,
+added when v2.0's `route` shipped) are separate, independently and uniquely numbered topics -
+each describes only its own command family, with no combined item grouping them together. Item
+`12` ("Return") is not a topic; it just acknowledges the selection and returns to the command
+prompt — it moved from `11` to `12` solely because `route` took the next available number; every
+other item's number is unchanged from v1.0.
 
 ## 10. Exit: `bye`
 
@@ -963,11 +997,14 @@ connection list
 connection view ID
 connection find [from/FACILITY] [to/FACILITY] [type/TYPE] [status/YES|NO|UNKNOWN] [shelter/YES|NO|UNKNOWN]
 connection validate
+
+route from/FACILITY to/FACILITY
 ```
 
 ## 15. Coming in a Future Release (v2.0 — not yet implemented)
 
-The following were planned in the original product scope but have no working command yet:
-accessible route search (`route`), a completion/workload dashboard, a text-based weekly
-timetable, recommendation preferences, a deterministic schedule recommender, and CSV export.
-`guide` will point this out if you ask about one of these topics directly.
+The following were planned in the original product scope but have no working command yet: a
+completion/workload dashboard, a text-based weekly timetable, recommendation preferences, a
+deterministic schedule recommender, and CSV export. `guide` will point this out if you ask about
+one of these topics directly. Accessible route search (`route`) shipped in v2.0 — see Section
+8.9.

@@ -13,7 +13,7 @@ import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
  *
  * <p>The main menu's items can be selected either by their existing text keyword (e.g. "add") or
  * by the number shown next to them in the menu (e.g. "1"), both as the argument to "guide" and as
- * a bare top-level command entered right after the menu is displayed. Menu item 11 ("Return") is
+ * a bare top-level command entered right after the menu is displayed. Menu item 12 ("Return") is
  * not a topic; it's a no-op that acknowledges the selection instead of showing topic text.
  */
 public class GuideCommand extends Command {
@@ -28,12 +28,14 @@ public class GuideCommand extends Command {
      * each other; each overview topic points onward to the individual command topics for detail.
      * Facility and connection are independent command families with independent guide topics, so
      * unlike "activities"/"browse" they each get their own direct number (7 and 8) rather than
-     * being folded into one combined overview. Item 11 ("Return") is handled separately, not
-     * through this list.
+     * being folded into one combined overview. Item 11 ("Route search") was added as the next
+     * available number when v2.0's {@code route} shipped, after items 1-10 which keep their
+     * original v1.0 numbers unchanged. Item 12 ("Return") is handled separately, not through this
+     * list, and moved from 11 to 12 solely because item 11 is now taken.
      */
     private static final String[] MENU_NUMBER_TOPICS = {
         "getting-started", "activities", "browse", "topic", "dashboard",
-        "recommend", "facility", "connection", "export", "storage",
+        "recommend", "facility", "connection", "export", "storage", "route",
     };
 
     private static final String MAIN_MENU = "Application Guide\n\n"
@@ -47,8 +49,9 @@ public class GuideCommand extends Command {
             + "8. Accessible connections\n"
             + "9. CSV export\n"
             + "10. Data files and storage\n"
-            + "11. Return\n\n"
-            + "Enter a number from 1 to 11.";
+            + "11. Accessible routes\n"
+            + "12. Return\n\n"
+            + "Enter a number from 1 to 12.";
 
     private static final Map<String, String> TOPICS = buildTopics();
 
@@ -68,7 +71,7 @@ public class GuideCommand extends Command {
         if (topic == null) {
             return new CommandResult(MAIN_MENU);
         }
-        if (topic.equals("11")) {
+        if (topic.equals("12")) {
             return new CommandResult(RETURN_MESSAGE);
         }
         String text = TOPICS.get(resolveMenuNumber(topic).toLowerCase(Locale.ROOT));
@@ -420,9 +423,27 @@ public class GuideCommand extends Command {
                 + "\n"
                 + AccessibilityDisclaimer.TEXT);
         topics.put("route", "Accessible routes\n"
-                + "Format: route from/START_FACILITY to/DESTINATION_FACILITY\n"
-                + "The planner returns one best confirmed route from local data."
-                + COMING_SOON_NOTE);
+                + "Format: route from/FACILITY to/FACILITY\n"
+                + "Related commands: facility (see guide facility), connection (see guide connection)\n"
+                + "\n"
+                + "Finds the shortest route between two known facilities using only connections\n"
+                + "confirmed accessible (status YES) - connections marked NO or unknown are never\n"
+                + "used, even as a last resort. from/ and to/ may appear in either order.\n"
+                + "\n"
+                + "Examples:\n"
+                + "  route from/AS6 to/AS8\n"
+                + "  route from/CLB to/AS7\n"
+                + "  route from/AS1 to/AS1\n"
+                + "\n"
+                + "The source and destination being the same facility is a valid result: a\n"
+                + "single-facility route with 0 m total distance, not an error.\n"
+                + "\n"
+                + "Limitations: this does not estimate travel time, and does not guarantee\n"
+                + "real-world accessibility at the time of travel - only that the local dataset\n"
+                + "records a confirmed-accessible path. If no confirmed-accessible path connects\n"
+                + "two known facilities, route says so rather than suggesting an unconfirmed one.\n"
+                + "\n"
+                + AccessibilityDisclaimer.TEXT);
         topics.put("export", "CSV exports\n"
                 + "Use export activities, export schedule, export all, or export.\n"
                 + "Each export creates a timestamped historical record."

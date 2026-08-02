@@ -26,6 +26,7 @@ import seedu.unienable.command.accessibility.facility.FacilityFindCommand;
 import seedu.unienable.command.accessibility.facility.FacilityListCommand;
 import seedu.unienable.command.accessibility.facility.FacilityValidateCommand;
 import seedu.unienable.command.accessibility.facility.FacilityViewCommand;
+import seedu.unienable.command.accessibility.route.RouteCommand;
 import seedu.unienable.command.activity.general.FindCommand;
 import seedu.unienable.command.general.GuideCommand;
 import seedu.unienable.command.general.ResetCommand;
@@ -201,6 +202,18 @@ class CommandDispatcherTest {
     }
 
     @Test
+    public void dispatch_route_returnsRouteCommandWiredToLiveManagers() throws Exception {
+        Command command = dispatcher.dispatch("route from/AS6 to/AS8", NOW);
+
+        assertTrue(command instanceof RouteCommand);
+    }
+
+    @Test
+    public void dispatch_routeMissingTo_throwsMissingInputException() {
+        assertThrows(MissingInputException.class, () -> dispatcher.dispatch("route from/AS6", NOW));
+    }
+
+    @Test
     public void dispatch_guide_returnsGuideCommand() throws Exception {
         assertTrue(dispatcher.dispatch("guide", NOW) instanceof GuideCommand);
     }
@@ -212,7 +225,7 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareMenuNumberOne_returnsGuideCommandForGettingStarted() throws Exception {
-        // Regression test: the guide's main menu says "Enter a number from 1 to 11", so a bare
+        // Regression test: the guide's main menu says "Enter a number from 1 to 12", so a bare
         // "1" entered as its own command (not "guide 1") must resolve the same way.
         Command command = dispatcher.dispatch("1", NOW);
 
@@ -229,8 +242,17 @@ class CommandDispatcherTest {
     }
 
     @Test
-    public void dispatch_bareMenuNumberEleven_returnsGuideCommandForReturn() throws Exception {
+    public void dispatch_bareMenuNumberEleven_returnsGuideCommandForRoute() throws Exception {
+        // "Route search" was added as menu item 11 when v2.0's route shipped; "Return" moved to 12.
         Command command = dispatcher.dispatch("11", NOW);
+
+        assertTrue(command instanceof GuideCommand);
+        assertTrue(command.execute().getFeedback().startsWith("Accessible routes"));
+    }
+
+    @Test
+    public void dispatch_bareMenuNumberTwelve_returnsGuideCommandForReturn() throws Exception {
+        Command command = dispatcher.dispatch("12", NOW);
 
         assertTrue(command instanceof GuideCommand);
         assertTrue(command.execute().getFeedback().startsWith("Returning to the command prompt"));
@@ -238,14 +260,15 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareZero_throwsInvalidCommandException() {
-        // "0" is deliberately outside the recognised 1-11 menu range, so it must still fall
+        // "0" is deliberately outside the recognised 1-12 menu range, so it must still fall
         // through to the normal "unknown command" error rather than being treated as a menu item.
         assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("0", NOW));
     }
 
     @Test
-    public void dispatch_bareTwelve_throwsInvalidCommandException() {
-        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("12", NOW));
+    public void dispatch_bareThirteen_throwsInvalidCommandException() {
+        // "13" is the new out-of-range boundary now that 1-12 are all recognised menu numbers.
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("13", NOW));
     }
 
     @Test

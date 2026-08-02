@@ -5,39 +5,113 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
-**If you are picking this project up next (including a different tool, e.g. Codex):** the
-`ActivityConflictChecker` review/extraction mentioned below as "the next task" is **done** (both
-phases shipped at `e44f660`, before the release-tagging note just below). `main` has since moved
-past the `804ce09` state this file otherwise still describes — see the dated note immediately
-below for what actually changed most recently. There is also unmerged work on
-`feature/v2-route` (v2.0's first feature, complete, awaiting review/merge - not reflected in the
-rest of this file below, which predates that branch).
+**If you are picking this project up next (including a different tool, e.g. Codex):** v2.0
+development has formally started, following
+`UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md` (supplied 2026-08-02, outside the repo, in
+Downloads). `feature/v2-route` is complete and merged into `main`, per explicit instruction to
+continue the v2.0 sequence; the next required branch is `feature/v2-dashboard` (audit first, per
+the master prompt's own process - see Section 6). Separately, a release-packaging mistake in the
+`v1.0` GitHub Release was found and fixed directly on `main` while `feature/v2-route` was still
+unmerged - see the dated note early in Section 1 below for what that was. The
+`ActivityConflictChecker` review/extraction mentioned further below as "the next task" is also
+**done** (shipped at `e44f660`, before any of this).
 
 ## 1. Current state (as of this update)
 
-**Update (2026-08-02, later the same day as the `804ce09` state described below): a
-release-packaging mistake was found and fixed on `main` directly.** `v1.0` was tagged (this file
-below still says it hadn't been - it has, since) with a GitHub Release whose only asset was a
-**bare `unienable.jar`**. That's broken for `recur`, which needs `data/academic-calendar.txt`
-shipped alongside the jar - the app never creates that file itself, and the documented
-distributable has always been `./gradlew releaseZip`'s zip (jar + calendar file), never a bare
-jar (see README's "Distribution" section). A user who downloaded the bare jar hit exactly this:
+**Update (2026-08-02, after `feature/v2-route` below had already been fully committed on its own
+branch): a release-packaging mistake was found and fixed on `main` directly, while the route
+branch sat unmerged.** `v1.0` was tagged with a GitHub Release whose only asset was a **bare
+`unienable.jar`**. That's broken for `recur`, which needs `data/academic-calendar.txt` shipped
+alongside the jar - the app never creates that file itself, and the documented distributable has
+always been `./gradlew releaseZip`'s zip (jar + calendar file), never a bare jar (see README's
+"Distribution" section). A user who downloaded the bare jar hit exactly this:
 `[Error] Storage error: academic calendar file not found: data/academic-calendar.txt` on `recur`.
 A short-lived `v1.0.1` tag/release was created with the identical mistake (copied from `v1.0`'s
-own asset without cross-checking it against this project's own documented rule), then corrected
-in place (bare jar removed, correct zip uploaded, verified via a clean-extraction smoke test that
-`add` then `recur` both work), then - per explicit instruction, rather than keeping two tags
-pointing at variously-fixed states of identical code - **deleted entirely** (release and tag,
-local and remote). `v1.0`'s tag was then moved to the commit this HANDOVER.md fix itself lands on
-(deleted and recreated, since git tags aren't normally force-moved on a published repo, but this
-one was explicitly requested), and `v1.0`'s GitHub Release was rebuilt with the correct
-`unienable.zip` as its only asset. **Lesson: when creating a GitHub Release for a jar-based
-distributable, always attach `releaseZip`'s output zip, never a bare `build/libs/*.jar` - and
-smoke-test the exact uploaded asset (extract fresh, run, exercise the feature that depends on the
-external file) before considering a release done, not just the local build.**
+own asset without cross-checking it against this project's own documented rule), then corrected in
+place, then - per explicit instruction, rather than keeping two tags pointing at variously-fixed
+states of identical code - **deleted entirely** (release and tag, local and remote). `v1.0`'s tag
+was moved to the fix commit (`4f040da`, deleted and recreated - git tags aren't normally
+force-moved on a published repo, but this was explicitly requested), and `v1.0`'s GitHub Release
+was rebuilt with the correct `unienable.zip` as its only asset, verified via a clean-extraction
+smoke test that `add` then `recur` both work. **Lesson: when creating a GitHub Release for a
+jar-based distributable, always attach `releaseZip`'s output zip, never a bare `build/libs/*.jar`
+- and smoke-test the exact uploaded asset (extract fresh, run, exercise the feature that depends
+on the external file) before considering a release done, not just the local build.** This fix
+landed as a standalone commit directly on `main` (not through a feature branch, since it wasn't
+v2.0 work), then `feature/v2-route` was updated with it (this merge) before being merged into
+`main` itself.
 
-`main` was at `804ce09` locally and on `origin/main` as of the rest of this section below —
-**pushed, working tree clean** at that point. No unmerged work-in-progress branches remain; `v2-dashboard` is still empty (0 commits ahead), untouched.
+**`feature/v2-route` is merged into `main`.** It was 4 commits ahead of the `main` it branched
+from (`59a9c4a`); `v2-dashboard` remains a stale local branch with zero unique commits (confirmed
+again this session) - not touched, not deleted per explicit instruction.
+
+Commits on `feature/v2-route`, oldest first: `e1a54ac` (production code), `530bd98` (JUnit
+tests), `9c4046e` (`text-ui-test`), `3f69338` (docs/diagrams). Implements
+`route from/FACILITY to/FACILITY`: Dijkstra shortest path using only confirmed-accessible (`YES`)
+connections, via a new `logic.route.AccessibleRouteGraphFactory` that filters
+`ConnectionManager`'s list and builds the existing `logic.graph.AccessibilityGraph` (which gained
+only a policy-neutral `List`-based constructor overload, not accessibility-status logic - see
+`docs/tasks/v2/route/IMPLEMENTATION_NOTES.md` for the alternatives considered and why). Same
+source/destination is a successful zero-length result, not an error; a disconnected known pair
+gets a "No supported accessible route was found..." fallback that explicitly does not claim no
+real-world route exists; an unrecognised facility is a `Not found` error. `GuideCommand` gained
+"Route search" as numbered menu item **11** (the next available number - items 1-10 keep their
+v1.0 numbers unchanged) and "Return" moved from 11 to 12; `CommandDispatcher`'s bare-number
+shortcut switch was extended to match (`case "12"` added). All four of these design points -
+where the `YES`-filter lives, the guide numbering, the same-endpoint-is-success decision, and the
+no-route fallback wording - were explicit corrections/decisions the user gave in this session,
+overriding this session's own initial (pre-correction) proposal on two of them (same-endpoint and
+the graph-filter location); see `docs/tasks/v2/route/README.md`'s "Approved design decisions"
+section for the full list with rationale.
+
+**Verification (commit `3f69338`):** `./gradlew clean test checkstyleMain checkstyleTest` all
+green, **950 JUnit tests** (up from 887 - 63 new, zero deleted/weakened), checkstyle clean (main +
+test). `bash text-ui-test/runtest.sh` passes - `input.txt`/`EXPECTED.TXT` updated for new `route`
+scenarios (against the real bundled dataset) and the guide 11/12/13 numbering ripple; every
+changed line was diffed against the prior `EXPECTED.TXT` and confirmed intentional before
+promoting, per Section 4's standing procedure. `./gradlew releaseZip` builds; a clean-extraction
+smoke test (fresh temp folder, `java -ea -jar unienable.jar`, no repo `data/`) exercised `route`'s
+direct/multi-hop/zero-length/unknown-facility/malformed-syntax paths plus `guide`/`bye` and all
+matched expectations. `./gradlew javadoc` not re-run this session - flag if trusting a javadoc
+claim, re-run before release.
+
+**One real mistake this session, caught before it shipped, worth knowing about:** an early
+implementation plan assumed the bundled `connections.txt`'s `AS1-AS2` connection (130 m, `RAMP`)
+had `accessibility == NO`, and built a `text-ui-test` no-route-fallback scenario around it. Running
+the actual harness showed a normal 130 m route instead - the connection's *shelter* status is
+`NO`, not its accessibility (every bundled connection is `accessibility == YES`, confirmed by
+re-reading `ConnectionStorage.parseLine`'s field order). Fixed by correcting the `text-ui-test`
+scenario (now documents a real route whose one segment has both a barrier and shelter-`NO` notes)
+and the design-notes/test-plan docs that had repeated the wrong claim - the no-route fallback
+itself is still fully covered, just by synthetic JUnit fixtures instead of the real dataset (which
+happens to have no `NO`/`UNKNOWN` edge to exercise it against). See
+`docs/tasks/v2/route/IMPLEMENTATION_NOTES.md`'s "Bundled dataset detail" section for the corrected
+account. **Lesson: when a connections.txt/facilities.txt field-position claim matters for a test
+scenario, re-verify against `ConnectionStorage`/`FacilityStorage`'s actual parse order before
+trusting a quick manual read of the pipe-delimited fields - it is easy to miscount which field is
+which.**
+
+Two diagram PNGs (`RouteClassDiagram.png`, `RouteSequence.png`) were rendered via the public
+`www.plantuml.com` render service (Python: deflate-compress the `.puml` source, PlantUML's custom
+base64 variant, GET the PNG) since no local PlantUML/Graphviz toolchain was found in this
+environment - downloading them was flagged by the permission classifier as a file download and
+explicitly confirmed with the user before fetching (matches the standing "explicit permission for
+any file download" rule). `ArchitectureDiagram.png` was re-rendered the same way after a small,
+justified update (one new `AccessibleRouteGraphFactory` component in the "Business logic"
+package, since it's a real new dependency `Commands` now has, at the same granularity as the
+existing `RecurrencePlanner` entry) - not a structural change to the diagram's package boundaries.
+
+**Everything below this point, through the end of the "Verification at that earlier point (commit
+`a4aa683`...)" paragraph, describes the state as of `804ce09` — the state at the start of this
+session, before `feature/v2-route` (Section 1's opening paragraphs above). Kept as historical
+record, per this file's established rolling convention, with one correction: point 4 of the
+numbered list just below says the `ActivityConflictChecker` Phase-1 review is "the next task" —
+that review happened and Phase 2 (the actual extraction) has since shipped directly on `main` at
+`e44f660` ("refactor: extract activity conflict validation from ActivityManager"), in a session
+this revision has no other record of. `logic.ActivityConflictChecker` exists in the current
+codebase and Section 14 of `docs/DeveloperGuide.md` documents it, confirming it's real, not
+aspirational. This paragraph, and everything historical below it, also predates the
+release-packaging fix and the `feature/v2-route` merge described earlier in this section.**
 
 Since the previous revision of this handover (`a4aa683`, mid-review, not yet pushed), three more
 small hardening batches landed and were pushed, each reviewed and approved before pushing, per the
@@ -77,9 +151,9 @@ export) that is **not** UniEnable's current approved scope - historical/traceabi
 only, not a task list. Only the fourth, `UniEnable_ActivityConflictChecker_Review_and_Extraction.
 md`, is an actual work order: a read-only Phase-1 design review of whether `ActivityManager`'s
 conflict-validation logic is worth extracting into a dedicated `ActivityConflictChecker` class,
-which must stop and report before any Phase-2 implementation begins. This is the next task,
-picking up exactly where the design-taste note in Section 4 (the parser-split precedent) and
-Section 5 (the deferred `ActivityConflictChecker` decision) leave off.
+which must stop and report before any Phase-2 implementation begins. **(As corrected above: both
+phases are now done, at `e44f660`, before this session started - this was "the next task" as of
+the `804ce09` revision this paragraph describes, not as of now.)**
 
 The previous revision of this handover described what happened up to `a4aa683` — still accurate
 history, kept below, prefixed with what came immediately before it:
@@ -502,14 +576,13 @@ Guide's §11 (Data Storage) for the exact record schema.
 
 ## 5. Where to look for further bugs / risk, concretely
 
-- **`ActivityConflictChecker` decision — the actual next task.** `ActivityManager` still owns all
-  duplicate/overlap conflict-validation logic (`checkNoConflicts`, `validateNoDuplicateOrOverlap`,
-  `isDuplicate`, `hasSameSchedulingDetails`, `findOverlap`, plus the `add`/`replace`/
-  `addAllAtomically` call sites) inline, unchanged by any of this update's three batches. A fully
-  scoped read-only review-and-decide task for this is at `docs/planning/
-  UniEnable_ActivityConflictChecker_Review_and_Extraction.md` (see Section 1's last paragraph and
-  Section 6's last paragraph) — do not extract preemptively without going through that document's
-  Phase 1 first; it explicitly requires stopping for approval before any Phase 2 implementation.
+- **`ActivityConflictChecker` decision — done, not a live risk.** Both the Phase-1 review and the
+  Phase-2 extraction shipped at `e44f660`, before this session started (Section 1's transition
+  note, Section 6). `logic.ActivityConflictChecker` is a real, current, package-private, stateless
+  class - `ActivityManager` no longer owns duplicate/overlap logic inline. This entry is kept only
+  so a stale local checkout or an older cached summary doesn't mislead a future session into
+  redoing it; the actual next task is reviewing/merging `feature/v2-route`, then starting
+  `feature/v2-dashboard` (Section 1, Section 6).
 - **The "one error message covers two semantically different causes" family**: resolved for both
   `DateTimeParser.parseDate()` (earlier session) and `parseTime()` (Section 2's defensive-
   programming cleanup bullet, this update) — both now split "wrong shape" from "right shape but
@@ -564,68 +637,72 @@ Guide's §11 (Data Storage) for the exact record schema.
 **UniEnable** is a single-user, offline, CLI-based Java 17 application (a simulated CS2113 team
 project) helping two personas — Sam (ASD/ADHD, wants concise/predictable output) and Jordan
 (wheelchair user, wants accurate accessibility data) — plan unfamiliar university/internship
-routines. v1.0 command surface: activity add/list/view/find/edit/delete/mark/unmark/next/order,
-topic add/list/rename/delete, read-only facility/connection lookups (plus `facility
-validate`/`connection validate`), `guide`, `bye`. v2.0-so-far adds `recur TASK_ID week WEEK_SPEC`
-and the three-option `reset all` (previously a single binary-confirmation v1.0 command, now
-superseded by the menu — see Section 1). **No git tag or GitHub Release exists yet** — v1.0 has
+routines. v2.0 command surface so far: activity add/list/view/find/edit/delete/mark/unmark/next/
+order, topic add/list/rename/delete, read-only facility/connection lookups (plus `facility
+validate`/`connection validate`), `recur TASK_ID week WEEK_SPEC`, the three-option `reset all`,
+`route from/FACILITY to/FACILITY` (Section 1, on `feature/v2-route`, not yet merged), `guide`,
+`bye`. **No git tag or GitHub Release exists yet** — v1.0 has
 been through a full 14-batch manual regression pass with all findings fixed (Sections 1-2), so
 it's realistically tag-ready, but creating the tag is still the user's explicit call, not
 something to do unprompted (see Section 1's last paragraph for exactly what's pending).
 
-v2.0 scope was previously "not started, don't add unprompted" — recurrence and technical-debt
-hardening have now both **shipped** (Section 2), so those two are done, not just approved.
-Dashboard, timetable, preferences, recommendation, route, and CSV export remain
-untouched/unapproved backlog — still don't start any of those unprompted.
+**v2.0 status, per the approved master prompt
+(`UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md`, supplied 2026-08-02, now the authoritative
+v2.0 spec):** the required branch sequence is route -> dashboard -> timetable -> preferences ->
+recommend -> export -> final integration pass. Recurrence and technical-debt hardening already
+shipped before this sequence started (Section 2). **Route is now implemented** on
+`feature/v2-route` (Section 1) - the first v2.0 feature in the sequence, complete but awaiting
+review/merge approval; do not start `feature/v2-dashboard` (the next required branch) until
+`feature/v2-route` is merged and the user gives an explicit go-ahead for the next feature, per the
+master prompt's own "one feature branch at a time... stop and present a review report" rule.
+Dashboard, timetable, preferences, recommend, and export remain untouched backlog - approved in
+principle by the master prompt, but each still needs its own audit-confirm-implement pass in its
+own turn, not started proactively just because route is done.
 
 Package root `seedu.unienable`: `app/` (`ApplicationRunner`, `CommandConfirmationHandler`,
 `command.MenuConfirmable`/`MenuOutcome`), `command/` — `activity.crud` (Add/Delete/Edit/View) +
 `activity.general` (Find/List/Mark/Next/OrderSet/OrderView/Unmark), `accessibility.facility` +
 `accessibility.connection` (4 commands each) + `accessibility.common`
-(`AccessibilityDisclaimer`/`ValidationReportFormatter`, both `public`), `topic/` and `recur/` left
-flat (too few classes each to split), `general/` (Guide/Reset/Bye). `parser/` mostly mirrors
-`command/` one level up, still flat per domain for `topic`/`accessibility` (`TopicCommandParser`/
-`FacilityCommandParser`/`ConnectionCommandParser` were *not* split), **except `parser.activity`**,
+(`AccessibilityDisclaimer`/`ValidationReportFormatter`, both `public`) + `accessibility.route`
+(new, `feature/v2-route`: `RouteCommand`), `topic/` and `recur/` left flat (too few classes each
+to split), `general/` (Guide/Reset/Bye). `parser/` mostly mirrors `command/` one level up, still
+flat per domain for `topic`/`accessibility` (`TopicCommandParser`/`FacilityCommandParser`/
+`ConnectionCommandParser`/`RouteCommandParser` all live directly in `parser.accessibility`, none
+split further), **except `parser.activity`**,
 split as of the hardening-plan session (Section 2) into a thin `ActivityCommandParser` router plus
 package-private `AddCommandParser`/`EditCommandParser`/`ListCommandParser`/`FindCommandParser` for
 the four commands with real grammar — delete/mark/unmark/view/next/order stayed inline in the
 router. Plus `common/` for
 `FieldParser`/`DateTimeParser`/`RatingParser`/`Parser`/`ArgumentTokenizer`/`ArgumentMarker`, plus
-`recur/`. `exception/` (flat, reused as-is by every feature including recur), `logic/` (the
-`*Manager` classes, plus `graph/` and `recur/`), `model/` (`classes`/`enums`/`recur`), `storage/`
-(plus `recur/` for the strictly-validated, read-only `AcademicCalendarStorage`; `storage/` imports
-nothing from `parser/` as of the hardening-plan session — see Section 2/5), `ui/` (plus
-`recur/` for `RecurrenceFormatter`), `accessibility/` (the read-only facility/connection domain
-model — a different, older package tree from `command.accessibility.*` above, don't conflate the
-two: this one is `seedu.unienable.accessibility.classes`/`.enums`, immutable read-only reference
-data).
+`recur/`. `exception/` (flat, reused as-is by every feature including recur and route), `logic/`
+(the `*Manager` classes, plus `graph/` [Dijkstra-prep, generic, policy-free - see Section 1] and
+`recur/` and, new, `route/` [`AccessibleRouteGraphFactory`, the route-specific `YES`-only filter
+that deliberately does *not* live in `logic.graph`]), `model/` (`classes`/`enums`/`recur` - no
+`model/route`, route needs no new persistent domain type), `storage/` (plus `recur/` for the
+strictly-validated, read-only `AcademicCalendarStorage`; `storage/` imports nothing from
+`parser/` as of the hardening-plan session — see Section 2/5), `ui/` (plus `recur/` for
+`RecurrenceFormatter` and, new, `accessibility/` for `RouteFormatter`), `accessibility/` (the
+read-only facility/connection domain model — a different, older package tree from
+`command.accessibility.*` above, don't conflate the two: this one is
+`seedu.unienable.accessibility.classes`/`.enums`, immutable read-only reference data, unchanged
+by route - route only reads it).
 
-**`docs/planning/` (new this update)** holds four reference documents, added so a different tool
-(e.g. Codex) picking this project up doesn't need access to the user's local Downloads folder.
-Read what each one actually is before treating any of them as a task list:
+**`docs/planning/`** holds four reference documents, added so a different tool (e.g. Codex)
+picking this project up doesn't need access to the user's local Downloads folder. Read what each
+one actually is before treating any of them as a task list:
 
 - `CS2113_tP_Requirements_Baseline_v0.2.md`, `CS2113_tP_Prioritised_User_Stories_v0.1.md`,
   `CS2113_tP_Primary_User_Guide_Draft.md` — a pre-development requirements baseline, user-story
   list, and draft user guide for a **broader, differently-scoped product concept** (working name
   undecided, described in these docs as an "Accessible Itinerary Planner") that predates
-  UniEnable's actual implementation history. They describe a v1.0 similar in spirit to what shipped
-  plus a v2.0 backlog — dashboard, timetable, preferences, a schedule recommender, Dijkstra-based
-  accessible routing, CSV export — that is **not** UniEnable's current approved scope (Section 6's
-  second paragraph above: "still don't start any of those unprompted"). Treat these three as
-  historical/traceability background only. Do not start implementing anything from their v2.0
-  sections without the user explicitly approving it in the current conversation, the same rule that
-  already applied before these files were added to the repo.
-- `UniEnable_ActivityConflictChecker_Review_and_Extraction.md` — the one document in this folder
-  that **is** an actual work order, and the concrete next task for this project (Section 1's
-  opening paragraph, Section 5's first bullet). It is scoped tightly to UniEnable as it actually
-  exists today: a read-only Phase 1 review of whether `ActivityManager`'s conflict-validation logic
-  (duplicate/overlap detection across `add`/`replace`/`edit`/`addAllAtomically`) is cohesive enough
-  to justify extracting into a dedicated `ActivityConflictChecker` class, producing a method-by-
-  method table and one of three conclusions (keep / extract / defer for insufficient evidence),
-  then **stopping for explicit approval** before any Phase 2 implementation. It explicitly excludes
-  new v2.0 features, date/time parser changes, storage-format changes, command-syntax changes, and
-  unrelated cleanup — and explicitly warns against extraction for its own sake (no generic
-  `ValidationUtils`, no interface with one implementation, no static global state). Anyone starting
-  this task should follow that document itself for the detailed steps; this handover's job is only
-  to point to it and to the working conventions (Section 4) and design taste (Section 4's last
-  bullet, Section 5) that apply to how the work gets done, reported, and pushed.
+  UniEnable's actual implementation history. **Superseded as of this session** by
+  `UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md` (outside the repo, in Downloads), which the
+  user explicitly designated the authoritative v2.0 spec (see Section 1's opening paragraph), with
+  these three treated as supplementary/historical background only where the master prompt is
+  silent - not independent authority, and not a task list to start from unprompted.
+- `UniEnable_ActivityConflictChecker_Review_and_Extraction.md` — **done.** Both the Phase-1 review
+  and the Phase-2 extraction it approved shipped directly on `main` before this session started, at
+  `e44f660` (Section 1's transition note has the detail). `logic.ActivityConflictChecker` is real,
+  current code. This bullet previously described it as "the concrete next task"; it is not,
+  anymore - the concrete next task is reviewing/merging `feature/v2-route` (Section 1), then
+  `feature/v2-dashboard`, per the master prompt's required sequence.

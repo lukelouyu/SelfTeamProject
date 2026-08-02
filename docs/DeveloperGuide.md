@@ -5,8 +5,8 @@
 UniEnable is a single-user, offline Java 17 command-line application for planning activities and
 consulting local accessibility reference data. This guide describes the implemented v1.0 system,
 with emphasis on its activity-conflict refactor, recurrence workflow, persistence guarantees, and
-read-only accessibility features, plus v2.0's first shipped feature: accessible route search
-(`route`), covered in Section 12.
+read-only accessibility features, plus v2.0's first two shipped features: accessible route search
+(`route`, Section 12) and the accessible planning dashboard (`dashboard`, Section 13).
 
 The project began from the se-education.org Duke template. Its Gradle setup, Checkstyle rules, and
 text-UI harness follow that ecosystem; the application design and domain behaviour described here
@@ -78,7 +78,7 @@ earliest start, latest end, and required duration.
 Activities are mutable because edits, completion changes, and topic renames update existing user
 state. Ratings are validated value objects. Constructor assertions protect the internal
 end-after-start and duration-fits-window invariants; callers validate untrusted input before
-construction, as described in Section 13.
+construction, as described in Section 14.
 
 ## 6. Command and parser design
 
@@ -279,7 +279,121 @@ claims real-time verification or a guarantee of real-world accessibility.
 
 <p align="center"><img src="diagrams/sequence/RouteSequence.png" width="760" alt="Route sequence diagram"></p>
 
-## 13. Logging and assertions
+## 13. Accessible planning dashboard
+
+`dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]` calculates a read-only planning-load
+summary directly from `ActivityManager`'s current in-memory state every time it runs - it is a
+**derived view, not a stored entity**: there is no dashboard persistence file, no dashboard model
+saved to disk, and nothing about it survives between commands except what `ActivityManager` itself
+already owns. This keeps it consistent with the rest of the read-only accessibility commands
+(`facility`/`connection`/`route`) and avoids a second source of truth that could drift from the
+activities it summarises.
+
+<p align="center"><img src="diagrams/class/DashboardClassDiagram.png" width="760" alt="Dashboard class diagram"></p>
+
+Responsibilities are split the same way `route` splits parsing/policy/formatting:
+
+- `parser.dashboard.DashboardCommandParser` - syntax only. Validates the grammar, resolves the
+  selected period via `DashboardService`'s `resolve*` methods (using the `now` it was given, per
+  the existing `list`/`next`/`edit` convention - `dashboard` never calls
+  `LocalDate.now()`/`LocalDateTime.now()` directly in production code or tests), and captures the
+  `detail` flag.
+- `command.dashboard.DashboardCommand` - orchestration only: calls `DashboardService.summarize`,
+  then `DashboardFormatter.format`. Implements neither `Confirmable` nor `MenuConfirmable`, and is
+  not in `ApplicationRunner.mutatesState`'s recognised set, so it never triggers a snapshot or a
+  save - a `dashboard` command is architecturally incapable of persisting anything.
+- `logic.dashboard.DashboardService` - stateless (all-static, mirroring
+  `logic.route.AccessibleRouteGraphFactory`); owns period resolution and every metric calculation.
+- `model.dashboard.DashboardPeriod`/`RatingSummary`/`DashboardSummary` - immutable calculated
+  results. `RatingSummary` is reused identically for energy and sensory, since the two are
+  structurally identical metrics (total, high-rating count, average, highest, 1-5 distribution)
+  over different ratings, rather than duplicating six fields twice.
+- `ui.dashboard.DashboardFormatter` - pure text formatting; makes no calculation of its own.
+
+<p align="center"><img src="diagrams/sequence/DashboardSequence.png" width="760" alt="Dashboard sequence diagram"></p>
+
+**Period boundaries** are always half-open (`[start, end)`), computed with `java.time` so
+month/year transitions and leap days are handled for free. `this week` reuses `list this week`'s
+exact Monday-Sunday boundary (`TemporalAdjusters.previousOrSame(MONDAY)`/`nextOrSame(SUNDAY)`),
+not a rolling seven-day window - two now-superseded planning drafts disagreed with each other and
+with `list`'s own shipped behaviour on this point; `list`'s precedent is authoritative.
+
+**Activity inclusion** uses the same half-open intersection test for both activity types: a fixed
+activity's `[start, end)` or a flexible activity's `[earliestStart, latestEnd)` must intersect the
+period. **Planned-workload contribution** differs by type: a fixed activity's contribution is
+*clipped* to the period (`clip(activityStart, activityEnd, periodStart, periodEnd)`, a
+package-private `DashboardService` helper using `min`/`max` on the boundaries); a flexible
+activity's contribution is its full requested `durationMinutes`, counted once, never clipped to
+however much of its window overlaps the period - stated and tested as a limitation, not silently
+invented data.
+
+**Cross-midnight clipping - generic by construction, not reachable by real data today.** Both
+`FixedActivity` and `FlexibleActivity` constrain start/end to one calendar date
+(constructor-enforced assertions), so no activity in this codebase can actually span midnight.
+`clip(...)` is nonetheless implemented generically over raw `LocalDateTime` boundaries with no
+same-day assumption - exactly as correct for a hypothetical midnight-spanning interval as for an
+ordinary one. `DashboardServiceTest` exercises this directly with synthetic
+`LocalDateTime` pairs (a simulated Monday 23:00 -> Tuesday 01:00 interval clipped against a
+Monday-only, a Tuesday-only, and a Monday-Sunday-week period, asserting 60/60/120-minute
+contributions), rather than constructing an activity the model's own invariants would reject. No
+cross-date activity support was added to `FixedActivity`/`FlexibleActivity`, their parsers,
+storage format, or conflict-checking - that would be a v1.0 data-model change, outside this
+feature's scope. See `docs/tasks/v2/dashboard/IMPLEMENTATION_NOTES.md` for the full account.
+
+**Nominal capacity** is derived, not hardcoded per period "kind":
+`Duration.between(period.start, period.end).toMinutes()` gives 1440 for any single day and 10080
+for the week automatically. **Buffer/overload**:
+`nominalBuffer = max(0, capacity - workload)`, `overload = max(0, workload - capacity)` - never
+both non-zero. The metric is always labelled "Nominal buffer", documented everywhere as arithmetic
+capacity minus planned workload, not a promise of actually-usable free time (overlapping fixed
+activities count individually toward workload rather than merging, so a double-booked day reduces
+nominal buffer accordingly without silently hiding the conflict).
+
+**Energy/sensory**: totals are a plain sum of included activities' ratings; a rating counts as
+"high" at a single named threshold, `DashboardService.HIGH_RATING_THRESHOLD = 4` (ratings 4-5).
+Detail-mode averages use `BigDecimal`/`RoundingMode.HALF_UP` to one decimal place rather than raw
+`double` formatting, so the documented rounding rule can't silently vary by platform or JDK
+version; an empty rated set reports itself as having no data (`RatingSummary.hasData() == false`)
+rather than a misleading `0`.
+
+**Completion denominator**: an activity counts toward completion only once its own time has fully
+passed - `!endTime.isAfter(now)` for fixed, `!latestEnd.isAfter(now)` for flexible - using the same
+`now` the period itself was resolved against. A future or currently-in-progress activity is
+excluded from both the completed and incomplete counts entirely, not folded into "incomplete".
+Completion percentage is `Math.round(completed * 100.0 / eligible)`, computed once in
+`DashboardService.summarize` and stored on `DashboardSummary`, matching every documented rounding
+example (`2/3 -> 67%`) exactly.
+
+**Deterministic ordering**: category-grouped counts iterate `ActivityCategory.values()` (fixed
+enum declaration order), looking up each category's count from a `Map` rather than iterating the
+map itself, so the result is independent of the map implementation's own iteration order. Rating
+distributions are `int[5]` indexed by `rating - 1`, not a `Map<Integer,Integer>` - ascending order
+is structural.
+
+**Design alternatives considered:** a separate `DashboardDetail` model type (rejected - detail
+metrics are cheap to always compute, so gating by a boolean at *format* time avoids a second
+model's own emptiness story); six separate energy/sensory fields inline on `DashboardSummary`
+(rejected in favour of the shared `RatingSummary`); exposing `clip(...)` as public API purely for
+testability (rejected - it stays package-private, tested from a same-package test class, matching
+`ActivityConflictChecker`'s precedent); raw `double` averages with `String.format` (rejected for
+`BigDecimal`/`HALF_UP`, for exact, JVM-independent rounding).
+
+Test strategy mirrors `route`'s: `DashboardServiceTest` (period resolution, the clipping
+calculation directly, inclusion, workload, buffer/overload, ratings, completion eligibility and
+percentage, detail-mode ordering - all synthetic fixtures, injected fixed clocks, no
+`LocalDateTime.now()`), `DashboardCommandParserTest` (full accept/reject grammar),
+`DashboardCommandTest` and `DashboardFormatterTest` (orchestration and exact-text formatting
+respectively), and `DashboardIntegrationTest` (reads through the real `Storage`/`ActivityManager`
+path, restart consistency, a malformed persisted line skipped safely, and a full
+`ApplicationRunner` session proving no data file changes across several `dashboard` commands).
+`text-ui-test` covers only `dashboard date/...` scenarios (deterministic regardless of wall-clock
+date, using a far-future date so completion resolves to "not yet due" deterministically) -
+`dashboard today`/`tomorrow`/`this week` are excluded from `text-ui-test` for the same reason
+`list today`/`tomorrow`/`this week` already are (the harness runs the real jar against the real
+wall clock, with no fixed-clock injection point), covered instead by `DashboardServiceTest`'s
+injected-`now` tests.
+
+## 14. Logging and assertions
 
 `LoggingConfig` removes default console handlers and attaches one append-mode `FileHandler` at
 `data/unienable.log`. It records `INFO` and above with `SimpleFormatter`; operational logs do not
@@ -300,7 +414,7 @@ Assertions are not used for user or persisted input. Parsers and storage validat
 raise checked domain exceptions or load warnings, so behaviour does not depend on whether `-ea` is
 enabled.
 
-## 14. Design considerations
+## 15. Design considerations
 
 ### Extracting conflict validation
 
@@ -340,7 +454,7 @@ contract and preserve each caller's distinct error and recovery behaviour.
   the same hardening session, is no longer unused - v2.0's `route` is its first real caller, via
   `logic.route.AccessibleRouteGraphFactory` (Section 12).
 
-## 15. Testing
+## 16. Testing
 
 The automated strategy has four layers:
 
@@ -360,9 +474,15 @@ should cover Dijkstra correctness (direct vs. multi-edge, distance-optimal vs. h
 facilities, and malformed/duplicate/negative-distance reference data - all against small
 synthetic fixtures (`docs/tasks/v2/route/TEST_PLAN.md`), never the real bundled dataset, so
 algorithmic edge cases stay independent of what the shipped `facilities.txt`/`connections.txt`
-happen to contain.
+happen to contain. Dashboard tests should cover period-boundary math (day/week, month/year/leap
+transitions), interval inclusion and clipping (including the cross-midnight calculation via
+synthetic `LocalDateTime` boundaries - see Section 13), workload/buffer/overload arithmetic,
+completion eligibility and percentage rounding under an injected clock, and detail-mode
+deterministic ordering - all in `docs/tasks/v2/dashboard/TEST_PLAN.md`, with `text-ui-test`
+restricted to `dashboard date/...` scenarios for the same real-wall-clock-determinism reason
+`list today`/`tomorrow`/`this week` are.
 
-## 16. Product scope
+## 17. Product scope
 
 UniEnable serves tertiary students with ASD or ADHD and tertiary students who use wheelchairs as
 they prepare for unfamiliar university, internship, or entry-level work routines. It prioritises
@@ -371,11 +491,11 @@ and explicit uncertainty in accessibility information.
 
 Implemented v1.0 scope includes activity and topic management, completion and ordering, next-item
 selection, academic-calendar recurrence, reset choices, read-only facility/connection lookup, and
-reference-file validation. v2.0 has so far added accessible route search (`route`, Section 12).
-CSV export, a dashboard, a timetable, recommendation preferences, and a schedule recommender
-remain future work.
+reference-file validation. v2.0 has so far added accessible route search (`route`, Section 12) and
+the accessible planning dashboard (`dashboard`, Section 13). CSV export, a timetable, recommendation
+preferences, and a schedule recommender remain future work.
 
-## 17. User stories
+## 18. User stories
 
 | Priority | As a ... | I want to ... | So that ... |
 |---|---|---|---|
@@ -386,8 +506,9 @@ remain future work.
 | Should | student with weekly classes | generate semester occurrences from a supplied calendar | I avoid repetitive entry while retaining independent activities. |
 | Should | student starting a new period | reset all data or retain class schedules | I can clear obsolete planning state safely. |
 | Should | wheelchair user | find the shortest confirmed-accessible route between two facilities | I do not have to guess whether a shorter-looking path is actually usable. |
+| Should | student sensitive to workload and environment | see a summary of how full a day or week is | I can gauge my planning load without manually adding it up myself. |
 
-## 18. Use cases
+## 19. Use cases
 
 ### UC01: Add an activity
 
@@ -432,7 +553,20 @@ unrecognised facility name is rejected before any pathing occurs. Two known faci
 confirmed-accessible path between them get an explicit no-route message rather than a suggested,
 unconfirmed route.
 
-## 19. Non-functional requirements
+### UC06: View a planning dashboard
+
+**Main success scenario:** The user selects a period (today, tomorrow, a date, or this week).
+UniEnable calculates planned workload, nominal buffer, energy/sensory totals and high-rating
+counts, and completion, from currently stored activities only, and displays the summary.
+
+**Extensions:** An empty period shows a distinct "no activities found" message. A period with
+activities but none yet due shows "no activities are due yet" instead of a percentage.
+`detail` additionally shows fixed/flexible counts, a category breakdown, and full rating
+distributions. Every parser rejection (missing/invalid selector, malformed date, duplicate
+`detail`, unexpected trailing text) leaves all activity data unchanged - `dashboard` never
+mutates, saves, or prompts for confirmation.
+
+## 20. Non-functional requirements
 
 - The application must run on Java 17 and use primarily object-oriented design.
 - It must operate offline as a single-user CLI without a DBMS or private remote service.
@@ -444,7 +578,7 @@ unconfirmed route.
 - User errors must be specific and must not terminate the command loop.
 - Unknown accessibility status must remain distinguishable from confirmed inaccessibility.
 
-## 20. Glossary
+## 21. Glossary
 
 - **Activity:** A fixed or flexible user planning item with a permanent ID.
 - **Exact scheduling duplicate:** Same exact description, date, type, and that type's timing fields.
@@ -459,8 +593,12 @@ unconfirmed route.
 - **Reference data:** Facility, connection, and calendar information that commands do not mutate.
 - **Confirmed-accessible connection:** A connection whose `accessibility` field is `YES`; `route`
   uses only these as graph edges, never `NO` or `UNKNOWN`.
+- **Nominal buffer:** `dashboard`'s arithmetic capacity-minus-workload metric; not a guarantee of
+  actually-usable free time.
+- **Completion-eligible:** An activity whose own scheduled time has fully passed as of the
+  injected `now`; only eligible activities count toward `dashboard`'s completion percentage.
 
-## 21. Instructions for manual testing
+## 22. Instructions for manual testing
 
 Build and extract the release ZIP, then run `java -jar unienable.jar` from its extracted root.
 Start with a separate test directory if existing personal data must be preserved.
@@ -487,10 +625,16 @@ Start with a separate test directory if existing personal data must be preserved
    segment detail and total distance. Run it with the same facility twice and confirm a
    zero-length success, not an error. Run it with an unrecognised facility name and confirm the
    error. `route` never mutates state, so no restart check is needed for it.
-9. Force a save failure in a disposable copy by making a planning-state destination unwritable.
-   Confirm the error is shown, the attempted mutation is absent from subsequent views, and `bye`
-   does not falsely claim it was saved.
-10. Restart after successful mutations and confirm activities, topics, completion, and default
+9. Add a few fixed and flexible activities on today's date and run `dashboard today` and
+   `dashboard today detail`. Verify planned workload, nominal buffer, energy/sensory totals and
+   high-rating counts, and the detail section's category/rating breakdown. Run `dashboard` on a
+   date with no activities and confirm "No activities found for the selected period." Run
+   `dashboard this week` and confirm the range matches `list this week`'s own Monday-Sunday week.
+   `dashboard` never mutates state, so no restart check is needed for it.
+10. Force a save failure in a disposable copy by making a planning-state destination unwritable.
+    Confirm the error is shown, the attempted mutation is absent from subsequent views, and `bye`
+    does not falsely claim it was saved.
+11. Restart after successful mutations and confirm activities, topics, completion, and default
     order were persisted together.
 
 Before a release, also run:

@@ -33,6 +33,9 @@ public class FixedActivity extends Activity {
             LocalTime startTime, LocalTime endTime, EnergyRating energyRating, SensoryRating sensoryRating,
             String topic, String note) {
         super(id, description, category, date, energyRating, sensoryRating, topic, note);
+        assert endTime.isAfter(startTime)
+                : "FixedActivity constructed with end time not after start time - every caller "
+                        + "(parsers, storage) must validate this before constructing";
         this.startTime = startTime;
         this.endTime = endTime;
     }

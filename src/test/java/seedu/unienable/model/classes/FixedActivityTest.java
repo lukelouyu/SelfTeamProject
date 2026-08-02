@@ -1,6 +1,7 @@
 package seedu.unienable.model.classes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
@@ -60,5 +61,17 @@ class FixedActivityTest {
         activity.mark();
 
         assertTrue(activity.isComplete());
+    }
+
+    @Test
+    public void constructor_endTimeNotAfterStartTime_throwsAssertionError() {
+        // Programmer-invariant check, not user-input validation - every real caller (parsers,
+        // storage) already rejects this before constructing; this proves the internal invariant
+        // actually fires when a caller doesn't, which only happens with assertions enabled
+        // (confirms the Gradle test task runs with -ea, per build.gradle's `test { enableAssertions
+        // = true }`).
+        assertThrows(AssertionError.class, () -> new FixedActivity(1, "desc", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(9, 0),
+                EnergyRating.of(1), SensoryRating.of(1), null, null));
     }
 }

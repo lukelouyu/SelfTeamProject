@@ -1,6 +1,7 @@
 package seedu.unienable.model.classes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
@@ -70,5 +71,21 @@ class FlexibleActivityTest {
         activity.mark();
 
         assertTrue(activity.isComplete());
+    }
+
+    @Test
+    public void constructor_latestEndNotAfterEarliestStart_throwsAssertionError() {
+        assertThrows(AssertionError.class, () -> new FlexibleActivity(1, "desc", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(18, 0), LocalTime.of(10, 0), 30,
+                EnergyRating.of(1), SensoryRating.of(1), null, null));
+    }
+
+    @Test
+    public void constructor_durationExceedsWindow_throwsAssertionError() {
+        // Programmer-invariant check, not user-input validation - every real caller (parsers,
+        // storage) already rejects this before constructing.
+        assertThrows(AssertionError.class, () -> new FlexibleActivity(1, "desc", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0), 90,
+                EnergyRating.of(1), SensoryRating.of(1), null, null));
     }
 }

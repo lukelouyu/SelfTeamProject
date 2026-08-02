@@ -1,5 +1,6 @@
 package seedu.unienable.model.classes;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.logging.Level;
@@ -35,6 +36,12 @@ public class FlexibleActivity extends Activity {
             LocalTime earliestStart, LocalTime latestEnd, int durationMinutes,
             EnergyRating energyRating, SensoryRating sensoryRating, String topic, String note) {
         super(id, description, category, date, energyRating, sensoryRating, topic, note);
+        assert latestEnd.isAfter(earliestStart)
+                : "FlexibleActivity constructed with latest end not after earliest start - every "
+                        + "caller (parsers, storage) must validate this before constructing";
+        assert durationMinutes <= Duration.between(earliestStart, latestEnd).toMinutes()
+                : "FlexibleActivity constructed with a duration that does not fit the "
+                        + "earliest/latest window - every caller must validate this before constructing";
         this.earliestStart = earliestStart;
         this.latestEnd = latestEnd;
         this.durationMinutes = durationMinutes;

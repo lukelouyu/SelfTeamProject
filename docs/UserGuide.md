@@ -851,8 +851,11 @@ instead of silently loading bad data:
   startup): schema version, field counts, real calendar dates, non-blank fields, non-negative week
   numbers, a matching `SOURCE` record for every week/no-class entry, unique academic-year/
   semester/week combinations, unique no-class dates, and non-overlapping instructional week
-  ranges. Any problem disables `recur` only and names the exact malformed line number — every
-  other command keeps working normally.
+  ranges. Any problem disables `recur` only — every other command keeps working normally. A
+  problem confined to one line (a bad field count, an invalid date, an unknown record type) names
+  that exact line number; a problem that only becomes visible once the whole file is read (a
+  duplicate academic-year/semester/week combination, or two instructional weeks overlapping)
+  names the conflicting records themselves instead of a single line.
 
 If you'd rather check a hand-edited `facilities.txt`/`connections.txt` without restarting the
 application, `facility validate`/`connection validate` (Sections 8.7–8.8) run the exact same

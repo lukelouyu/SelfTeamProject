@@ -28,6 +28,7 @@ import seedu.unienable.command.accessibility.facility.FacilityValidateCommand;
 import seedu.unienable.command.accessibility.facility.FacilityViewCommand;
 import seedu.unienable.command.accessibility.route.RouteCommand;
 import seedu.unienable.command.dashboard.DashboardCommand;
+import seedu.unienable.command.timetable.TimetableCommand;
 import seedu.unienable.command.activity.general.FindCommand;
 import seedu.unienable.command.general.GuideCommand;
 import seedu.unienable.command.general.ResetCommand;
@@ -224,6 +225,18 @@ class CommandDispatcherTest {
     @Test
     public void dispatch_dashboardMissingSelector_throwsMissingInputException() {
         assertThrows(MissingInputException.class, () -> dispatcher.dispatch("dashboard", NOW));
+    }
+
+    @Test
+    public void dispatch_timetable_returnsTimetableCommandWiredToLiveManager() throws Exception {
+        Command command = dispatcher.dispatch("timetable week/2026-08-17", NOW);
+
+        assertTrue(command instanceof TimetableCommand);
+    }
+
+    @Test
+    public void dispatch_timetableMissingSelector_throwsMissingInputException() {
+        assertThrows(MissingInputException.class, () -> dispatcher.dispatch("timetable", NOW));
     }
 
     @Test

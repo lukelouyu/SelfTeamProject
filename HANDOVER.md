@@ -5,20 +5,105 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
-**If you are picking this project up next (including a different tool, e.g. Codex):** v2.0
-development is following `UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md` (supplied
-2026-08-02, outside the repo, in Downloads) for the shared sequence/rules, plus a separate,
-feature-specific master prompt supplied per branch (route's and dashboard's are both referenced
-from their own `docs/tasks/v2/<feature>/` folders). `feature/v2-route` is merged into `main`.
-`feature/v2-dashboard` is complete, committed on its own branch, **not yet merged or pushed** - it
-needs review/approval before merging, and before the next required branch
-(`feature/v2-timetable`) starts. See Section 1 for exactly what's on the branch. The
-`ActivityConflictChecker` review/extraction mentioned further below as "the next task" is
-**done** (shipped at `e44f660`, before any v2.0 work).
+## 0. Handoff to Codex (2026-08-02) — start here
+
+The user is moving the rest of v2.0 development from Claude to **Codex**. This section is a
+mechanical, step-by-step starting point. Read it first, then read the rest of this file (it's the
+same continuity doc Claude was using — nothing below this section was written differently because
+the tool changed).
+
+**0.1 — Read the spec, in-repo now, no external access needed.** The full v2.0 master prompt
+(shared rules/sequence for all six features, plus every feature's detailed spec) is at
+[`docs/planning/UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md`](docs/planning/UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md).
+It used to live only outside the repo (in the user's Downloads folder); it was copied into the
+repo specifically so a tool without access to the user's local filesystem — Codex — can read it.
+Treat it as the authoritative v2.0 specification, exactly as Claude did.
+
+**0.2 — Exact current git state.**
+- `main` is at `ce71765` — `feature/v2-route` is merged in, plus a standalone release-packaging
+  fix commit (`4f040da`). `v1.0` is tagged and released on GitHub correctly (zip, not bare jar).
+- `feature/v2-dashboard` (5 commits ahead of `main`, tip `4de6776`) is **fully implemented,
+  tested, documented, and verified — but NOT merged, NOT pushed.** It is waiting on the user's
+  review/approval to merge. **Do not merge it yourself without the user explicitly saying so in
+  chat.** Section 1 below has the complete detail of what's on it, what was found/decided during
+  its audit, and its exact verification results.
+- No v2.0 git tag or GitHub Release exists yet. `feature/v2-timetable` (the next required branch
+  per the master prompt's sequence) has not been started.
+- A stale local branch `v2-dashboard` (no `feature/` prefix, tip `9829911`) also exists with
+  content unrelated to the current `feature/v2-dashboard` work — confirmed in earlier sessions to
+  have zero unique commits worth keeping relative to `main`. Left untouched, not deleted, per
+  standing instruction not to take destructive git actions without explicit approval. Don't
+  confuse the two branches by name.
+
+**0.3 — What to actually do, in order:**
+1. Confirm with the user whether `feature/v2-dashboard` should be merged into `main` now. If yes,
+   merge it (only after the user says so), then ask whether to push.
+2. Only after that decision is resolved, start `feature/v2-timetable`: a **read-only audit first**
+   (see Section 0.4 and the master prompt's own "Start now" section), then propose a plan and
+   **wait for explicit approval before writing any code** — this is not optional; it is how every
+   prior branch in this project was run, including by Claude.
+3. Create `docs/tasks/v2/timetable/{README.md,ACCEPTANCE_CRITERIA.md,TEST_PLAN.md,
+   IMPLEMENTATION_NOTES.md}` before implementation, following the exact pattern already on disk at
+   [`docs/tasks/v2/route/`](docs/tasks/v2/route/) and
+   [`docs/tasks/v2/dashboard/`](docs/tasks/v2/dashboard/) — read both folders as worked examples of
+   the expected depth and format before writing timetable's.
+4. After timetable: `feature/v2-preferences`, then `feature/v2-recommend`, then
+   `feature/v2-export`, then the final v2.0 integration/documentation/regression pass — same
+   process every time: audit → proposed plan → explicit approval → task-spec folder → implement →
+   full quality gate (Section 4) → completion report → **stop and wait**. Never chain straight into
+   the next feature branch without a fresh explicit go-ahead, even if the master prompt lists it as
+   the obvious next step.
+
+**0.4 — Hard-won lessons from the Claude sessions that produced `route` and `dashboard` — do not
+repeat these:**
+- **A feature-specific reading of the master prompt can be wrong about the actual codebase; verify
+  before implementing.** This bit twice already: `route`'s exact YES-only-filter architecture
+  needed a real user decision rather than trusting the prompt's rough sketch (see
+  `docs/tasks/v2/route/README.md`'s "Approved design decisions"), and `dashboard`'s guide-menu
+  numbering was assumed to need a new menu number (mirroring `route`) when in fact
+  `GuideCommand.MENU_NUMBER_TOPICS` already had `"dashboard"` at item 5 since v1.0 — an
+  in-progress numbering change had to be fully reverted once this was caught (Section 1). Always
+  check the actual current code before assuming a spec's generic description is precise.
+- **Release distributables must always be `./gradlew releaseZip`'s zip, never a bare
+  `build/libs/*.jar`.** A bare-jar release broke `recur` for a real user (missing
+  `data/academic-calendar.txt`, which the app never creates itself) and required deleting a
+  short-lived `v1.0.1` tag/release and rebuilding `v1.0`'s release from scratch. Smoke-test the
+  *exact uploaded asset* (fresh extraction, run the jar, exercise a feature needing the external
+  file) before considering any release done.
+- **`text-ui-test/input.txt` insertion position matters.** Activity IDs auto-increment; inserting
+  new scenarios mid-file shifts every later ID-dependent assertion. Insert new blocks either at the
+  very end, or immediately after a `reset all` full-data-wipe (IDs restart at 1) — that's where
+  `dashboard`'s scenarios were placed after an earlier mid-file attempt broke unrelated later
+  assertions.
+- **Verify pipe-delimited fixture field order against the actual `*Storage.parseLine()` code, not
+  a manual read.** `route`'s test scenario initially assumed the wrong field
+  (`accessibility` vs. `shelter`) was `NO` for a bundled connection, because of a quick manual
+  miscount of `connections.txt`'s columns.
+- **Never call `LocalDate.now()`/`LocalDateTime.now()`/`Instant.now()` directly in production
+  code.** `now` is captured once at parse time in `CommandDispatcher.dispatch(input, now)` and
+  threaded through everywhere — `DashboardCommand` briefly violated this during drafting and was
+  fixed before commit (Section 1). Grep for direct `.now()` calls in `src/main` if ever unsure.
+- **Standing approval gates are not loosened by convenience.** Never push, merge, tag, delete a
+  branch, delete a release, or start the next feature branch without the user explicitly saying so
+  in that turn, even if a previous turn approved something that looks similar. This project has had
+  exactly one on-record exception (`feature/recur-reset-v2`, where the user asked for test+docs+
+  commit+merge+push all in one message) — that doesn't loosen the default; keep asking.
+- **A same-session PlantUML permission grant doesn't need re-asking within that session, but a new
+  session (or a new tool) should treat file-download permission as unasked.** Diagrams were
+  rendered via the public `plantuml.com` server (no local PlantUML/Graphviz toolchain available);
+  if Codex has its own way to render `.puml` → `.png` locally, prefer that over a network fetch.
+
+**0.5 — Everything else you need is already in this file.** Section 1 has the full, current state
+of `feature/v2-dashboard` including two real audit findings and their resolutions. Section 2 is
+the condensed project history. Section 4 is the standing working conventions (commit/push
+discipline, verification commands, design taste). Section 5 is known live risks. Section 6 is
+product/package-layout context. Update Section 1 (and this Section 0) again after
+`feature/v2-dashboard` is resolved and before/after each subsequent branch — this file's whole
+point is staying current across a tool handoff, not just a session handoff.
 
 ## 1. Current state (as of this update)
 
-**`feature/v2-dashboard`, 4 commits ahead of `main` (`ce71765`), not yet merged or pushed.**
+**`feature/v2-dashboard`, 5 commits ahead of `main` (`ce71765`), not yet merged or pushed.**
 Implements `dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]`: a read-only planning-load
 summary computed fresh from `ActivityManager` every time - no persistence, no confirmation, cannot
 mutate anything by construction (`DashboardCommand` implements neither `Confirmable`/

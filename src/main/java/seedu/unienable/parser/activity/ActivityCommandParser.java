@@ -1,20 +1,15 @@
 package seedu.unienable.parser.activity;
 
-import java.time.DayOfWeek;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.temporal.TemporalAdjusters;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
-import seedu.unienable.command.activity.crud.AddCommand;
 import seedu.unienable.command.Command;
+import seedu.unienable.command.activity.crud.AddCommand;
 import seedu.unienable.command.activity.crud.DeleteCommand;
 import seedu.unienable.command.activity.crud.EditCommand;
+import seedu.unienable.command.activity.crud.ViewCommand;
 import seedu.unienable.command.activity.general.FindCommand;
 import seedu.unienable.command.activity.general.ListCommand;
 import seedu.unienable.command.activity.general.MarkCommand;
@@ -22,37 +17,36 @@ import seedu.unienable.command.activity.general.NextCommand;
 import seedu.unienable.command.activity.general.OrderSetCommand;
 import seedu.unienable.command.activity.general.OrderViewCommand;
 import seedu.unienable.command.activity.general.UnmarkCommand;
-import seedu.unienable.command.activity.crud.ViewCommand;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.MissingInputException;
-import seedu.unienable.logic.ActivityFilter;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
-import seedu.unienable.model.classes.Activity;
-import seedu.unienable.model.classes.EnergyRating;
-import seedu.unienable.model.classes.FixedActivity;
-import seedu.unienable.model.classes.FlexibleActivity;
-import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ActivityOrder;
-import seedu.unienable.model.enums.CompletionStatus;
-import seedu.unienable.model.enums.ScheduleType;
-import seedu.unienable.parser.common.DateTimeParser;
 import seedu.unienable.parser.common.FieldParser;
-import seedu.unienable.parser.common.RatingParser;
 
-/** Parses activity-related commands (add, list, find, edit, delete, mark, unmark, next) into Command objects. */
+/**
+ * Routes activity-related commands (add, list, find, edit, delete, mark, unmark, next, order) to
+ * the command-specific parser that owns each one's grammar, and directly handles the commands
+ * whose "grammar" is just a bare activity ID or no arguments at all. Also holds the small value
+ * parsers and checks genuinely shared by more than one of those command-specific parsers, so
+ * those rules can't silently drift apart between commands.
+ */
 public class ActivityCommandParser {
-    private static final String[] EDIT_MARKERS = {
+    /** Every field marker an activity can have; used to reject unrecognised text in add/edit. */
+    static final String[] ALL_ACTIVITY_MARKERS = {
         "n/", "c/", "date/", "type/", "from/", "to/", "earliest/", "latest/", "dur/",
         "energy/", "sensory/", "topic/", "note/"
     };
-    private static final String[] LIST_MARKERS = { "view/", "status/", "c/", "topic/", "date/", "order/" };
-    private static final String[] FIND_MARKERS = { "k/", "c/", "topic/", "date/", "order/" };
+
+    private final AddCommandParser addCommandParser = new AddCommandParser();
+    private final EditCommandParser editCommandParser = new EditCommandParser();
+    private final ListCommandParser listCommandParser = new ListCommandParser();
+    private final FindCommandParser findCommandParser = new FindCommandParser();
 
     /**
      * Parses an add command's argument text into an AddCommand. Fields must appear in the order
@@ -76,81 +70,7 @@ public class ActivityCommandParser {
             String args)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
-        FieldParser.rejectUnrecognisedLeadingText(args, EDIT_MARKERS);
-        String description = requireField(args, "n/", "c/", "description", "category");
-        FieldParser.validateNoDelimiter(description, "description");
-        ActivityCategory category = FieldParser.parseCategory(requireField(args, "c/", "date/", "category", "date"));
-        LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date", "type"),
-                now.toLocalDate());
-        String typeEndMarker = firstPresentMarker(args, "type/", "from/", "earliest/");
-        String type = FieldParser.requireField(args, "type/", typeEndMarker, "type");
-
-        int id = activityManager.getNextId();
-        if ("FIXED".equalsIgnoreCase(type)) {
-            return new AddCommand(activityManager,
-                    parseFixed(args, id, description, category, date, now, topicManager));
-        }
-        if ("FLEXIBLE".equalsIgnoreCase(type)) {
-            return new AddCommand(activityManager,
-                    parseFlexible(args, id, description, category, date, now, topicManager));
-        }
-        throw new InvalidCommandException("type must be FIXED or FLEXIBLE.");
-    }
-
-    private FixedActivity parseFixed(String args, int id, String description, ActivityCategory category,
-            LocalDate date, LocalDateTime now, TopicManager topicManager)
-            throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
-        LocalTime start = DateTimeParser.parseNotBeforeNow(
-                requireField(args, "from/", "to/", "from", "to"), date, now);
-        LocalTime end = DateTimeParser.parseTime(requireField(args, "to/", "energy/", "to", "energy"));
-        if (!end.isAfter(start)) {
-            throw new InvalidActivityException("end time must be later than start time.");
-        }
-        CommonTail tail = parseCommonTail(args, "energy/");
-        validateTopicExists(topicManager, category, tail.topic);
-        return new FixedActivity(id, description, category, date, start, end, tail.energy, tail.sensory,
-                tail.topic, tail.note);
-    }
-
-    private FlexibleActivity parseFlexible(String args, int id, String description, ActivityCategory category,
-            LocalDate date, LocalDateTime now, TopicManager topicManager)
-            throws MissingInputException, InvalidActivityException, InvalidDateTimeException, InvalidIndexException {
-        LocalTime earliestStart = DateTimeParser.parseNotBeforeNow(
-                requireField(args, "earliest/", "latest/", "earliest", "latest"), date, now);
-        LocalTime latestEnd = DateTimeParser.parseTime(requireField(args, "latest/", "dur/", "latest", "dur"));
-        if (!latestEnd.isAfter(earliestStart)) {
-            throw new InvalidActivityException("latest end time must be after earliest start time.");
-        }
-        int durationMinutes = parsePositiveInt(requireField(args, "dur/", "energy/", "dur", "energy"), "dur");
-        validateDurationFitsWindow(earliestStart, latestEnd, durationMinutes);
-        CommonTail tail = parseCommonTail(args, "energy/");
-        validateTopicExists(topicManager, category, tail.topic);
-        return new FlexibleActivity(id, description, category, date, earliestStart, latestEnd, durationMinutes,
-                tail.energy, tail.sensory, tail.topic, tail.note);
-    }
-
-    private CommonTail parseCommonTail(String args, String energyMarker)
-            throws MissingInputException, InvalidActivityException {
-        EnergyRating energy = RatingParser.parseEnergyRating(
-                requireField(args, energyMarker, "sensory/", "energy", "sensory"));
-
-        String sensoryEndMarker = firstPresentMarker(args, "sensory/", "topic/", "note/");
-        SensoryRating sensory = RatingParser.parseSensoryRating(
-                FieldParser.requireField(args, "sensory/", sensoryEndMarker, "sensory"));
-
-        String topic = null;
-        if (FieldParser.indexOfMarker(args, "topic/", 0) != -1) {
-            String topicEndMarker = firstPresentMarker(args, "topic/", "note/");
-            topic = blankToNull(FieldParser.extractField(args, "topic/", topicEndMarker));
-        }
-        String note = blankToNull(FieldParser.extractField(args, "note/", null));
-        if (topic != null) {
-            FieldParser.validateNoDelimiter(topic, "topic");
-        }
-        if (note != null) {
-            FieldParser.validateNoDelimiter(note, "note");
-        }
-        return new CommonTail(energy, sensory, topic, note);
+        return addCommandParser.parse(activityManager, topicManager, now, args);
     }
 
     /**
@@ -229,182 +149,7 @@ public class ActivityCommandParser {
      */
     public ListCommand parseList(ActivityManager activityManager, LocalDateTime now, String args)
             throws InvalidActivityException, InvalidCommandException, InvalidDateTimeException {
-        RelativeDateAndRemainder parsed = extractRelativeDate(now, args);
-        Map<String, String> fields = FieldParser.extractPresentFields(parsed.remainder, LIST_MARKERS);
-        if (parsed.hasRelativeDate() && fields.containsKey("date/")) {
-            throw new InvalidCommandException(
-                    "date/ cannot be combined with today, tomorrow, this week, or next week.");
-        }
-        if (parsed.overdue && fields.containsKey("status/")) {
-            throw new InvalidCommandException("status/ cannot be combined with overdue - overdue already "
-                    + "means incomplete.");
-        }
-
-        boolean detail = parseViewMode(fields.get("view/"));
-        CompletionStatus status = parsed.overdue ? null : parseStatus(fields.get("status/"));
-        ActivityCategory category = fields.containsKey("c/") ? FieldParser.parseCategory(fields.get("c/")) : null;
-        String topic = blankToNull(fields.get("topic/"));
-        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : parsed.date;
-        ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
-
-        ActivityFilter filter = new ActivityFilter(status, category, topic, date, parsed.dateFrom, parsed.dateTo);
-        LocalDateTime overdueAsOf = parsed.overdue ? now : null;
-        return new ListCommand(activityManager, filter, order, detail, overdueAsOf);
-    }
-
-    /**
-     * Consumes an optional leading relative-date phrase ("today", "tomorrow", "this week", "next
-     * week", or "overdue") from a list command's argument text, resolving it against now. Text
-     * that already starts with a recognised list marker is left untouched (no relative-date
-     * phrase is possible there), preserving every existing marker-only usage exactly as before.
-     *
-     * @param now the current date and time
-     * @param args the full text after the "list" command word
-     * @return the resolved relative date (if any) plus the remaining text to parse as markers
-     * @throws InvalidCommandException if the leading text is not blank, does not start with a
-     *     known marker, and is not a recognised relative-date phrase; or if a relative-date
-     *     phrase is followed by unrecognised text
-     */
-    private RelativeDateAndRemainder extractRelativeDate(LocalDateTime now, String args)
-            throws InvalidCommandException {
-        String trimmed = args.trim();
-        if (trimmed.isEmpty() || startsWithKnownMarker(trimmed)) {
-            return new RelativeDateAndRemainder(null, null, null, false, trimmed);
-        }
-
-        String[] words = trimmed.split("\\s+", 3);
-        LocalDate today = now.toLocalDate();
-        RelativeDateAndRemainder result;
-        if ("today".equalsIgnoreCase(words[0])) {
-            result = new RelativeDateAndRemainder(today, null, null, false, remainderAfter(trimmed, words, 1));
-        } else if ("tomorrow".equalsIgnoreCase(words[0])) {
-            result = new RelativeDateAndRemainder(today.plusDays(1), null, null, false,
-                    remainderAfter(trimmed, words, 1));
-        } else if ("overdue".equalsIgnoreCase(words[0])) {
-            result = new RelativeDateAndRemainder(null, null, null, true, remainderAfter(trimmed, words, 1));
-        } else if ("this".equalsIgnoreCase(words[0])) {
-            if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
-                throw new InvalidCommandException(
-                        "Unknown list option \"this" + (words.length > 1 ? " " + words[1] : "")
-                                + "\"; only \"this week\" is supported.");
-            }
-            LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            LocalDate sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-            result = new RelativeDateAndRemainder(null, monday, sunday, false, remainderAfter(trimmed, words, 2));
-        } else if ("next".equalsIgnoreCase(words[0])) {
-            if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
-                throw new InvalidCommandException(
-                        "Unknown list option \"next" + (words.length > 1 ? " " + words[1] : "")
-                                + "\"; only \"next week\" is supported.");
-            }
-            LocalDate nextMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusDays(7);
-            LocalDate nextSunday = nextMonday.plusDays(6);
-            result = new RelativeDateAndRemainder(null, nextMonday, nextSunday, false,
-                    remainderAfter(trimmed, words, 2));
-        } else {
-            throw new InvalidCommandException("Unknown list option \"" + words[0] + "\".");
-        }
-
-        if (!result.remainder.isEmpty() && !startsWithKnownMarker(result.remainder)) {
-            String nextWord = result.remainder.split("\\s+", 2)[0];
-            if (isRelativeDateWord(nextWord)) {
-                throw new InvalidCommandException("today, tomorrow, this week, next week, and overdue "
-                        + "cannot be combined with each other.");
-            }
-            throw new InvalidCommandException("Unknown list option \"" + nextWord + "\".");
-        }
-        return result;
-    }
-
-    /** Returns whether word is the leading word of one of list's own relative-date phrases. */
-    private boolean isRelativeDateWord(String word) {
-        return "today".equalsIgnoreCase(word) || "tomorrow".equalsIgnoreCase(word)
-                || "this".equalsIgnoreCase(word) || "next".equalsIgnoreCase(word)
-                || "overdue".equalsIgnoreCase(word);
-    }
-
-    private boolean startsWithKnownMarker(String text) {
-        for (String marker : LIST_MARKERS) {
-            if (FieldParser.indexOfMarker(text, marker, 0) == 0) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String remainderAfter(String trimmed, String[] words, int wordCount) {
-        int consumed = 0;
-        for (int i = 0; i < wordCount; i++) {
-            consumed = trimmed.indexOf(words[i], consumed) + words[i].length();
-        }
-        return trimmed.substring(consumed).trim();
-    }
-
-    /**
-     * Carries a resolved relative date (exact or range), or the "overdue" flag, plus the marker
-     * text left to parse. date/dateFrom/dateTo and overdue are mutually exclusive - "overdue"
-     * doesn't resolve to any date, since it's a completion+time condition, not a date filter.
-     */
-    private static final class RelativeDateAndRemainder {
-        private final LocalDate date;
-        private final LocalDate dateFrom;
-        private final LocalDate dateTo;
-        private final boolean overdue;
-        private final String remainder;
-
-        private RelativeDateAndRemainder(LocalDate date, LocalDate dateFrom, LocalDate dateTo, boolean overdue,
-                String remainder) {
-            this.date = date;
-            this.dateFrom = dateFrom;
-            this.dateTo = dateTo;
-            this.overdue = overdue;
-            this.remainder = remainder;
-        }
-
-        private boolean hasRelativeDate() {
-            return date != null || dateFrom != null;
-        }
-    }
-
-    /**
-     * Parses list's optional view/ marker into a detail/concise flag. Unlike status/ (which
-     * accepts null to mean "all"), a present-but-unrecognised view/ value is rejected rather than
-     * silently falling back to concise, so a typo like "view/nonsense" is not mistaken for a
-     * request that simply happens to match the concise default.
-     *
-     * @param text the raw view/ value, or null if not supplied
-     * @return true for "detail", false if not supplied or "concise"
-     * @throws InvalidCommandException if text is supplied and is neither "concise" nor "detail"
-     */
-    private boolean parseViewMode(String text) throws InvalidCommandException {
-        if (text == null || "concise".equalsIgnoreCase(text)) {
-            return false;
-        }
-        if ("detail".equalsIgnoreCase(text)) {
-            return true;
-        }
-        throw new InvalidCommandException("view must be concise or detail.");
-    }
-
-    private CompletionStatus parseStatus(String text) throws InvalidCommandException {
-        if (text == null || "all".equalsIgnoreCase(text)) {
-            return null;
-        }
-        if ("completed".equalsIgnoreCase(text)) {
-            return CompletionStatus.COMPLETE;
-        }
-        if ("incomplete".equalsIgnoreCase(text)) {
-            return CompletionStatus.INCOMPLETE;
-        }
-        throw new InvalidCommandException("status must be all, completed, or incomplete.");
-    }
-
-    private ActivityOrder parseActivityOrder(String text) throws InvalidCommandException {
-        try {
-            return ActivityOrder.valueOf(text.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new InvalidCommandException("order must be input, time, or chronological.");
-        }
+        return listCommandParser.parse(activityManager, now, args);
     }
 
     /**
@@ -422,45 +167,7 @@ public class ActivityCommandParser {
     public FindCommand parseFind(ActivityManager activityManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidCommandException,
             InvalidDateTimeException {
-        FieldParser.rejectUnrecognisedLeadingText(args, FIND_MARKERS);
-        Map<String, String> fields = FieldParser.extractPresentFields(args, FIND_MARKERS);
-        if (!hasKeywordOrFilter(fields)) {
-            throw new MissingInputException("at least one keyword or filter is required.");
-        }
-
-        String rawKeywords = blankToNull(fields.get("k/"));
-        List<String> keywords = rawKeywords != null
-                ? Arrays.asList(rawKeywords.split("\\s+"))
-                : List.of();
-        if (keywords.size() > 2) {
-            throw new InvalidCommandException("keyword must contain one or two words.");
-        }
-        ActivityCategory category = fields.containsKey("c/") ? FieldParser.parseCategory(fields.get("c/")) : null;
-        String topic = blankToNull(fields.get("topic/"));
-        LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
-        ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
-
-        return new FindCommand(activityManager, keywords, new ActivityFilter(null, category, topic, date),
-                order, false);
-    }
-
-    /**
-     * Checks whether a find command's extracted fields include at least one real keyword or
-     * filter. order/ alone does not count: it is a display-ordering directive, not something to
-     * search by, so "find order/time" with nothing else must still be rejected. A whitespace-only
-     * topic/ also does not count, the same way it does not count as a stored topic anywhere else:
-     * "find topic/   " with nothing else must still be rejected rather than matching everything.
-     * A whitespace-only k/ does not count either, for the same reason: without this check, the
-     * blank keyword survives as a single empty-string token that every activity's fields trivially
-     * "contain," so "find k/   " with nothing else would silently match every activity instead of
-     * being rejected.
-     *
-     * @param fields the fields extracted from a find command's argument text
-     * @return true if at least one of a non-blank k/, c/, a non-blank topic/, or date/ is present
-     */
-    private boolean hasKeywordOrFilter(Map<String, String> fields) {
-        return blankToNull(fields.get("k/")) != null || fields.containsKey("c/")
-                || blankToNull(fields.get("topic/")) != null || fields.containsKey("date/");
+        return findCommandParser.parse(activityManager, args);
     }
 
     /**
@@ -509,127 +216,6 @@ public class ActivityCommandParser {
         throw new InvalidCommandException("order requires \"view\" or \"set ORDER\".");
     }
 
-    private int parseId(String args) throws MissingInputException, InvalidCommandException {
-        String trimmed = args.trim();
-        if (trimmed.isEmpty()) {
-            throw new MissingInputException("an activity ID is required.");
-        }
-        try {
-            return Integer.parseInt(trimmed);
-        } catch (NumberFormatException e) {
-            throw new InvalidCommandException("activity ID must be a whole number.");
-        }
-    }
-
-    /**
-     * Like {@link FieldParser#requireField(String, String, String, String)}, but for a start
-     * marker whose end marker is itself always a required field at a statically-known position in
-     * the grammar (as opposed to a marker whose end boundary can legitimately vary or be absent,
-     * e.g. an optional trailing field). Verifies endMarker is actually present before extracting
-     * startMarker's value.
-     *
-     * <p>Without this, a genuinely missing endMarker lets startMarker's extraction silently
-     * swallow the rest of the command text - {@link FieldParser#extractField} reads to the end of
-     * input whenever its end marker isn't found - producing a misleading validation failure on
-     * startMarker's now-oversized value instead of correctly reporting that endMarker itself is
-     * missing (BUG-04, v1.0 manual release test, 2026-08-01).
-     *
-     * @param args the full argument text
-     * @param startMarker the marker just before the value
-     * @param endMarker the marker required to end the value
-     * @param fieldName startMarker's field name, used if startMarker itself is missing
-     * @param endMarkerFieldName endMarker's field name, used if endMarker is missing
-     * @return the trimmed value between startMarker and endMarker
-     * @throws MissingInputException if endMarker is absent, or startMarker is absent/blank
-     */
-    private String requireField(String args, String startMarker, String endMarker, String fieldName,
-            String endMarkerFieldName) throws MissingInputException {
-        if (FieldParser.indexOfMarker(args, endMarker, 0) == -1) {
-            throw new MissingInputException(endMarkerFieldName + " is required.");
-        }
-        return FieldParser.requireField(args, startMarker, endMarker, fieldName);
-    }
-
-    private int parsePositiveInt(String text, String fieldName) throws InvalidActivityException {
-        try {
-            int value = Integer.parseInt(text);
-            if (value <= 0) {
-                throw new NumberFormatException();
-            }
-            return value;
-        } catch (NumberFormatException e) {
-            throw new InvalidActivityException(fieldName + " must be a positive whole number of minutes.");
-        }
-    }
-
-    /**
-     * Checks that a flexible activity's duration fits inside its allowed window, per the User
-     * Guide's documented rule ("the duration must fit inside the allowed window").
-     *
-     * @param earliestStart the earliest allowed start time
-     * @param latestEnd the latest allowed end time
-     * @param durationMinutes the required duration in minutes
-     * @throws InvalidActivityException if durationMinutes exceeds the window from
-     *     earliestStart to latestEnd
-     */
-    private void validateDurationFitsWindow(LocalTime earliestStart, LocalTime latestEnd, int durationMinutes)
-            throws InvalidActivityException {
-        long windowMinutes = Duration.between(earliestStart, latestEnd).toMinutes();
-        if (durationMinutes > windowMinutes) {
-            throw new InvalidActivityException("dur must fit inside the earliest/latest window ("
-                    + windowMinutes + " min available).");
-        }
-    }
-
-    /**
-     * Normalises a whitespace-only optional field value (e.g. "topic/   ") to null, so it is
-     * treated the same as the field being omitted entirely rather than stored as an empty string.
-     *
-     * @param value an already-trimmed field value, or null if the field was not present
-     * @return value, or null if value is null or empty
-     */
-    private String blankToNull(String value) {
-        return value == null || value.isEmpty() ? null : value;
-    }
-
-    /**
-     * Rejects a non-null topic that does not exist under the given category, preserving the
-     * "topics are one-level groupings inside a fixed category" invariant. Without this check, an
-     * activity's topic/ field was just an unvalidated string: an add could reference a topic that
-     * was never created, and an edit that changed category could silently strand an existing
-     * topic outside the category it is registered under.
-     *
-     * @param topicManager the manager to check the topic against
-     * @param category the activity's resulting category
-     * @param topic the activity's resulting topic, or null if it has none
-     * @throws InvalidIndexException if topic is non-null and does not exist under category
-     */
-    private void validateTopicExists(TopicManager topicManager, ActivityCategory category, String topic)
-            throws InvalidIndexException {
-        if (topic != null && !topicManager.exists(category, topic)) {
-            throw new InvalidIndexException("Topic \"" + topic + "\" does not exist under " + category
-                    + ". Create it first with \"topic add\", supply a different topic/, or clear it with topic/.");
-        }
-    }
-
-    private String firstPresentMarker(String text, String afterMarker, String... candidates) {
-        int searchFrom = FieldParser.indexOfMarker(text, afterMarker, 0);
-        if (searchFrom == -1) {
-            return null;
-        }
-        searchFrom += afterMarker.length();
-        String best = null;
-        int bestIndex = -1;
-        for (String candidate : candidates) {
-            int index = FieldParser.indexOfMarker(text, candidate, searchFrom);
-            if (index != -1 && (bestIndex == -1 || index < bestIndex)) {
-                bestIndex = index;
-                best = candidate;
-            }
-        }
-        return best;
-    }
-
     /**
      * Parses an edit command's argument text into an EditCommand. Any subset of the 13 editable
      * prefixes may be supplied, in any order; at least one is required. Changing type/ between
@@ -661,140 +247,88 @@ public class ActivityCommandParser {
             String args)
             throws MissingInputException, InvalidCommandException, InvalidIndexException, InvalidActivityException,
             InvalidDateTimeException, DuplicateActivityException {
-        String[] parts = args.trim().split("\\s+", 2);
-        int id = parseEditId(parts[0]);
-        String fieldsText = parts.length > 1 ? parts[1] : "";
-
-        FieldParser.rejectUnrecognisedLeadingText(fieldsText, EDIT_MARKERS);
-        Map<String, String> fields = FieldParser.extractPresentFields(fieldsText, EDIT_MARKERS);
-        if (fields.isEmpty()) {
-            throw new MissingInputException("at least one field must be supplied.");
-        }
-
-        Activity old = activityManager.getById(id);
-        String description = fields.getOrDefault("n/", old.getDescription());
-        ActivityCategory category = fields.containsKey("c/")
-                ? FieldParser.parseCategory(fields.get("c/")) : old.getCategory();
-        LocalDate date = fields.containsKey("date/")
-                ? DateTimeParser.parseNotBeforeDate(fields.get("date/"), now.toLocalDate()) : old.getDate();
-        EnergyRating energy = fields.containsKey("energy/")
-                ? RatingParser.parseEnergyRating(fields.get("energy/")) : old.getEnergyRating();
-        SensoryRating sensory = fields.containsKey("sensory/")
-                ? RatingParser.parseSensoryRating(fields.get("sensory/")) : old.getSensoryRating();
-        String topic = fields.containsKey("topic/") ? blankToNull(fields.get("topic/")) : old.getTopic();
-        String note = fields.containsKey("note/") ? blankToNull(fields.get("note/")) : old.getNote();
-
-        FieldParser.validateNoDelimiter(description, "description");
-        if (topic != null) {
-            FieldParser.validateNoDelimiter(topic, "topic");
-        }
-        if (note != null) {
-            FieldParser.validateNoDelimiter(note, "note");
-        }
-        validateTopicExists(topicManager, category, topic);
-
-        ScheduleType oldType = old.getScheduleType();
-        ScheduleType newType = fields.containsKey("type/") ? parseScheduleType(fields.get("type/")) : oldType;
-        boolean typeChanged = newType != oldType;
-
-        Activity newActivity = newType == ScheduleType.FIXED
-                ? buildFixed(id, description, category, date, energy, sensory, topic, note, fields, old, typeChanged,
-                        now)
-                : buildFlexible(id, description, category, date, energy, sensory, topic, note, fields, old,
-                        typeChanged, now);
-        activityManager.checkNoConflicts(newActivity, id);
-
-        if (old.isComplete()) {
-            newActivity.mark();
-        }
-        return new EditCommand(activityManager, id, newActivity);
+        return editCommandParser.parse(activityManager, topicManager, now, args);
     }
 
-    private FixedActivity buildFixed(int id, String description, ActivityCategory category, LocalDate date,
-            EnergyRating energy, SensoryRating sensory, String topic, String note, Map<String, String> fields,
-            Activity old, boolean typeChanged, LocalDateTime now)
-            throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
-        LocalTime start = resolveRequiredTime(fields, "from/", typeChanged,
-                typeChanged ? null : ((FixedActivity) old).getStartTime());
-        LocalTime end = resolveRequiredTime(fields, "to/", typeChanged,
-                typeChanged ? null : ((FixedActivity) old).getEndTime());
-        if (!end.isAfter(start)) {
-            throw new InvalidActivityException("end time must be later than start time.");
-        }
-        if (fields.containsKey("date/") || fields.containsKey("from/")) {
-            DateTimeParser.requireNotPastIfToday(start, date, now);
-        }
-        return new FixedActivity(id, description, category, date, start, end, energy, sensory, topic, note);
-    }
-
-    private FlexibleActivity buildFlexible(int id, String description, ActivityCategory category, LocalDate date,
-            EnergyRating energy, SensoryRating sensory, String topic, String note, Map<String, String> fields,
-            Activity old, boolean typeChanged, LocalDateTime now)
-            throws MissingInputException, InvalidActivityException, InvalidDateTimeException {
-        LocalTime earliestStart = resolveRequiredTime(fields, "earliest/", typeChanged,
-                typeChanged ? null : ((FlexibleActivity) old).getEarliestStart());
-        LocalTime latestEnd = resolveRequiredTime(fields, "latest/", typeChanged,
-                typeChanged ? null : ((FlexibleActivity) old).getLatestEnd());
-        if (!latestEnd.isAfter(earliestStart)) {
-            throw new InvalidActivityException("latest end time must be after earliest start time.");
-        }
-        if (fields.containsKey("date/") || fields.containsKey("earliest/")) {
-            DateTimeParser.requireNotPastIfToday(earliestStart, date, now);
-        }
-        int durationMinutes;
-        if (fields.containsKey("dur/")) {
-            durationMinutes = parsePositiveInt(fields.get("dur/"), "dur");
-        } else if (typeChanged) {
-            throw new MissingInputException("dur/ is required when changing type to FLEXIBLE.");
-        } else {
-            durationMinutes = ((FlexibleActivity) old).getDurationMinutes();
-        }
-        validateDurationFitsWindow(earliestStart, latestEnd, durationMinutes);
-        return new FlexibleActivity(id, description, category, date, earliestStart, latestEnd, durationMinutes,
-                energy, sensory, topic, note);
-    }
-
-    private LocalTime resolveRequiredTime(Map<String, String> fields, String marker, boolean typeChanged,
-            LocalTime fallbackIfSameType) throws MissingInputException, InvalidDateTimeException {
-        if (fields.containsKey(marker)) {
-            return DateTimeParser.parseTime(fields.get(marker));
-        }
-        if (typeChanged) {
-            throw new MissingInputException(marker + " is required when changing type.");
-        }
-        return fallbackIfSameType;
-    }
-
-    private int parseEditId(String text) throws MissingInputException, InvalidCommandException {
-        if (text.isEmpty()) {
+    private int parseId(String args) throws MissingInputException, InvalidCommandException {
+        String trimmed = args.trim();
+        if (trimmed.isEmpty()) {
             throw new MissingInputException("an activity ID is required.");
         }
         try {
-            return Integer.parseInt(text);
+            return Integer.parseInt(trimmed);
         } catch (NumberFormatException e) {
             throw new InvalidCommandException("activity ID must be a whole number.");
         }
     }
 
-    private ScheduleType parseScheduleType(String text) throws InvalidCommandException {
+    static int parsePositiveInt(String text, String fieldName) throws InvalidActivityException {
         try {
-            return ScheduleType.valueOf(text.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new InvalidCommandException("type must be FIXED or FLEXIBLE.");
+            int value = Integer.parseInt(text);
+            if (value <= 0) {
+                throw new NumberFormatException();
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            throw new InvalidActivityException(fieldName + " must be a positive whole number of minutes.");
         }
     }
 
-    private static final class CommonTail {
-        private final EnergyRating energy;
-        private final SensoryRating sensory;
-        private final String topic;
-        private final String note;
+    /**
+     * Checks that a flexible activity's duration fits inside its allowed window, per the User
+     * Guide's documented rule ("the duration must fit inside the allowed window").
+     *
+     * @param earliestStart the earliest allowed start time
+     * @param latestEnd the latest allowed end time
+     * @param durationMinutes the required duration in minutes
+     * @throws InvalidActivityException if durationMinutes exceeds the window from
+     *     earliestStart to latestEnd
+     */
+    static void validateDurationFitsWindow(LocalTime earliestStart, LocalTime latestEnd, int durationMinutes)
+            throws InvalidActivityException {
+        long windowMinutes = Duration.between(earliestStart, latestEnd).toMinutes();
+        if (durationMinutes > windowMinutes) {
+            throw new InvalidActivityException("dur must fit inside the earliest/latest window ("
+                    + windowMinutes + " min available).");
+        }
+    }
 
-        private CommonTail(EnergyRating energy, SensoryRating sensory, String topic, String note) {
-            this.energy = energy;
-            this.sensory = sensory;
-            this.topic = topic;
-            this.note = note;
+    /**
+     * Normalises a whitespace-only optional field value (e.g. "topic/   ") to null, so it is
+     * treated the same as the field being omitted entirely rather than stored as an empty string.
+     *
+     * @param value an already-trimmed field value, or null if the field was not present
+     * @return value, or null if value is null or empty
+     */
+    static String blankToNull(String value) {
+        return value == null || value.isEmpty() ? null : value;
+    }
+
+    /**
+     * Rejects a non-null topic that does not exist under the given category, preserving the
+     * "topics are one-level groupings inside a fixed category" invariant. Without this check, an
+     * activity's topic/ field was just an unvalidated string: an add could reference a topic that
+     * was never created, and an edit that changed category could silently strand an existing
+     * topic outside the category it is registered under.
+     *
+     * @param topicManager the manager to check the topic against
+     * @param category the activity's resulting category
+     * @param topic the activity's resulting topic, or null if it has none
+     * @throws InvalidIndexException if topic is non-null and does not exist under category
+     */
+    static void validateTopicExists(TopicManager topicManager, ActivityCategory category, String topic)
+            throws InvalidIndexException {
+        if (topic != null && !topicManager.exists(category, topic)) {
+            throw new InvalidIndexException("Topic \"" + topic + "\" does not exist under " + category
+                    + ". Create it first with \"topic add\", supply a different topic/, or clear it with topic/.");
+        }
+    }
+
+    static ActivityOrder parseActivityOrder(String text) throws InvalidCommandException {
+        try {
+            return ActivityOrder.valueOf(text.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new InvalidCommandException("order must be input, time, or chronological.");
         }
     }
 }

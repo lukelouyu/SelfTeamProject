@@ -1,10 +1,28 @@
 package seedu.unienable.parser.common;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+import seedu.unienable.accessibility.enums.AccessibilityStatus;
+import seedu.unienable.exception.InvalidActivityException;
+import seedu.unienable.exception.InvalidCommandException;
+import seedu.unienable.exception.MissingInputException;
+import seedu.unienable.model.enums.ActivityCategory;
+
 /**
  * Utility methods for extracting field values between known markers in a command's argument
  * text. Marker matching is case-insensitive (e.g. "N/" matches the "n/" marker), matching the
  * User Guide's documented rule that field prefixes are case-insensitive; the extracted value
  * itself is returned with its original case intact.
+ *
+ * <p>Also home to a handful of small value parsers and argument-shape checks whose rules are
+ * genuinely shared by more than one command-specific parser (category/status enum parsing,
+ * the storage-delimiter check, the "no arguments" and "no unrecognised leading text" guards),
+ * so those rules can't silently drift apart between commands.
  */
 public class FieldParser {
     /**
@@ -80,6 +98,131 @@ public class FieldParser {
         }
         String leading = firstMarkerIndex == -1 ? text : text.substring(0, firstMarkerIndex);
         return leading.trim();
+    }
+
+    /**
+     * Extracts the value between startMarker and endMarker, requiring it to be present.
+     *
+     * @param args the full argument text
+     * @param startMarker the marker just before the value
+     * @param endMarker the marker just after the value, or null to read until the end of input
+     * @param fieldName the field name to use in the error message if the value is missing
+     * @return the trimmed, non-empty value
+     * @throws MissingInputException if startMarker is absent or its value is blank
+     */
+    public static String requireField(String args, String startMarker, String endMarker, String fieldName)
+            throws MissingInputException {
+        String value = extractField(args, startMarker, endMarker);
+        if (value == null || value.isEmpty()) {
+            throw new MissingInputException(fieldName + " is required.");
+        }
+        return value;
+    }
+
+    /**
+     * Rejects any non-blank text for a command documented as taking no arguments at all, so a
+     * typo'd trailing word (e.g. "next tomorrow") does not silently execute as if it were never
+     * typed.
+     *
+     * @param commandName the command name to use in the error message
+     * @param args the text after the command word
+     * @throws InvalidCommandException if args is not blank
+     */
+    public static void requireNoArguments(String commandName, String args) throws InvalidCommandException {
+        if (!args.trim().isEmpty()) {
+            throw new InvalidCommandException("\"" + commandName + "\" does not take any arguments.");
+        }
+    }
+
+    /**
+     * Rejects text that appears before the first marker this command recognises (or, if none of
+     * the given markers appear at all, any non-blank text at all) - see
+     * {@link #leadingUnrecognisedText}.
+     *
+     * @param args the full argument text
+     * @param markers every marker this command recognises
+     * @throws InvalidCommandException if unrecognised leading text is present
+     */
+    public static void rejectUnrecognisedLeadingText(String args, String... markers)
+            throws InvalidCommandException {
+        String leading = leadingUnrecognisedText(args, markers);
+        if (!leading.isEmpty()) {
+            throw new InvalidCommandException("Unknown option \"" + leading + "\".");
+        }
+    }
+
+    /**
+     * Extracts every marker (from the given candidates) that is actually present in the text,
+     * into a map of marker to its value, using each field's neighbouring present marker (by
+     * position) as its end boundary. Supports an arbitrary subset of markers in any order.
+     *
+     * @param text the text to extract fields from
+     * @param markers every marker that could appear, e.g. "n/", "c/", "date/"
+     * @return a map from each present marker to its trimmed value, in the order the markers
+     *     appear in the text
+     */
+    public static Map<String, String> extractPresentFields(String text, String... markers) {
+        List<String> present = new ArrayList<>();
+        for (String marker : markers) {
+            if (indexOfMarker(text, marker, 0) != -1) {
+                present.add(marker);
+            }
+        }
+        present.sort(Comparator.comparingInt(marker -> indexOfMarker(text, marker, 0)));
+
+        Map<String, String> result = new LinkedHashMap<>();
+        for (int i = 0; i < present.size(); i++) {
+            String marker = present.get(i);
+            String endMarker = i + 1 < present.size() ? present.get(i + 1) : null;
+            result.put(marker, extractField(text, marker, endMarker));
+        }
+        return result;
+    }
+
+    /**
+     * Parses text as an {@link ActivityCategory}, case-insensitively.
+     *
+     * @param text the raw category text
+     * @return the matching category
+     * @throws InvalidActivityException if text does not match any category
+     */
+    public static ActivityCategory parseCategory(String text) throws InvalidActivityException {
+        try {
+            return ActivityCategory.valueOf(text.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new InvalidActivityException("category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.");
+        }
+    }
+
+    /**
+     * Rejects a value that contains the storage delimiter '|', which activity/topic storage
+     * files cannot escape. Catching this here, before the record is built, avoids the
+     * alternative: the record is accepted and reported as saved, then permanently fails to
+     * persist because Storage.save() rejects the same value on every later save.
+     *
+     * @param value the already-extracted field value
+     * @param fieldName the field name to use in the error message
+     * @throws InvalidActivityException if value contains '|'
+     */
+    public static void validateNoDelimiter(String value, String fieldName) throws InvalidActivityException {
+        if (value.contains("|")) {
+            throw new InvalidActivityException(fieldName + " must not contain the '|' character.");
+        }
+    }
+
+    /**
+     * Parses text as an {@link AccessibilityStatus}, case-insensitively.
+     *
+     * @param text the raw status text
+     * @return the matching status
+     * @throws InvalidCommandException if text does not match any status
+     */
+    public static AccessibilityStatus parseAccessibilityStatus(String text) throws InvalidCommandException {
+        try {
+            return AccessibilityStatus.valueOf(text.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new InvalidCommandException("status must be YES, NO, or UNKNOWN.");
+        }
     }
 
     /**

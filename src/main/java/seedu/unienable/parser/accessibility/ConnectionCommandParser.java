@@ -1,9 +1,5 @@
 package seedu.unienable.parser.accessibility;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -34,9 +30,7 @@ public class ConnectionCommandParser {
      */
     public ConnectionListCommand parseList(ConnectionManager connectionManager, String args)
             throws InvalidCommandException {
-        if (!args.trim().isEmpty()) {
-            throw new InvalidCommandException("\"connection list\" does not take any arguments.");
-        }
+        FieldParser.requireNoArguments("connection list", args);
         return new ConnectionListCommand(connectionManager);
     }
 
@@ -74,8 +68,8 @@ public class ConnectionCommandParser {
      */
     public ConnectionFindCommand parseFind(ConnectionManager connectionManager, String args)
             throws MissingInputException, InvalidCommandException {
-        rejectUnrecognisedLeadingText(args, FIND_MARKERS);
-        Map<String, String> fields = extractPresentFields(args, FIND_MARKERS);
+        FieldParser.rejectUnrecognisedLeadingText(args, FIND_MARKERS);
+        Map<String, String> fields = FieldParser.extractPresentFields(args, FIND_MARKERS);
         String from = blankToNull(fields.get("from/"));
         String to = blankToNull(fields.get("to/"));
         if (from == null && to == null && !fields.containsKey("type/") && !fields.containsKey("status/")
@@ -86,7 +80,8 @@ public class ConnectionCommandParser {
             throw new MissingInputException("at least one filter is required.");
         }
         TraversalType type = fields.containsKey("type/") ? parseType(fields.get("type/")) : null;
-        AccessibilityStatus status = fields.containsKey("status/") ? parseStatus(fields.get("status/")) : null;
+        AccessibilityStatus status = fields.containsKey("status/")
+                ? FieldParser.parseAccessibilityStatus(fields.get("status/")) : null;
         ShelterStatus shelter = fields.containsKey("shelter/") ? parseShelter(fields.get("shelter/")) : null;
         return new ConnectionFindCommand(connectionManager, from, to, type, status, shelter);
     }
@@ -101,9 +96,7 @@ public class ConnectionCommandParser {
      * @throws InvalidCommandException if args is not empty
      */
     public ConnectionValidateCommand parseValidate(Storage storage, String args) throws InvalidCommandException {
-        if (!args.trim().isEmpty()) {
-            throw new InvalidCommandException("\"connection validate\" does not take any arguments.");
-        }
+        FieldParser.requireNoArguments("connection validate", args);
         return new ConnectionValidateCommand(storage);
     }
 
@@ -112,14 +105,6 @@ public class ConnectionCommandParser {
             return TraversalType.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidCommandException("type must be one of RAMP, SHELTERED_RAMP, LIFT, PATH, OTHER.");
-        }
-    }
-
-    private AccessibilityStatus parseStatus(String text) throws InvalidCommandException {
-        try {
-            return AccessibilityStatus.valueOf(text.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new InvalidCommandException("status must be YES, NO, or UNKNOWN.");
         }
     }
 
@@ -141,39 +126,5 @@ public class ConnectionCommandParser {
      */
     private String blankToNull(String value) {
         return value == null || value.isEmpty() ? null : value;
-    }
-
-    /**
-     * Rejects text that appears before the first marker this command recognises (or, if none of
-     * the given markers appear at all, any non-blank text at all) - see
-     * {@link FieldParser#leadingUnrecognisedText}.
-     *
-     * @param args the full argument text
-     * @param markers every marker this command recognises
-     * @throws InvalidCommandException if unrecognised leading text is present
-     */
-    private void rejectUnrecognisedLeadingText(String args, String... markers) throws InvalidCommandException {
-        String leading = FieldParser.leadingUnrecognisedText(args, markers);
-        if (!leading.isEmpty()) {
-            throw new InvalidCommandException("Unknown option \"" + leading + "\".");
-        }
-    }
-
-    private Map<String, String> extractPresentFields(String text, String... markers) {
-        List<String> present = new ArrayList<>();
-        for (String marker : markers) {
-            if (FieldParser.indexOfMarker(text, marker, 0) != -1) {
-                present.add(marker);
-            }
-        }
-        present.sort(Comparator.comparingInt(marker -> FieldParser.indexOfMarker(text, marker, 0)));
-
-        Map<String, String> result = new LinkedHashMap<>();
-        for (int i = 0; i < present.size(); i++) {
-            String marker = present.get(i);
-            String endMarker = i + 1 < present.size() ? present.get(i + 1) : null;
-            result.put(marker, FieldParser.extractField(text, marker, endMarker));
-        }
-        return result;
     }
 }

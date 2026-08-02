@@ -6,10 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -79,14 +76,14 @@ public class ActivityCommandParser {
             String args)
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
-        rejectUnrecognisedLeadingText(args, EDIT_MARKERS);
+        FieldParser.rejectUnrecognisedLeadingText(args, EDIT_MARKERS);
         String description = requireField(args, "n/", "c/", "description", "category");
-        validateNoDelimiter(description, "description");
-        ActivityCategory category = parseCategory(requireField(args, "c/", "date/", "category", "date"));
+        FieldParser.validateNoDelimiter(description, "description");
+        ActivityCategory category = FieldParser.parseCategory(requireField(args, "c/", "date/", "category", "date"));
         LocalDate date = DateTimeParser.parseNotBeforeDate(requireField(args, "date/", "type/", "date", "type"),
                 now.toLocalDate());
         String typeEndMarker = firstPresentMarker(args, "type/", "from/", "earliest/");
-        String type = requireField(args, "type/", typeEndMarker, "type");
+        String type = FieldParser.requireField(args, "type/", typeEndMarker, "type");
 
         int id = activityManager.getNextId();
         if ("FIXED".equalsIgnoreCase(type)) {
@@ -139,7 +136,7 @@ public class ActivityCommandParser {
 
         String sensoryEndMarker = firstPresentMarker(args, "sensory/", "topic/", "note/");
         SensoryRating sensory = RatingParser.parseSensoryRating(
-                requireField(args, "sensory/", sensoryEndMarker, "sensory"));
+                FieldParser.requireField(args, "sensory/", sensoryEndMarker, "sensory"));
 
         String topic = null;
         if (FieldParser.indexOfMarker(args, "topic/", 0) != -1) {
@@ -148,10 +145,10 @@ public class ActivityCommandParser {
         }
         String note = blankToNull(FieldParser.extractField(args, "note/", null));
         if (topic != null) {
-            validateNoDelimiter(topic, "topic");
+            FieldParser.validateNoDelimiter(topic, "topic");
         }
         if (note != null) {
-            validateNoDelimiter(note, "note");
+            FieldParser.validateNoDelimiter(note, "note");
         }
         return new CommonTail(energy, sensory, topic, note);
     }
@@ -233,7 +230,7 @@ public class ActivityCommandParser {
     public ListCommand parseList(ActivityManager activityManager, LocalDateTime now, String args)
             throws InvalidActivityException, InvalidCommandException, InvalidDateTimeException {
         RelativeDateAndRemainder parsed = extractRelativeDate(now, args);
-        Map<String, String> fields = extractPresentFields(parsed.remainder, LIST_MARKERS);
+        Map<String, String> fields = FieldParser.extractPresentFields(parsed.remainder, LIST_MARKERS);
         if (parsed.hasRelativeDate() && fields.containsKey("date/")) {
             throw new InvalidCommandException(
                     "date/ cannot be combined with today, tomorrow, this week, or next week.");
@@ -245,7 +242,7 @@ public class ActivityCommandParser {
 
         boolean detail = parseViewMode(fields.get("view/"));
         CompletionStatus status = parsed.overdue ? null : parseStatus(fields.get("status/"));
-        ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
+        ActivityCategory category = fields.containsKey("c/") ? FieldParser.parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
         LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : parsed.date;
         ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
@@ -425,8 +422,8 @@ public class ActivityCommandParser {
     public FindCommand parseFind(ActivityManager activityManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidCommandException,
             InvalidDateTimeException {
-        rejectUnrecognisedLeadingText(args, FIND_MARKERS);
-        Map<String, String> fields = extractPresentFields(args, FIND_MARKERS);
+        FieldParser.rejectUnrecognisedLeadingText(args, FIND_MARKERS);
+        Map<String, String> fields = FieldParser.extractPresentFields(args, FIND_MARKERS);
         if (!hasKeywordOrFilter(fields)) {
             throw new MissingInputException("at least one keyword or filter is required.");
         }
@@ -438,7 +435,7 @@ public class ActivityCommandParser {
         if (keywords.size() > 2) {
             throw new InvalidCommandException("keyword must contain one or two words.");
         }
-        ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : null;
+        ActivityCategory category = fields.containsKey("c/") ? FieldParser.parseCategory(fields.get("c/")) : null;
         String topic = blankToNull(fields.get("topic/"));
         LocalDate date = fields.containsKey("date/") ? DateTimeParser.parseDate(fields.get("date/")) : null;
         ActivityOrder order = fields.containsKey("order/") ? parseActivityOrder(fields.get("order/")) : null;
@@ -477,7 +474,7 @@ public class ActivityCommandParser {
      */
     public NextCommand parseNext(ActivityManager activityManager, LocalDateTime now, String args)
             throws InvalidCommandException {
-        requireNoArguments("next", args);
+        FieldParser.requireNoArguments("next", args);
         return new NextCommand(activityManager, now);
     }
 
@@ -500,7 +497,7 @@ public class ActivityCommandParser {
         String[] parts = trimmed.split("\\s+", 2);
         String subCommand = parts[0];
         if ("view".equalsIgnoreCase(subCommand)) {
-            requireNoArguments("order view", parts.length > 1 ? parts[1] : "");
+            FieldParser.requireNoArguments("order view", parts.length > 1 ? parts[1] : "");
             return new OrderViewCommand(activityManager);
         }
         if ("set".equalsIgnoreCase(subCommand)) {
@@ -524,19 +521,10 @@ public class ActivityCommandParser {
         }
     }
 
-    private String requireField(String args, String startMarker, String endMarker, String fieldName)
-            throws MissingInputException {
-        String value = FieldParser.extractField(args, startMarker, endMarker);
-        if (value == null || value.isEmpty()) {
-            throw new MissingInputException(fieldName + " is required.");
-        }
-        return value;
-    }
-
     /**
-     * Like {@link #requireField(String, String, String, String)}, but for a start marker whose
-     * end marker is itself always a required field at a statically-known position in the
-     * grammar (as opposed to a marker whose end boundary can legitimately vary or be absent,
+     * Like {@link FieldParser#requireField(String, String, String, String)}, but for a start
+     * marker whose end marker is itself always a required field at a statically-known position in
+     * the grammar (as opposed to a marker whose end boundary can legitimately vary or be absent,
      * e.g. an optional trailing field). Verifies endMarker is actually present before extracting
      * startMarker's value.
      *
@@ -559,15 +547,7 @@ public class ActivityCommandParser {
         if (FieldParser.indexOfMarker(args, endMarker, 0) == -1) {
             throw new MissingInputException(endMarkerFieldName + " is required.");
         }
-        return requireField(args, startMarker, endMarker, fieldName);
-    }
-
-    private ActivityCategory parseCategory(String text) throws InvalidActivityException {
-        try {
-            return ActivityCategory.valueOf(text.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new InvalidActivityException("category must be one of ACADEMIC, CCA, WORK_INTERNSHIP, OTHERS.");
-        }
+        return FieldParser.requireField(args, startMarker, endMarker, fieldName);
     }
 
     private int parsePositiveInt(String text, String fieldName) throws InvalidActivityException {
@@ -613,22 +593,6 @@ public class ActivityCommandParser {
     }
 
     /**
-     * Rejects a value that contains the storage delimiter '|', since activities.txt cannot
-     * escape it (see ActivityStorage). Catching this here, before the activity is built, avoids
-     * the alternative: the activity is accepted and reported as added, then permanently fails to
-     * persist because Storage.save() rejects the same value on every later save.
-     *
-     * @param value the already-extracted field value
-     * @param fieldName the field name to use in the error message
-     * @throws InvalidActivityException if value contains '|'
-     */
-    private void validateNoDelimiter(String value, String fieldName) throws InvalidActivityException {
-        if (value.contains("|")) {
-            throw new InvalidActivityException(fieldName + " must not contain the '|' character.");
-        }
-    }
-
-    /**
      * Rejects a non-null topic that does not exist under the given category, preserving the
      * "topics are one-level groupings inside a fixed category" invariant. Without this check, an
      * activity's topic/ field was just an unvalidated string: an add could reference a topic that
@@ -648,39 +612,6 @@ public class ActivityCommandParser {
         }
     }
 
-    /**
-     * Rejects any non-blank text for a command documented as taking no arguments at all, so a
-     * typo'd trailing word (e.g. "next tomorrow") does not silently execute as if it were never
-     * typed.
-     *
-     * @param commandName the command name to use in the error message
-     * @param args the text after the command word
-     * @throws InvalidCommandException if args is not blank
-     */
-    private void requireNoArguments(String commandName, String args) throws InvalidCommandException {
-        if (!args.trim().isEmpty()) {
-            throw new InvalidCommandException("\"" + commandName + "\" does not take any arguments.");
-        }
-    }
-
-    /**
-     * Rejects text that appears before the first marker this command recognises (or, if none of
-     * the given markers appear at all, any non-blank text at all). Without this check, such text
-     * is invisible to marker-based extraction and would be silently discarded rather than
-     * reported as a specific, correctable mistake - e.g. "add ignored/yes n/Lecture ..." would
-     * otherwise mutate data despite the unrecognised "ignored/" text.
-     *
-     * @param args the full argument text
-     * @param markers every marker this command recognises
-     * @throws InvalidCommandException if unrecognised leading text is present
-     */
-    private void rejectUnrecognisedLeadingText(String args, String... markers) throws InvalidCommandException {
-        String leading = FieldParser.leadingUnrecognisedText(args, markers);
-        if (!leading.isEmpty()) {
-            throw new InvalidCommandException("Unknown option \"" + leading + "\".");
-        }
-    }
-
     private String firstPresentMarker(String text, String afterMarker, String... candidates) {
         int searchFrom = FieldParser.indexOfMarker(text, afterMarker, 0);
         if (searchFrom == -1) {
@@ -697,35 +628,6 @@ public class ActivityCommandParser {
             }
         }
         return best;
-    }
-
-    /**
-     * Extracts every marker (from the given candidates) that is actually present in the text,
-     * into a map of marker to its value, using each field's neighbouring present marker (by
-     * position) as its end boundary. Unlike add's fixed field order, this supports an arbitrary
-     * subset of markers in any order, as edit's format requires.
-     *
-     * @param text the text to extract fields from
-     * @param markers every marker that could appear, e.g. "n/", "c/", "date/"
-     * @return a map from each present marker to its trimmed value, in the order the markers
-     *     appear in the text
-     */
-    Map<String, String> extractPresentFields(String text, String... markers) {
-        List<String> present = new ArrayList<>();
-        for (String marker : markers) {
-            if (FieldParser.indexOfMarker(text, marker, 0) != -1) {
-                present.add(marker);
-            }
-        }
-        present.sort(Comparator.comparingInt(marker -> FieldParser.indexOfMarker(text, marker, 0)));
-
-        Map<String, String> result = new LinkedHashMap<>();
-        for (int i = 0; i < present.size(); i++) {
-            String marker = present.get(i);
-            String endMarker = i + 1 < present.size() ? present.get(i + 1) : null;
-            result.put(marker, FieldParser.extractField(text, marker, endMarker));
-        }
-        return result;
     }
 
     /**
@@ -763,15 +665,16 @@ public class ActivityCommandParser {
         int id = parseEditId(parts[0]);
         String fieldsText = parts.length > 1 ? parts[1] : "";
 
-        rejectUnrecognisedLeadingText(fieldsText, EDIT_MARKERS);
-        Map<String, String> fields = extractPresentFields(fieldsText, EDIT_MARKERS);
+        FieldParser.rejectUnrecognisedLeadingText(fieldsText, EDIT_MARKERS);
+        Map<String, String> fields = FieldParser.extractPresentFields(fieldsText, EDIT_MARKERS);
         if (fields.isEmpty()) {
             throw new MissingInputException("at least one field must be supplied.");
         }
 
         Activity old = activityManager.getById(id);
         String description = fields.getOrDefault("n/", old.getDescription());
-        ActivityCategory category = fields.containsKey("c/") ? parseCategory(fields.get("c/")) : old.getCategory();
+        ActivityCategory category = fields.containsKey("c/")
+                ? FieldParser.parseCategory(fields.get("c/")) : old.getCategory();
         LocalDate date = fields.containsKey("date/")
                 ? DateTimeParser.parseNotBeforeDate(fields.get("date/"), now.toLocalDate()) : old.getDate();
         EnergyRating energy = fields.containsKey("energy/")
@@ -781,12 +684,12 @@ public class ActivityCommandParser {
         String topic = fields.containsKey("topic/") ? blankToNull(fields.get("topic/")) : old.getTopic();
         String note = fields.containsKey("note/") ? blankToNull(fields.get("note/")) : old.getNote();
 
-        validateNoDelimiter(description, "description");
+        FieldParser.validateNoDelimiter(description, "description");
         if (topic != null) {
-            validateNoDelimiter(topic, "topic");
+            FieldParser.validateNoDelimiter(topic, "topic");
         }
         if (note != null) {
-            validateNoDelimiter(note, "note");
+            FieldParser.validateNoDelimiter(note, "note");
         }
         validateTopicExists(topicManager, category, topic);
 

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 class FieldParserTest {
@@ -122,5 +124,36 @@ class FieldParserTest {
         String input = "TOPIC/CS2113";
 
         assertNull(FieldParser.extractField(input, "c/", null));
+    }
+
+    @Test
+    public void extractPresentFields_singleField_returnsItsValue() {
+        Map<String, String> fields = FieldParser.extractPresentFields("dur/60", "n/", "dur/", "energy/");
+
+        assertEquals(Map.of("dur/", "60"), fields);
+    }
+
+    @Test
+    public void extractPresentFields_multipleFieldsAnyOrder_boundsEachByNextPresentMarker() {
+        Map<String, String> fields = FieldParser.extractPresentFields(
+                "energy/4 n/New activity name sensory/2", "n/", "energy/", "sensory/");
+
+        assertEquals("4", fields.get("energy/"));
+        assertEquals("New activity name", fields.get("n/"));
+        assertEquals("2", fields.get("sensory/"));
+    }
+
+    @Test
+    public void extractPresentFields_absentMarkers_areOmittedFromResult() {
+        Map<String, String> fields = FieldParser.extractPresentFields(
+                "note/Bring headphones", "n/", "note/", "topic/");
+
+        assertEquals(1, fields.size());
+        assertEquals("Bring headphones", fields.get("note/"));
+    }
+
+    @Test
+    public void extractPresentFields_noMarkersPresent_returnsEmptyMap() {
+        assertTrue(FieldParser.extractPresentFields("nothing relevant here", "n/", "c/").isEmpty());
     }
 }

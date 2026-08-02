@@ -21,6 +21,7 @@ import seedu.unienable.logic.TopicManager;
 import seedu.unienable.parser.activity.ActivityCommandParser;
 import seedu.unienable.parser.accessibility.ConnectionCommandParser;
 import seedu.unienable.parser.accessibility.FacilityCommandParser;
+import seedu.unienable.parser.common.FieldParser;
 import seedu.unienable.parser.common.Parser;
 import seedu.unienable.parser.recur.RecurCommandParser;
 import seedu.unienable.parser.topic.TopicCommandParser;
@@ -117,7 +118,7 @@ public class CommandDispatcher {
         case "reset":
             return dispatchReset(args);
         case "bye":
-            requireNoArguments("bye", args);
+            FieldParser.requireNoArguments("bye", args);
             return new ExitCommand();
         case "1": case "2": case "3": case "4": case "5":
         case "6": case "7": case "8": case "9": case "10": case "11":
@@ -216,19 +217,5 @@ public class CommandDispatcher {
         String trimmed = args.trim();
         String[] parts = trimmed.split("\\s+", 2);
         return new String[] { parts[0].toLowerCase(Locale.ROOT), parts.length > 1 ? parts[1] : "" };
-    }
-
-    /**
-     * Rejects any non-blank text for a command documented as taking no arguments at all, so a
-     * typo'd trailing word (e.g. "bye now") does not silently execute as if it were never typed.
-     *
-     * @param commandName the command name to use in the error message
-     * @param args the text after the command word
-     * @throws InvalidCommandException if args is not blank
-     */
-    private void requireNoArguments(String commandName, String args) throws InvalidCommandException {
-        if (!args.trim().isEmpty()) {
-            throw new InvalidCommandException("\"" + commandName + "\" does not take any arguments.");
-        }
     }
 }

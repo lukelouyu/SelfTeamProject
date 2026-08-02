@@ -28,6 +28,7 @@ import seedu.unienable.command.accessibility.facility.FacilityValidateCommand;
 import seedu.unienable.command.accessibility.facility.FacilityViewCommand;
 import seedu.unienable.command.accessibility.route.RouteCommand;
 import seedu.unienable.command.dashboard.DashboardCommand;
+import seedu.unienable.command.timetable.TimetableCommand;
 import seedu.unienable.command.activity.general.FindCommand;
 import seedu.unienable.command.general.GuideCommand;
 import seedu.unienable.command.general.ResetCommand;
@@ -227,6 +228,18 @@ class CommandDispatcherTest {
     }
 
     @Test
+    public void dispatch_timetable_returnsTimetableCommandWiredToLiveManager() throws Exception {
+        Command command = dispatcher.dispatch("timetable week/2026-08-17", NOW);
+
+        assertTrue(command instanceof TimetableCommand);
+    }
+
+    @Test
+    public void dispatch_timetableMissingSelector_throwsMissingInputException() {
+        assertThrows(MissingInputException.class, () -> dispatcher.dispatch("timetable", NOW));
+    }
+
+    @Test
     public void dispatch_guide_returnsGuideCommand() throws Exception {
         assertTrue(dispatcher.dispatch("guide", NOW) instanceof GuideCommand);
     }
@@ -256,7 +269,7 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareMenuNumberEleven_returnsGuideCommandForRoute() throws Exception {
-        // "Route search" was added as menu item 11 when v2.0's route shipped; "Return" moved to 12.
+        // "Route search" was added as menu item 11 when v2.0's route shipped.
         Command command = dispatcher.dispatch("11", NOW);
 
         assertTrue(command instanceof GuideCommand);
@@ -274,8 +287,16 @@ class CommandDispatcherTest {
     }
 
     @Test
-    public void dispatch_bareMenuNumberTwelve_returnsGuideCommandForReturn() throws Exception {
+    public void dispatch_bareMenuNumberTwelve_returnsGuideCommandForTimetable() throws Exception {
         Command command = dispatcher.dispatch("12", NOW);
+
+        assertTrue(command instanceof GuideCommand);
+        assertTrue(command.execute().getFeedback().startsWith("Text timetable"));
+    }
+
+    @Test
+    public void dispatch_bareMenuNumberThirteen_returnsGuideCommandForReturn() throws Exception {
+        Command command = dispatcher.dispatch("13", NOW);
 
         assertTrue(command instanceof GuideCommand);
         assertTrue(command.execute().getFeedback().startsWith("Returning to the command prompt"));
@@ -283,15 +304,14 @@ class CommandDispatcherTest {
 
     @Test
     public void dispatch_bareZero_throwsInvalidCommandException() {
-        // "0" is deliberately outside the recognised 1-12 menu range, so it must still fall
+        // "0" is deliberately outside the recognised 1-13 menu range, so it must still fall
         // through to the normal "unknown command" error rather than being treated as a menu item.
         assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("0", NOW));
     }
 
     @Test
-    public void dispatch_bareThirteen_throwsInvalidCommandException() {
-        // "13" is the out-of-range boundary - unchanged, since dashboard did not take a new number.
-        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("13", NOW));
+    public void dispatch_bareFourteen_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> dispatcher.dispatch("14", NOW));
     }
 
     @Test

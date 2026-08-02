@@ -20,15 +20,13 @@ repo specifically so a tool without access to the user's local filesystem — Co
 Treat it as the authoritative v2.0 specification, exactly as Claude did.
 
 **0.2 — Exact current git state.**
-- `main` is at `ce71765` — `feature/v2-route` is merged in, plus a standalone release-packaging
-  fix commit (`4f040da`). `v1.0` is tagged and released on GitHub correctly (zip, not bare jar).
-- `feature/v2-dashboard` (5 commits ahead of `main`, tip `4de6776`) is **fully implemented,
-  tested, documented, and verified — but NOT merged, NOT pushed.** It is waiting on the user's
-  review/approval to merge. **Do not merge it yourself without the user explicitly saying so in
-  chat.** Section 1 below has the complete detail of what's on it, what was found/decided during
-  its audit, and its exact verification results.
-- No v2.0 git tag or GitHub Release exists yet. `feature/v2-timetable` (the next required branch
-  per the master prompt's sequence) has not been started.
+- `main` and `origin/main` are at `4b9978e` — `feature/v2-route` and
+  `feature/v2-dashboard` are merged and pushed. `v1.0` is tagged and released on GitHub correctly
+  (zip, not bare jar).
+- `feature/v2-timetable` was created from `4b9978e`. Its read-only audit and design were approved,
+  and its implementation, tests, Text-UI coverage, guides, and diagrams are complete. It must
+  remain unmerged and unpushed until the user separately reviews and approves that action.
+- No v2.0 git tag or GitHub Release exists yet. `feature/v2-preferences` has not been started.
 - A stale local branch `v2-dashboard` (no `feature/` prefix, tip `9829911`) also exists with
   content unrelated to the current `feature/v2-dashboard` work — confirmed in earlier sessions to
   have zero unique commits worth keeping relative to `main`. Left untouched, not deleted, per
@@ -36,18 +34,9 @@ Treat it as the authoritative v2.0 specification, exactly as Claude did.
   confuse the two branches by name.
 
 **0.3 — What to actually do, in order:**
-1. Confirm with the user whether `feature/v2-dashboard` should be merged into `main` now. If yes,
-   merge it (only after the user says so), then ask whether to push.
-2. Only after that decision is resolved, start `feature/v2-timetable`: a **read-only audit first**
-   (see Section 0.4 and the master prompt's own "Start now" section), then propose a plan and
-   **wait for explicit approval before writing any code** — this is not optional; it is how every
-   prior branch in this project was run, including by Claude.
-3. Create `docs/tasks/v2/timetable/{README.md,ACCEPTANCE_CRITERIA.md,TEST_PLAN.md,
-   IMPLEMENTATION_NOTES.md}` before implementation, following the exact pattern already on disk at
-   [`docs/tasks/v2/route/`](docs/tasks/v2/route/) and
-   [`docs/tasks/v2/dashboard/`](docs/tasks/v2/dashboard/) — read both folders as worked examples of
-   the expected depth and format before writing timetable's.
-4. After timetable: `feature/v2-preferences`, then `feature/v2-recommend`, then
+1. Review the `feature/v2-timetable` completion report and current diff. Merge and push only if the
+   user explicitly approves both actions.
+2. After timetable: `feature/v2-preferences`, then `feature/v2-recommend`, then
    `feature/v2-export`, then the final v2.0 integration/documentation/regression pass — same
    process every time: audit → proposed plan → explicit approval → task-spec folder → implement →
    full quality gate (Section 4) → completion report → **stop and wait**. Never chain straight into
@@ -90,21 +79,41 @@ repeat these:**
   commit+merge+push all in one message) — that doesn't loosen the default; keep asking.
 - **A same-session PlantUML permission grant doesn't need re-asking within that session, but a new
   session (or a new tool) should treat file-download permission as unasked.** Diagrams were
-  rendered via the public `plantuml.com` server (no local PlantUML/Graphviz toolchain available);
-  if Codex has its own way to render `.puml` → `.png` locally, prefer that over a network fetch.
+  rendered via the public `plantuml.com` server (no local PlantUML/Graphviz toolchain was found
+  installed in this environment); if Codex has its own way to render `.puml` → `.png` locally,
+  prefer that over a network fetch. **Timetable update:** the PNGs were rendered locally with the
+  existing temporary upstream-template helper at
+  `C:\Users\lukel\AppData\Local\Temp\unienable-plantuml-tool\tp-master\tools\plantuml.jar`.
+  That helper is not part of this repository and was neither downloaded nor committed by the
+  Timetable branch; reuse it if it still exists, otherwise obtain explicit permission before any
+  download or large binary addition.
 
-**0.5 — Everything else you need is already in this file.** Section 1 has the full, current state
-of `feature/v2-dashboard` including two real audit findings and their resolutions. Section 2 is
+**0.5 — Everything else you need is already in this file.** Section 1 has the full implementation
+history for `feature/v2-dashboard` and the current `feature/v2-timetable` state. Section 2 is
 the condensed project history. Section 4 is the standing working conventions (commit/push
 discipline, verification commands, design taste). Section 5 is known live risks. Section 6 is
-product/package-layout context. Update Section 1 (and this Section 0) again after
-`feature/v2-dashboard` is resolved and before/after each subsequent branch — this file's whole
+product/package-layout context. Update Section 1 (and this Section 0) again before/after each
+subsequent branch — this file's whole
 point is staying current across a tool handoff, not just a session handoff.
 
 ## 1. Current state (as of this update)
 
-**`feature/v2-dashboard`, 5 commits ahead of `main` (`ce71765`), not yet merged or pushed.**
-Implements `dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]`: a read-only planning-load
+**Current work: `feature/v2-timetable`, based on merged Dashboard commit `4b9978e`.** Timetable is
+implemented as a read-only day/week projection with normal, compact, and detail modes. It keeps
+flexible activities unscheduled, uses permanent numeric IDs, marks defensive fixed-activity
+overlaps, and performs no persistence. The branch has focused production, parser/service/
+formatter/integration/dispatcher, guide, and Text-UI coverage plus task specs and PlantUML class,
+sequence, and architecture updates. It is awaiting review and explicit merge/push approval;
+`feature/v2-preferences` has not been started. Final verification on 2026-08-02: 1,079 JUnit tests
+passed with zero failures/errors/skips; Checkstyle main/test reported zero findings; Javadoc built
+successfully with the unchanged 100-warning baseline and no Timetable warning; the Text-UI harness
+passed; `releaseZip` produced only `unienable.jar` and external
+`data/academic-calendar.txt`; and two fresh-extraction JAR runs covered startup, adjacent fixed
+activities, overlap rejection, day/week normal/compact/detail views, guide entries 12/topic,
+save/restart/list, and confirmed no `activities.txt` hash change across read-only Timetable use.
+
+**Dashboard history.** `feature/v2-dashboard` was merged and pushed to `main` as merge commit
+`4b9978e`. It implements `dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]`: a read-only planning-load
 summary computed fresh from `ActivityManager` every time - no persistence, no confirmation, cannot
 mutate anything by construction (`DashboardCommand` implements neither `Confirmable`/
 `MenuConfirmable` and isn't in `ApplicationRunner.mutatesState`). Metrics: planned workload (fixed
@@ -722,8 +731,8 @@ Guide's §11 (Data Storage) for the exact record schema.
   note, Section 6). `logic.ActivityConflictChecker` is a real, current, package-private, stateless
   class - `ActivityManager` no longer owns duplicate/overlap logic inline. This entry is kept only
   so a stale local checkout or an older cached summary doesn't mislead a future session into
-  redoing it; the actual next task is reviewing/merging `feature/v2-route`, then starting
-  `feature/v2-dashboard` (Section 1, Section 6).
+  redoing it; route and dashboard are now merged, and the current review target is
+  `feature/v2-timetable` (Section 1, Section 6).
 - **The "one error message covers two semantically different causes" family**: resolved for both
   `DateTimeParser.parseDate()` (earlier session) and `parseTime()` (Section 2's defensive-
   programming cleanup bullet, this update) — both now split "wrong shape" from "right shape but
@@ -781,8 +790,10 @@ project) helping two personas — Sam (ASD/ADHD, wants concise/predictable outpu
 routines. v2.0 command surface so far: activity add/list/view/find/edit/delete/mark/unmark/next/
 order, topic add/list/rename/delete, read-only facility/connection lookups (plus `facility
 validate`/`connection validate`), `recur TASK_ID week WEEK_SPEC`, the three-option `reset all`,
-`route from/FACILITY to/FACILITY` (merged into `main`), `dashboard today|tomorrow|date/YYYY-MM-DD|
-this week [detail]` (Section 1, on `feature/v2-dashboard`, not yet merged), `guide`, `bye`.
+`route from/FACILITY to/FACILITY`, `dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]`
+(both merged into `main`), and `timetable day/YYYY-MM-DD [detail]`,
+`timetable week/YYYY-MM-DD [compact|detail]`, and `timetable this week [compact|detail]`
+(Section 1, on `feature/v2-timetable`), `guide`, `bye`.
 **No git tag or GitHub Release exists yet for v2.0** — `v1.0` itself is tagged and released (see
 the historical part of Section 1 below for the release-packaging fix applied to it).
 
@@ -790,14 +801,11 @@ the historical part of Section 1 below for the release-packaging fix applied to 
 (`UNIENABLE_V2_CLAUDE_CODEX_MASTER_PROMPT_UPDATED.md`, supplied 2026-08-02, now the authoritative
 v2.0 spec):** the required branch sequence is route -> dashboard -> timetable -> preferences ->
 recommend -> export -> final integration pass. Recurrence and technical-debt hardening already
-shipped before this sequence started (Section 2). **Route is merged into `main`. Dashboard is
-implemented on `feature/v2-dashboard`** (Section 1) - complete but awaiting review/merge approval;
-do not start `feature/v2-timetable` (the next required branch) until `feature/v2-dashboard` is
-merged and the user gives an explicit go-ahead for the next feature, per the master prompt's own
-"one feature branch at a time... stop and present a review report" rule. Timetable, preferences,
+shipped before this sequence started (Section 2). **Route and Dashboard are merged into `main`.
+Timetable is complete on `feature/v2-timetable` and awaiting review/merge approval.** Preferences,
 recommend, and export remain untouched backlog - approved in principle by the master prompt, but
-each still needs its own audit-confirm-implement pass in its own turn, not started proactively
-just because route/dashboard are done. Each feature so far has also come with its own
+each still needs its own audit-confirm-implement pass in its own turn. Each feature so far has
+also come with its own
 feature-specific master prompt (not just the shared v2.0 one) - check
 `docs/tasks/v2/<feature>/README.md` for what was actually supplied and approved for that feature
 before assuming the shared prompt's rough sketch is authoritative on a point the feature-specific
@@ -857,5 +865,5 @@ one actually is before treating any of them as a task list:
   and the Phase-2 extraction it approved shipped directly on `main` before this session started, at
   `e44f660` (Section 1's transition note has the detail). `logic.ActivityConflictChecker` is real,
   current code. This bullet previously described it as "the concrete next task"; it is not,
-  anymore - the concrete next task is reviewing/merging `feature/v2-route` (Section 1), then
-  `feature/v2-dashboard`, per the master prompt's required sequence.
+  anymore - route and dashboard are merged, and the concrete next task is reviewing
+  `feature/v2-timetable` (Section 1), per the master prompt's required sequence.

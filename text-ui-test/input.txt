@@ -27,6 +27,7 @@ guide 10
 guide 11
 guide 0
 guide 12
+guide 13
 guide
 1
 2
@@ -41,6 +42,7 @@ guide
 11
 0
 12
+13
 
 banana
 adds n/Test c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/10:00 energy/2 sensory/2
@@ -338,6 +340,16 @@ connection find shelter/BOGUS
 connection find
 connection validate
 connection validate extra
+
+route from/AS8 to/CLB
+route from/CLB to/AS7
+route from/as6 to/as8
+route from/AS6 to/AS6
+route from/AS1 to/AS2
+route from/AS6 to/NonexistentFacility
+route
+route from/AS6
+route bogus from/AS6 to/AS8
 
 bye ignored trailing text
 list

@@ -17,9 +17,10 @@ Application Guide
 8. Accessible connections
 9. CSV export
 10. Data files and storage
-11. Return
+11. Accessible routes
+12. Return
 
-Enter a number from 1 to 11.
+Enter a number from 1 to 12.
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -190,9 +191,27 @@ Review the plan before choosing whether to adopt it.
 ____________________________________________________________
 ____________________________________________________________
 Accessible routes
-Format: route from/START_FACILITY to/DESTINATION_FACILITY
-The planner returns one best confirmed route from local data.
-(Coming soon in a future release.)
+Format: route from/FACILITY to/FACILITY
+Related commands: facility (see guide facility), connection (see guide connection)
+
+Finds the shortest route between two known facilities using only connections
+confirmed accessible (status YES) - connections marked NO or unknown are never
+used, even as a last resort. from/ and to/ may appear in either order.
+
+Examples:
+  route from/AS6 to/AS8
+  route from/CLB to/AS7
+  route from/AS1 to/AS1
+
+The source and destination being the same facility is a valid result: a
+single-facility route with 0 m total distance, not an error.
+
+Limitations: this does not estimate travel time, and does not guarantee
+real-world accessibility at the time of travel - only that the local dataset
+records a confirmed-accessible path. If no confirmed-accessible path connects
+two known facilities, route says so rather than suggesting an unconfirmed one.
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
 CSV exports
@@ -278,9 +297,10 @@ Application Guide
 8. Accessible connections
 9. CSV export
 10. Data files and storage
-11. Return
+11. Accessible routes
+12. Return
 
-Enter a number from 1 to 11.
+Enter a number from 1 to 12.
 ____________________________________________________________
 ____________________________________________________________
 Add activities
@@ -410,13 +430,37 @@ loaded once per run the first time you use recur, and never created,
 repaired, or changed by UniEnable itself - including by reset all.
 ____________________________________________________________
 ____________________________________________________________
-Returning to the command prompt.
+Accessible routes
+Format: route from/FACILITY to/FACILITY
+Related commands: facility (see guide facility), connection (see guide connection)
+
+Finds the shortest route between two known facilities using only connections
+confirmed accessible (status YES) - connections marked NO or unknown are never
+used, even as a last resort. from/ and to/ may appear in either order.
+
+Examples:
+  route from/AS6 to/AS8
+  route from/CLB to/AS7
+  route from/AS1 to/AS1
+
+The source and destination being the same facility is a valid result: a
+single-facility route with 0 m total distance, not an error.
+
+Limitations: this does not estimate travel time, and does not guarantee
+real-world accessibility at the time of travel - only that the local dataset
+records a confirmed-accessible path. If no confirmed-accessible path connects
+two known facilities, route says so rather than suggesting an unconfirmed one.
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
 No guide topic named "0". Enter guide to see the list of topics.
 ____________________________________________________________
 ____________________________________________________________
-No guide topic named "12". Enter guide to see the list of topics.
+Returning to the command prompt.
+____________________________________________________________
+____________________________________________________________
+No guide topic named "13". Enter guide to see the list of topics.
 ____________________________________________________________
 ____________________________________________________________
 Application Guide
@@ -431,9 +475,10 @@ Application Guide
 8. Accessible connections
 9. CSV export
 10. Data files and storage
-11. Return
+11. Accessible routes
+12. Return
 
-Enter a number from 1 to 11.
+Enter a number from 1 to 12.
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -561,13 +606,37 @@ loaded once per run the first time you use recur, and never created,
 repaired, or changed by UniEnable itself - including by reset all.
 ____________________________________________________________
 ____________________________________________________________
-Returning to the command prompt.
+Accessible routes
+Format: route from/FACILITY to/FACILITY
+Related commands: facility (see guide facility), connection (see guide connection)
+
+Finds the shortest route between two known facilities using only connections
+confirmed accessible (status YES) - connections marked NO or unknown are never
+used, even as a last resort. from/ and to/ may appear in either order.
+
+Examples:
+  route from/AS6 to/AS8
+  route from/CLB to/AS7
+  route from/AS1 to/AS1
+
+The source and destination being the same facility is a valid result: a
+single-facility route with 0 m total distance, not an error.
+
+Limitations: this does not estimate travel time, and does not guarantee
+real-world accessibility at the time of travel - only that the local dataset
+records a confirmed-accessible path. If no confirmed-accessible path connects
+two known facilities, route says so rather than suggesting an unconfirmed one.
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: Unknown command "0". Enter guide for help.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: Unknown command "12". Enter guide for help.
+Returning to the command prompt.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown command "13". Enter guide for help.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: Unknown command "banana". Enter guide for help.
@@ -2429,6 +2498,66 @@ connections.txt: no issues found.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: "connection validate" does not take any arguments.
+____________________________________________________________
+____________________________________________________________
+Route from AS8 to CLB:
+[1] AS8 -> CLB | 55 m | PATH | Shelter: YES
+Total distance: 55 m (1 segment)
+
+This is a confirmed-accessible route based on local data only. It does not estimate travel time and does not guarantee real-world accessibility at the time of travel.
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Route from CLB to AS7:
+[1] CLB -> AS6 | 70 m | PATH | Shelter: YES | Notes: Sheltered linkway via Central Library
+[2] AS6 -> AS1 | 90 m | PATH | Shelter: YES | Notes: Main covered walkway
+[3] AS1 -> AS4 | 60 m | PATH | Shelter: YES | Barrier: Narrow passageway (2F link via LT9/LT10) | Notes: Via The Deck
+[4] AS4 -> AS7 | 50 m | PATH | Shelter: YES | Notes: Via The Deck
+Total distance: 270 m (4 segments)
+
+This is a confirmed-accessible route based on local data only. It does not estimate travel time and does not guarantee real-world accessibility at the time of travel.
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Route from AS6 to AS8:
+[1] AS6 -> AS8 | 45 m | PATH | Shelter: YES
+Total distance: 45 m (1 segment)
+
+This is a confirmed-accessible route based on local data only. It does not estimate travel time and does not guarantee real-world accessibility at the time of travel.
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Route from AS6 to AS6:
+Source and destination are the same facility. No travel is required.
+Total distance: 0 m (0 segments)
+
+This is a confirmed-accessible route based on local data only. It does not estimate travel time and does not guarantee real-world accessibility at the time of travel.
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+Route from AS1 to AS2:
+[1] AS1 -> AS2 | 130 m | RAMP | Shelter: NO | Notes: Only barrier-free route between AS2/AS3/LT1/LT13 and the rest of FASS; travels via the unsheltered PUDOs at CP14/Arts Link
+Total distance: 130 m (1 segment)
+
+This is a confirmed-accessible route based on local data only. It does not estimate travel time and does not guarantee real-world accessibility at the time of travel.
+
+Sample local accessibility reference data. Distances are estimates and may be incomplete. Please verify with current campus information when needed.
+____________________________________________________________
+____________________________________________________________
+[Error] Not found: Facility "NonexistentFacility" is not recognised.
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: a source facility (from/) is required.
+____________________________________________________________
+____________________________________________________________
+[Error] Missing input: a destination facility (to/) is required.
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown option "bogus".
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: "bye" does not take any arguments.

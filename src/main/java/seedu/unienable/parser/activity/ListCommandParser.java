@@ -53,7 +53,7 @@ class ListCommandParser {
                     + "means incomplete.");
         }
 
-        boolean detail = parseViewMode(fields.get("view/"));
+        boolean isDetailedView = isDetailedView(fields.get("view/"));
         CompletionStatus status = parsed.overdue ? null : parseStatus(fields.get("status/"));
         ActivityCategory category = fields.containsKey("c/") ? FieldParser.parseCategory(fields.get("c/")) : null;
         String topic = ActivityCommandParser.blankToNull(fields.get("topic/"));
@@ -63,7 +63,7 @@ class ListCommandParser {
 
         ActivityFilter filter = new ActivityFilter(status, category, topic, date, parsed.dateFrom, parsed.dateTo);
         LocalDateTime overdueAsOf = parsed.overdue ? now : null;
-        return new ListCommand(activityManager, filter, order, detail, overdueAsOf);
+        return new ListCommand(activityManager, filter, order, isDetailedView, overdueAsOf);
     }
 
     /**
@@ -181,16 +181,16 @@ class ListCommandParser {
     }
 
     /**
-     * Parses list's optional view/ marker into a detail/concise flag. Unlike status/ (which
+     * Returns whether list's optional view/ marker requests detail view. Unlike status/ (which
      * accepts null to mean "all"), a present-but-unrecognised view/ value is rejected rather than
      * silently falling back to concise, so a typo like "view/nonsense" is not mistaken for a
      * request that simply happens to match the concise default.
      *
      * @param text the raw view/ value, or null if not supplied
-     * @return true for "detail", false if not supplied or "concise"
+     * @return true if text is "detail"; false if not supplied or "concise"
      * @throws InvalidCommandException if text is supplied and is neither "concise" nor "detail"
      */
-    private boolean parseViewMode(String text) throws InvalidCommandException {
+    private boolean isDetailedView(String text) throws InvalidCommandException {
         if (text == null || "concise".equalsIgnoreCase(text)) {
             return false;
         }

@@ -5,6 +5,76 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0a. Bug-fix, date-selector, and doc-repair pass (2026-08-06, Claude Code) — read this first
+
+A new session (Claude Code, not Codex — the handoff below never actually happened, or wasn't
+recorded here if it did) was driven by three documents supplied outside the repo: a
+"bug-fix/hierarchy-refactor master prompt", a "PE regression debug plan", and a prior "PE code
+review report" claiming a set of fixes had already landed. **Most of that report's claimed fixes
+turned out never to have actually been applied to this HEAD** — re-verifying each one against the
+real code and docs (not trusting the report's prose) was most of this session's value. Concretely:
+
+- **Real, previously-unfixed regression found and fixed:** `RecommendationService` never threaded
+  `now` past period selection — `recommendDate()` had no `now` parameter at all, and
+  `recommendThisWeek()`'s slot enumeration ignored it, so a flexible activity's window on today's
+  date could still be proposed at an already-past start time, and `recommend adopt` had no
+  staleness check at all. Fixed: candidate starts on today's date are now clamped to `now` rounded
+  up to the next whole minute (`RecommendationService.effectiveEarliestStart`); a wholly-elapsed
+  window reports the activity as unscheduled instead of backdating it; `recommend adopt` rejects a
+  stale proposal (`RecommendationService.hasElapsedPlacement`) before the confirmation prompt.
+- **Defect A (date-selector inconsistency) was real**, though narrower than the master prompt
+  assumed `list` was already the reference implementation with full support. Closed the actual
+  gaps: `dashboard`/`timetable`/`recommend` gained `next week` (`timetable`/`recommend` also
+  gained `today`/`tomorrow`), and `find` — the starkest gap, with zero relative-date support before
+  this session — gained the full `today`/`tomorrow`/`this week`/`next week` set via the same
+  leading-phrase grammar `list` already used. The shared Monday-of-week math (previously
+  byte-identical `TemporalAdjusters.previousOrSame(MONDAY)` duplicated three times) is now
+  centralised in `logic.RelativeDateResolver`. See
+  `docs/planning/DATE_SELECTOR_SUPPORT_MATRIX.md` for the full matrix and the reasoning for why
+  `view`/`next`/`order`/`recur` deliberately did **not** get a selector.
+- **Defect B (recur needing separate "week 1 to 6"/"week 7 to 13" commands) did not reproduce.**
+  `WeekSpecificationParser` already accepted one inclusive range (`1 to 13`) as a single
+  `WEEK_SPEC` item, and `RecurrencePlanner` already resolved each requested week against
+  `data/academic-calendar.txt` by (year, semester, week number) rather than adding
+  `7 * plusWeeks()` to the source date — a recess gap was already skipped correctly in one
+  command. Locked in with new regression tests rather than changed. Improved
+  `RecurrencePlanner`'s conflict message to name the specific teaching week and calendar date that
+  failed (`"Week 9 (2027-03-16): ..."`) — a real, small gap the audit did find.
+- **Package hierarchy audit (`docs/planning/PACKAGE_HIERARCHY_REVIEW_AND_PLAN.md`) found the tree
+  already feature-oriented, tests already mirrored, no catch-all dumping packages, no circular
+  dependencies.** No production classes were moved this session — a candidate 3-way split of
+  `command.activity.general` was evaluated and explicitly rejected as cosmetic churn with no
+  behavioural or dependency benefit (see that doc's Section 3).
+- **Several "previously identified defects" from the master prompt's own re-verification list were
+  still live, contradicting the earlier review report:** the built-in guide's main menu is
+  correctly 12 items (route=10, timetable=11, Return=12) in code, but the User Guide still said
+  "13-item menu" and "item 11 (Route search)" — fixed, and a matching stale `GuideCommand` Javadoc
+  comment too. `docs/UserGuide.md` had 71 mojibake character sequences throughout (fixed via exact
+  byte-level Windows-1252 round-trip decoding, not guesswork). `README.md` linked to
+  `UserGuide.md#14-data-storage` (the real section is `#15`). `docs/DeveloperGuide.md` had no
+  Acknowledgements section at all (added Section 26). `docs/AboutUs.md`/`docs/team/lukelouyu.md`
+  described only the v1.0 feature set and a stale "657 tests" figure despite v2.0 having shipped
+  and the suite having grown well past 1,190 tests. All fixed this session, verified against the
+  actual current file contents (not assumed from the old report) before writing each fix.
+- **Test count:** 1141 → check `git log`/`grep -rc "@Test" src/test/java` for the exact number as
+  of the tip commit; this session added roughly 60 new tests across
+  `RelativeDateResolverTest` (new), `RecommendationServiceTest`, `RecommendCommandParserTest`,
+  `DashboardServiceTest`/`DashboardCommandParserTest`, `TimetableServiceTest`/
+  `TimetableCommandParserTest`, `FindCommandParserTest`, `RecurCommandParserTest`,
+  `RecurrencePlannerTest`, and `WeekSpecificationParserTest`. Zero existing tests were weakened;
+  a handful were updated in place where the fix's own scope required it (e.g. `timetable today`
+  was a deterministic "unknown selector" regression case in `text-ui-test` before `today` became
+  valid — replaced with `timetable yesterday` plus a new `timetable today extra` case, not just
+  deleted). `bash text-ui-test/runtest.sh` passes end-to-end against the real built JAR.
+- **Nothing was pushed, merged, or tagged** — small, focused commits landed directly on `main`
+  (per this session's own instruction, not the usual branch-per-feature flow), one per logical
+  step, exactly per Section 4's "small commits" convention below. See `git log` for the exact
+  sequence starting after `07cf8a7`.
+- **Not yet done as of this note:** the full official validation pipeline
+  (`checkstyleMain`/`checkstyleTest`/`javadoc`/`releaseZip`/JAR smoke test/PlantUML pairing check
+  across every diagram, not just `RecommendationSequence`) — see Section 4 below for the exact
+  commands, and re-run them before trusting a release-readiness claim beyond what's recorded here.
+
 ## 0. Handoff to Codex (2026-08-02) — start here
 
 The user is moving the rest of v2.0 development from Claude to **Codex**. This section is a

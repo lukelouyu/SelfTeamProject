@@ -571,12 +571,15 @@ candidates as strictly increasing, distinct one-minute steps, no two of that act
 candidates ever share a start time - so in practice this always resolves to "the earliest valid
 slot wins," and the four score fields are live only when comparing the *already-chosen* best slots
 of two *different* activities in `chooseNextActivity` (`CandidateSelection.betterThan`), which can
-coincidentally share a clock time. This is a known, pre-existing limitation of the scoring design,
-not something introduced by the preferred-start/end fix above - flagged here rather than silently
-reworked, since fixing it (e.g. making `chooseBestSlot` genuinely rank by score instead of
-time-first) is a separate, larger behavioural change with its own trade-offs to decide explicitly,
-not a byproduct of a targeted bug fix. Tomato never changes slot selection; it only controls
-whether certain study-like placements print an advisory suggestion line in the preview.
+coincidentally share a clock time. **This is recorded as known technical debt / future recommender
+work, not something introduced by (or fixed alongside) the preferred-start/end fix above** -
+flagged here rather than silently reworked, since fixing it (e.g. making `chooseBestSlot` genuinely
+rank by score instead of time-first) is a separate, larger behavioural change with its own
+trade-offs to decide explicitly, not a byproduct of a targeted bug fix. `chooseBestSlot` keeps its
+current earliest-valid-slot behaviour; the buffer-slack/energy-spread/sensory-spread scoring fields
+remain in place, unused in practice, until that follow-up work is explicitly taken on. Tomato never
+changes slot selection; it only controls whether certain study-like placements print an advisory
+suggestion line in the preview.
 
 <p align="center"><img src="diagrams/sequence/RecommendationSequence.png" width="760" alt="Recommendation sequence diagram"></p>
 

@@ -2,16 +2,15 @@ package seedu.unienable.logic.dashboard;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.OptionalInt;
 
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.RelativeDateResolver;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
@@ -79,8 +78,20 @@ public final class DashboardService {
      * @return the period {@code [Monday 00:00, following Monday 00:00)}
      */
     public static DashboardPeriod resolveThisWeek(LocalDateTime now) {
-        LocalDate monday = now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate monday = RelativeDateResolver.mondayOfThisWeek(now);
         return new DashboardPeriod("This week", monday.atStartOfDay(), monday.plusDays(7).atStartOfDay());
+    }
+
+    /**
+     * Resolves the {@code next week} selector: the Monday-Sunday week immediately following
+     * {@link #resolveThisWeek}.
+     *
+     * @param now the injected current date and time
+     * @return the period {@code [next Monday 00:00, following Monday 00:00)}
+     */
+    public static DashboardPeriod resolveNextWeek(LocalDateTime now) {
+        LocalDate monday = RelativeDateResolver.mondayOfNextWeek(now);
+        return new DashboardPeriod("Next week", monday.atStartOfDay(), monday.plusDays(7).atStartOfDay());
     }
 
     /**

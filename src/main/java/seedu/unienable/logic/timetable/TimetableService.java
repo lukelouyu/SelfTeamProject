@@ -1,10 +1,8 @@
 package seedu.unienable.logic.timetable;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -12,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.RelativeDateResolver;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
@@ -32,16 +31,21 @@ public final class TimetableService {
 
     /** Resolves the Monday-Sunday week containing the supplied date. */
     public static TimetablePeriod resolveWeek(LocalDate date) {
-        LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate monday = RelativeDateResolver.mondayOfWeekContaining(date);
         return new TimetablePeriod(monday + " to " + monday.plusDays(6), monday,
                 monday.plusDays(6), true);
     }
 
     /** Resolves the Monday-Sunday week containing the injected current time. */
     public static TimetablePeriod resolveThisWeek(LocalDateTime now) {
-        LocalDate monday = now.toLocalDate()
-                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate monday = RelativeDateResolver.mondayOfThisWeek(now);
         return new TimetablePeriod("This week", monday, monday.plusDays(6), true);
+    }
+
+    /** Resolves the Monday-Sunday week immediately following {@link #resolveThisWeek}. */
+    public static TimetablePeriod resolveNextWeek(LocalDateTime now) {
+        LocalDate monday = RelativeDateResolver.mondayOfNextWeek(now);
+        return new TimetablePeriod("Next week", monday, monday.plusDays(6), true);
     }
 
     /** Builds one timetable from the manager without mutating it. */

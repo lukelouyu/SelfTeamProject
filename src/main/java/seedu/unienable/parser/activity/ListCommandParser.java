@@ -1,9 +1,7 @@
 package seedu.unienable.parser.activity;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.Map;
 
 import seedu.unienable.command.activity.general.ListCommand;
@@ -12,6 +10,7 @@ import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.logic.ActivityFilter;
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.RelativeDateResolver;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.model.enums.CompletionStatus;
@@ -102,8 +101,8 @@ class ListCommandParser {
                         "Unknown list option \"this" + (words.length > 1 ? " " + words[1] : "")
                                 + "\"; only \"this week\" is supported.");
             }
-            LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            LocalDate sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+            LocalDate monday = RelativeDateResolver.mondayOfThisWeek(now);
+            LocalDate sunday = monday.plusDays(6);
             result = new RelativeDateAndRemainder(null, monday, sunday, false, remainderAfter(trimmed, words, 2));
         } else if ("next".equalsIgnoreCase(words[0])) {
             if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
@@ -111,7 +110,7 @@ class ListCommandParser {
                         "Unknown list option \"next" + (words.length > 1 ? " " + words[1] : "")
                                 + "\"; only \"next week\" is supported.");
             }
-            LocalDate nextMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusDays(7);
+            LocalDate nextMonday = RelativeDateResolver.mondayOfNextWeek(now);
             LocalDate nextSunday = nextMonday.plusDays(6);
             result = new RelativeDateAndRemainder(null, nextMonday, nextSunday, false,
                     remainderAfter(trimmed, words, 2));

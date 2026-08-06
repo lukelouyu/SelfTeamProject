@@ -35,10 +35,10 @@ note over Runner
 end note
 
 Runner -> Generate : execute()
-Generate -> Service : recommendDate(activityManager, profile, date)
+Generate -> Service : recommendDate(activityManager, profile, date, now)
 Service -> Manager : getAll()
 Manager --> Service : activities
-Service -> Service : build deterministic placements\nand unscheduled IDs
+Service -> Service : build deterministic placements,\nclamping today's candidates to now,\nand unscheduled IDs
 Service --> Generate : RecommendationProposal
 Generate -> ProposalStore : setProposal(proposal)
 Generate -> Service : applyPreview(activityManager.getAll(), proposal)
@@ -96,46 +96,57 @@ Runner -> Dispatcher : dispatch(input, now)
 Dispatcher -> Parser : parse(...)
 Parser -> ProposalStore : getProposal()
 ProposalStore --> Parser : active proposal
-Parser --> Dispatcher : RecommendAdoptCommand
-Dispatcher --> Runner : command
-Runner -> Adopt : getConfirmation()
-Adopt --> Runner : ask("Proceed with adoption? (y/n)")
-Runner -> Ui : showFramed(prompt)
-Ui --> User : prompt shown
-User --> Runner : y
+Parser -> Service : hasElapsedPlacement(proposal, now)
 
-note over Runner
-  recommend adopt is mutating, so the
-  runner snapshots activities/topics/
-  order/preferences before execute().
-end note
+alt proposal is stale (now is after a proposed start)
+  Service --> Parser : true
+  Parser --> Dispatcher : InvalidCommandException("stale - regenerate")
+  Dispatcher --> Runner : exception
+  Runner -> Ui : showFramed("[Error] Invalid input: ...")
+  Ui --> User : stale-proposal error shown
+else proposal is still valid
+  Service --> Parser : false
+  Parser --> Dispatcher : RecommendAdoptCommand
+  Dispatcher --> Runner : command
+  Runner -> Adopt : getConfirmation()
+  Adopt --> Runner : ask("Proceed with adoption? (y/n)")
+  Runner -> Ui : showFramed(prompt)
+  Ui --> User : prompt shown
+  User --> Runner : y
 
-Runner -> Adopt : execute()
-loop each proposed placement
-  Adopt -> Manager : getById(activityId)
-  Manager --> Adopt : FlexibleActivity
-  Adopt -> Adopt : setAdoptedStartTime(startTime)
-end
-Adopt -> Formatter : formatAdoptSuccess(proposal)
-Formatter --> Adopt : success text
-Adopt --> Runner : CommandResult
-Runner -> Storage : saveAll(...)
-
-alt save succeeds
-  Storage --> Runner : success
-  Runner -> ProposalStore : clear()
-  Runner -> Ui : showFramed(success)
-  Ui --> User : adoption saved
-else save fails
-  Storage --> Runner : StorageException
-  Runner -> Runner : restore snapshot
   note over Runner
-    The proposal remains available because
-    adoption was rolled back and no success
-    feedback is shown.
+    recommend adopt is mutating, so the
+    runner snapshots activities/topics/
+    order/preferences before execute().
   end note
-  Runner -> Ui : showFramed("[Error] Storage error: ...")
-  Ui --> User : save failure shown
+
+  Runner -> Adopt : execute()
+  loop each proposed placement
+    Adopt -> Manager : getById(activityId)
+    Manager --> Adopt : FlexibleActivity
+    Adopt -> Adopt : setAdoptedStartTime(startTime)
+  end
+  Adopt -> Formatter : formatAdoptSuccess(proposal)
+  Formatter --> Adopt : success text
+  Adopt --> Runner : CommandResult
+  Runner -> Storage : saveAll(...)
+
+  alt save succeeds
+    Storage --> Runner : success
+    Runner -> ProposalStore : clear()
+    Runner -> Ui : showFramed(success)
+    Ui --> User : adoption saved
+  else save fails
+    Storage --> Runner : StorageException
+    Runner -> Runner : restore snapshot
+    note over Runner
+      The proposal remains available because
+      adoption was rolled back and no success
+      feedback is shown.
+    end note
+    Runner -> Ui : showFramed("[Error] Storage error: ...")
+    Ui --> User : save failure shown
+  end
 end
 
 @enduml

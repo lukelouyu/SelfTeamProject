@@ -8,6 +8,12 @@ Display | Name | Github Profile | Portfolio
 
 ## Project role
 
-As the sole developer, Luke was responsible for the full v1.0 workflow: requirements and use-case
-definition, architecture, all command/parser/model/storage/UI code, the JUnit and text-UI test
-suites, and the User Guide and Developer Guide.
+As the sole developer, Luke was responsible for the full v1.0 and v2.0 workflow: requirements and
+use-case definition, architecture, all command/parser/model/storage/UI code (including v2.0's
+accessible route search, planning dashboard, read-only timetable, global planning preferences, and
+deterministic schedule recommendation), the JUnit and text-UI test suites, and the User Guide and
+Developer Guide.
+
+This is a solo, self-directed CS2113 tP-style simulation, not a registered course team submission -
+see the "Project role" note above and `docs/DeveloperGuide.md`'s Acknowledgements section for how
+this project began (the se-education.org Duke template) and what it builds on.

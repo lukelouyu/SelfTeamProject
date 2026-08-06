@@ -77,7 +77,7 @@ To run it: unzip anywhere, `cd` into the extracted folder, and run `java -jar un
 there (so the app's own `data/` directory resolves next to the calendar file already provided).
 `academic-calendar.txt` is a supplied, human-maintained resource. UniEnable reads it when `recur`
 is first used in a run, but never creates, repairs, or modifies it — see the
-[User Guide](docs/UserGuide.md#14-data-storage) for its lifecycle and how to extend it to a new
+[User Guide](docs/UserGuide.md#15-data-storage) for its lifecycle and how to extend it to a new
 academic year.
 
 ## Testing

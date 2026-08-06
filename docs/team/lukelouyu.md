@@ -32,11 +32,29 @@ requirements, design, implementation, and documentation below are my own work.
   - A built-in `guide` command with a numbered, number-or-keyword-selectable menu and copyable
     command examples.
   - Local, human-editable text-file storage for activities and topics.
-- **Testing**: grew the JUnit suite to 657 tests and the `text-ui-test` end-to-end regression
-  script from a 7-line happy path to a 346-line scripted run covering most v1.0 commands,
-  boundary cases, and error paths (date-dependent cases like `list today` are covered by JUnit
-  with a fixed injected clock instead, since they can't be scripted deterministically),
-  catching several real bugs before release.
+  - Academic-calendar-driven recurrence (`recur`), resolving each requested teaching week
+    independently against an external, human-maintained calendar file rather than assuming a
+    fixed number of days between weeks - so a single command can span a semester recess without
+    generating an activity during it.
+- **Features implemented (v2.0)**:
+  - Accessible route search (`route`) over the same facility/connection reference data, returning
+    a confirmed-accessible shortest path with per-segment distance and barrier notes.
+  - A read-only accessible-planning dashboard (`dashboard`) summarising planned workload, nominal
+    buffer, and energy/sensory demand for a day or week.
+  - A read-only text timetable (`timetable`) showing fixed and flexible activities by day or week.
+  - A persisted global planning-preference profile (`preference`) feeding a deterministic
+    schedule-recommendation engine (`recommend`) that proposes and, on confirmation, adopts
+    conflict-free start times for incomplete flexible activities - never before the current
+    moment, and never adoptable once a proposal has gone stale.
+  - A shared relative date-selector vocabulary (`today`/`tomorrow`/`this week`/`next week`)
+    consistently supported across `list`, `find`, `dashboard`, `timetable`, and `recommend`,
+    resolved through one centralised date-resolution helper rather than duplicated per command.
+- **Testing**: grew the JUnit suite past 1,190 tests and the `text-ui-test` end-to-end regression
+  script to a multi-thousand-line scripted run covering both v1.0 and v2.0 commands, boundary
+  cases, and error paths (date-dependent cases like `list today` are covered by JUnit with a
+  fixed injected clock instead, since they can't be scripted deterministically), catching several
+  real bugs - including a v2.0 recommender regression that could propose or adopt a schedule
+  already in the past - before release.
 - **Documentation**: wrote the [User Guide](../UserGuide.md) and
   [Developer Guide](../DeveloperGuide.md), including the architecture, design rationale, and
   manual testing instructions.

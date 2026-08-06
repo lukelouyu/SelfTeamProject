@@ -161,9 +161,14 @@ range rather than adding seven-day offsets. It skips the source date, a no-class
 existing fixed occurrence with the same description, date, start, and end. Generated copies retain
 the source metadata but start incomplete.
 
-Each remaining candidate is preflighted through `ActivityManager.checkNoConflicts`. The immutable
-`RecurrencePlan` records both planned and skipped occurrences so `RecurCommand` can present a full
-preview without changing state.
+Each remaining candidate is preflighted through `ActivityManager.checkNoConflicts`; a conflict
+aborts the entire `plan()` call immediately (before `RecurCommand` even exists, so nothing has been
+mutated), with the underlying conflict message rewrapped as `"Week N (date): <reason>"` so the
+failure names exactly which teaching week and calendar date caused it, not just the conflicting
+activity. This holds for a `WEEK_SPEC` of any size, including a single range spanning a whole
+semester (`week 1 to 13`) - a conflict on the very last requested week aborts the whole batch the
+same as a conflict on the first. The immutable `RecurrencePlan` records both planned and skipped
+occurrences so `RecurCommand` can present a full preview without changing state.
 
 <p align="center"><img src="diagrams/sequence/RecurrencePlanningSequence.png" width="760" alt="Recurrence planning sequence diagram"></p>
 
@@ -285,7 +290,7 @@ claims real-time verification or a guarantee of real-world accessibility.
 
 ## 13. Accessible planning dashboard
 
-`dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]` calculates a read-only planning-load
+`dashboard today|tomorrow|date/YYYY-MM-DD|this week|next week [detail]` calculates a read-only planning-load
 summary directly from `ActivityManager`'s current in-memory state every time it runs - it is a
 **derived view, not a stored entity**: there is no dashboard persistence file, no dashboard model
 saved to disk, and nothing about it survives between commands except what `ActivityManager` itself
@@ -317,10 +322,18 @@ Responsibilities are split the same way `route` splits parsing/policy/formatting
 <p align="center"><img src="diagrams/sequence/DashboardSequence.png" width="760" alt="Dashboard sequence diagram"></p>
 
 **Period boundaries** are always half-open (`[start, end)`), computed with `java.time` so
-month/year transitions and leap days are handled for free. `this week` reuses `list this week`'s
-exact Monday-Sunday boundary (`TemporalAdjusters.previousOrSame(MONDAY)`/`nextOrSame(SUNDAY)`),
-not a rolling seven-day window - two now-superseded planning drafts disagreed with each other and
-with `list`'s own shipped behaviour on this point; `list`'s precedent is authoritative.
+month/year transitions and leap days are handled for free. `this week`/`next week` reuse `list this
+week`'s exact Monday-Sunday boundary - not a rolling seven-day window - two now-superseded planning
+drafts disagreed with each other and with `list`'s own shipped behaviour on this point; `list`'s
+precedent is authoritative. The underlying `TemporalAdjusters.previousOrSame(MONDAY)` math itself
+is centralised in `logic.RelativeDateResolver` (`today`/`tomorrow`/`mondayOfThisWeek`/
+`mondayOfNextWeek`), not reimplemented per command: `list`, `find`, `dashboard`, `timetable`, and
+`recommend` all resolve `today`/`tomorrow`/`this week`/`next week` through it, so the five commands
+cannot silently drift apart on what those words mean. What each command's *parser* still owns
+independently is the surrounding grammar - which selectors it accepts, where the phrase sits
+relative to its own markers, and its own combination/trailing-text rules - since that genuinely
+differs per command (e.g. `find`'s phrase sits before `k/`/`c/`/`topic/`/`date/`/`order/` markers
+and has no `overdue`, unlike `list`).
 
 **Activity inclusion** uses the same half-open intersection test for both activity types: a fixed
 activity's `[start, end)` or a flexible activity's `[earliestStart, latestEnd)` must intersect the
@@ -392,24 +405,30 @@ path, restart consistency, a malformed persisted line skipped safely, and a full
 `ApplicationRunner` session proving no data file changes across several `dashboard` commands).
 `text-ui-test` covers only `dashboard date/...` scenarios (deterministic regardless of wall-clock
 date, using a far-future date so completion resolves to "not yet due" deterministically) -
-`dashboard today`/`tomorrow`/`this week` are excluded from `text-ui-test` for the same reason
-`list today`/`tomorrow`/`this week` already are (the harness runs the real jar against the real
-wall clock, with no fixed-clock injection point), covered instead by `DashboardServiceTest`'s
-injected-`now` tests.
+`dashboard today`/`tomorrow`/`this week`/`next week` are excluded from `text-ui-test` for the same
+reason `list today`/`tomorrow`/`this week`/`next week` already are (the harness runs the real jar
+against the real wall clock, with no fixed-clock injection point), covered instead by
+`DashboardServiceTest`'s injected-`now` tests.
 
 ## 14. Read-only timetable
 
-`timetable day/YYYY-MM-DD [detail]`, `timetable week/YYYY-MM-DD [compact|detail]`, and
-`timetable this week [compact|detail]` build a deterministic view from `ActivityManager` without
-mutating or persisting anything. The normal `list` command remains unchanged.
+`timetable today|tomorrow [detail]`, `timetable day/YYYY-MM-DD [detail]`,
+`timetable week/YYYY-MM-DD [compact|detail]`, and `timetable this week|next week [compact|detail]`
+build a deterministic view from `ActivityManager` without mutating or persisting anything. The
+normal `list` command remains unchanged. `today`/`tomorrow` were added alongside the pre-existing
+`day/`/`week/` markers and `this week` (rather than replacing them) to close a Defect-A gap:
+`timetable` was the one date-aware command with no relative-keyword selectors at all, unlike its
+`dashboard`/`recommend` siblings which already offered both a marker and relative keywords side by
+side. `today`/`tomorrow`/`next week` resolve through the same `logic.RelativeDateResolver` every
+other date-aware command uses (see Section 13).
 
 <p align="center"><img src="diagrams/class/TimetableClassDiagram.png" width="760" alt="Timetable class diagram"></p>
 
 Responsibilities follow the established command/parser/logic/model/formatter split:
 
 - `parser.timetable.TimetableCommandParser` validates exactly one period selector and optional
-  mode. It uses the existing strict `yyyy-MM-dd` parser and captures the injected `now` only for
-  `this week`.
+  mode. It uses the existing strict `yyyy-MM-dd` parser and captures the injected `now` for
+  `today`/`tomorrow`/`this week`/`next week`.
 - `command.timetable.TimetableCommand` calls the service and formatter. It implements no
   confirmation interface and is absent from `ApplicationRunner.mutatesState`, so execution does
   not take a mutation snapshot or save.
@@ -481,10 +500,13 @@ timetable rendering, route feasibility, or energy/sensory interpretation.
 
 ## 16. Deterministic schedule recommendation
 
-`recommend`, `recommend this week`, `recommend date/YYYY-MM-DD`, `recommend view`, `recommend adopt`,
-and `recommend cancel` form one in-memory preview-and-adopt workflow. Bare `recommend` is an alias
-for `recommend this week`. Generation and `view` are read-only; `cancel` mutates only the
-in-memory proposal store; `adopt` is the only recommend command that mutates persisted activity
+`recommend`, `recommend this week`, `recommend next week`, `recommend today`, `recommend tomorrow`,
+`recommend date/YYYY-MM-DD`, `recommend view`, `recommend adopt`, and `recommend cancel` form one
+in-memory preview-and-adopt workflow. Bare `recommend` is an alias for `recommend this week`;
+`recommend today`/`recommend tomorrow` are parser-level sugar for `recommend date/<today>`/
+`recommend date/<tomorrow>` (no separate service method - they resolve through the same
+`RecommendationService.recommendDate`). Generation and `view` are read-only; `cancel` mutates only
+the in-memory proposal store; `adopt` is the only recommend command that mutates persisted activity
 state.
 
 <p align="center"><img src="diagrams/class/RecommendationClassDiagram.png" width="760" alt="Recommendation class diagram"></p>
@@ -501,9 +523,26 @@ preview timetable and dashboard built from copied activities, never from in-plac
 an existing commitment. Eligible work is restricted to incomplete, not-yet-adopted flexible
 activities whose date lies inside the target day/week period. For each eligible activity, every
 valid start minute inside its original window is enumerated subject to the configured minimum
-buffer on both sides of neighbouring commitments. The next activity chosen for placement is the
+buffer on both sides of neighbouring commitments **and clamped to never be before `now`**: on
+today's date, the earliest candidate start is `max(activity.earliestStart, now rounded up to the
+next whole minute)`; on a date strictly before `now`'s date, the activity has no valid slots at all
+(it surfaces as unscheduled, never as a past-dated placement); on a future date, the window is
+unrestricted. This closed a regression where a today-dated flexible activity's window that had
+already fully or partly elapsed by the time `recommend` ran could still be proposed at its original,
+already-past earliest time - see `RecommendationServiceTest`'s `recommendDate_wholeWindowElapsed...`
+and `..._partiallyElapsedWindow...` cases, and `PE_REGRESSION_DEBUG_PLAN.md`'s "Critical recommender
+regression" batch, which this fix directly answers. The next activity chosen for placement is the
 one with the fewest valid slots; ties fall through to that activity's best slot and then to the
 lower stable ID.
+
+**Stale-proposal rejection.** A proposal is generated once and can sit unadopted while the user
+keeps working; by the time `recommend adopt` is entered, real time may have advanced past one or
+more of its proposed starts. `RecommendCommandParser` checks
+`RecommendationService.hasElapsedPlacement(proposal, now)` before constructing
+`RecommendAdoptCommand` at all - stale adoption is rejected with a specific message *before* the
+confirmation prompt, never as a partial or silently-backdated adoption. "Stale" means strictly
+`now.isAfter(placementDate.atTime(placementStart))`; a placement whose start is exactly `now` is
+still adoptable.
 
 For one activity's candidate slots, the current implementation's ordering is deterministic and
 intentionally simple: earlier start times win first; if two candidates share the same start, the
@@ -816,3 +855,29 @@ Before a release, also run:
 ./gradlew releaseZip --console=plain
 bash text-ui-test/runtest.sh
 ```
+
+## 26. Acknowledgements
+
+- **Project structure and tooling.** As stated in Section 1, this project began from the
+  se-education.org Duke template; its Gradle setup, Checkstyle rules, and Text-UI test harness
+  follow that ecosystem's conventions. The application design, package architecture, and domain
+  behaviour described throughout this guide are UniEnable-specific and original to this project.
+- **Academic-calendar data.** `data/academic-calendar.txt` and `src/main/resources/academic-calendar.txt`
+  are transcribed by hand from the published NUS academic calendar PDF for the stated academic
+  year (see the `SOURCE` record inside the file itself for the exact source title and date); the
+  file's header explicitly documents that this transcription, not any hardcoded value in Java
+  source, is the sole source of truth for week/semester/no-class data.
+- **Accessibility reference dataset.** `facilities.txt`/`connections.txt` (Section 12) are a small
+  sample dataset digitised from a real NUS Arts & Social Sciences cluster campus map, with
+  building names/IDs modelled on that real layout; accessibility features, connection distances,
+  and barrier notes are authored estimates for this project, not measured or officially published
+  accessibility data - every `facility`/`connection`/`route` command's output repeats this
+  disclaimer (Section 12, Section 8.9 of the User Guide) so it is never mistaken for live or
+  official information.
+- **Build and test tooling.** Gradle, the Gradle Shadow plugin (fat-JAR packaging), JUnit 5
+  (`org.junit.jupiter`), and Checkstyle (the project's `config/checkstyle/checkstyle.xml` ruleset)
+  are third-party tools this project depends on but did not author; see `build.gradle` for exact
+  versions.
+- **Development process.** This is a solo, self-directed CS2113 tP-style simulation (see
+  `docs/AboutUs.md`), developed with AI pair-programming assistance (Claude Code) alongside manual
+  design, review, and testing decisions throughout.

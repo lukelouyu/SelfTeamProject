@@ -38,7 +38,9 @@ public class PreferenceResetCommand extends Command implements Confirmable {
             return Confirmation.cancel("Preference profile already uses all defaults.");
         }
         return Confirmation.ask("Reset preference profile to defaults:\n" + changes
-                + "\nReset these preferences? (y/n)");
+                + "\nNote: activities already adopted from a recommendation keep their existing "
+                + "scheduled times - this reset does not move them; it only affects future "
+                + "recommend proposals.\nReset these preferences? (y/n)");
     }
 
     @Override

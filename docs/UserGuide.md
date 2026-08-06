@@ -845,6 +845,7 @@ path. It is read-only: it never adds, edits, or deletes a facility or connection
 dashboard today [detail]
 dashboard tomorrow [detail]
 dashboard date/YYYY-MM-DD [detail]
+dashboard day/YYYY-MM-DD [detail]
 dashboard this week [detail]
 dashboard next week [detail]
 ```
@@ -856,9 +857,10 @@ never shows a confirmation prompt.
 
 `this week` means Monday through Sunday of the current week — the same definition `list this
 week` already uses, not a rolling seven-day window; `next week` is the Monday-Sunday week
-immediately following it. `date/YYYY-MM-DD` accepts only that exact marker form (not a bare date);
-an invalid or non-existent date is rejected the same way `add`/`edit` already reject one. `detail`
-is a single optional trailing keyword.
+immediately following it. `date/YYYY-MM-DD` and `day/YYYY-MM-DD` are interchangeable aliases for
+the same single-day selector — `timetable` (Section 10) accepts the same pair, so use whichever
+you remember. An invalid or non-existent date is rejected the same way `add`/`edit` already reject
+one. `detail` is a single optional trailing keyword.
 
 Default output example:
 
@@ -908,6 +910,7 @@ them — self-reported planning data only, never a medical or performance judgem
 timetable today [detail]
 timetable tomorrow [detail]
 timetable day/YYYY-MM-DD [detail]
+timetable date/YYYY-MM-DD [detail]
 timetable week/YYYY-MM-DD [compact|detail]
 timetable this week [compact|detail]
 timetable next week [compact|detail]
@@ -915,7 +918,9 @@ timetable next week [compact|detail]
 
 Timetable is a read-only view over existing activities. A day request shows one calendar date;
 `today`/`tomorrow` are shorthand for `day/` with the current/next calendar date, exactly like
-`dashboard today`/`dashboard tomorrow`. `week/DATE` accepts any valid date and shows the
+`dashboard today`/`dashboard tomorrow`. `date/YYYY-MM-DD` is an interchangeable alias for
+`day/YYYY-MM-DD` — `dashboard` (Section 9) accepts the same pair. `week/DATE` accepts any valid
+date and shows the
 Monday-Sunday week containing it; `this week` uses the current Monday-Sunday week, and `next week`
 is the Monday-Sunday week immediately following it - the same `this week`/`next week` boundaries
 `dashboard` and `list` use. Dates use strict `yyyy-MM-dd` format.
@@ -1001,8 +1006,12 @@ Example:
 preference set tomato/on buffer/30 end/21:00 start/07:30
 ```
 
-The confirmation preview lists only changed fields. Answer `y` to apply and save the complete
-profile or `n` to cancel without an in-memory or on-disk change.
+The confirmation preview lists only changed fields, followed by a note that flexible activities you
+have already adopted from a recommendation keep their existing scheduled times - changing your
+preferences here never moves them; it only affects placements `recommend` proposes from now on (see
+Section 12.4 for what happens if you try to adopt an *existing* proposal after changing
+preferences). Answer `y` to apply and save the complete profile or `n` to cancel without an
+in-memory or on-disk change.
 
 Restore all four defaults:
 
@@ -1010,9 +1019,10 @@ Restore all four defaults:
 preference reset
 ```
 
-Reset also requires confirmation. Tomato/Pomodoro is an advisory display preference only: it may
-add a short study suggestion in `recommend` output, but it does not change slot generation,
-activity timing, Dashboard calculations, or route behaviour.
+Reset also requires confirmation, with the same already-adopted-placements note described above.
+Tomato/Pomodoro is an advisory display preference only: it may add a short study suggestion in
+`recommend` output, but it does not change slot generation, activity timing, Dashboard
+calculations, or route behaviour.
 
 ## 12. Deterministic Schedule Recommendation: `recommend`
 
@@ -1057,10 +1067,12 @@ but does not save any file and does not mutate your activities yet.
 recommend today
 recommend tomorrow
 recommend date/YYYY-MM-DD
+recommend day/YYYY-MM-DD
 ```
 
 `today` and `tomorrow` are shorthand for `date/` with the current/next calendar date - exactly
-like `dashboard today`/`dashboard tomorrow`. Example:
+like `dashboard today`/`dashboard tomorrow`. `day/YYYY-MM-DD` is an interchangeable alias for
+`date/YYYY-MM-DD`. Example:
 
 ```text
 recommend date/2026-08-15
@@ -1093,6 +1105,13 @@ start has now passed - `recommend adopt` is rejected outright, before the confir
 a message telling you to generate a fresh proposal with `recommend`. This prevents silently
 persisting a placement that can no longer be acted on.
 
+Likewise, if you change `preference set`/`preference reset` after generating a proposal and the
+new preferred daily start/end no longer contains one or more of its proposed placements,
+`recommend adopt` is rejected the same way - before the confirmation prompt, with a message telling
+you to generate a fresh proposal. A proposal is only ever adopted if every one of its placements
+still satisfies your *current* preferred range at the moment of adoption, not just the range that
+was active when it was generated.
+
 After adoption:
 
 - the flexible activity keeps the same permanent ID;
@@ -1118,7 +1137,18 @@ Clears the current in-memory proposal without changing any activity and without 
   addition to being within the activity's own earliest/latest window. If the intersection of the
   two is empty, or too narrow for the activity's duration to fit inside it at all, the activity is
   left unscheduled - it is never proposed partly or fully outside your preferred hours, even when
-  its own window would otherwise allow an earlier or later start.
+  its own window would otherwise allow an earlier or later start. Today also respects the
+  current-time clamp below at the same time as this boundary - both lower bounds apply together.
+  This holds for every form of `recommend` (weekly, one-day, or any other period) and is checked a
+  second time right before a placement is added to the proposal, as a final safeguard, not only
+  when candidate times are first generated.
+
+  Example - preferred `07:30`-`21:00`:
+
+  ```text
+  Activity window 06:30-09:30  ->  scheduled from 07:30
+  Activity window 21:15-22:30  ->  UNSCHEDULED
+  ```
 - Minimum buffer from Section 11 is enforced around neighbouring scheduled commitments.
 - A flexible activity that already has an adopted placement is treated as scheduled and is not
   proposed again.

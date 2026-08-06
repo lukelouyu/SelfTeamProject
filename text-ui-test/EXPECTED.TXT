@@ -175,7 +175,7 @@ repaired, or changed by UniEnable itself - including by reset all.
 ____________________________________________________________
 ____________________________________________________________
 Dashboard: a planning-load summary
-Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week|next week [detail]
+Format: dashboard today|tomorrow|date/YYYY-MM-DD|day/YYYY-MM-DD|this week|next week [detail]
 Related commands: completion (see guide completion for mark/unmark/list status/)
 
 Shows how much is planned for a period, how much room is left, how
@@ -184,12 +184,14 @@ complete - using only activity data you already entered. this week
 means Monday through Sunday of the current week, the same as list
 this week; next week is the following Monday-Sunday week. detail adds
 fixed/flexible counts, a category breakdown, and the full 1-to-5
-energy/sensory rating distribution.
+energy/sensory rating distribution. date/ and day/ are interchangeable -
+use whichever you remember; timetable accepts the same pair.
 
 Examples:
   dashboard today
   dashboard tomorrow detail
   dashboard date/2026-08-20
+  dashboard day/2026-08-20
   dashboard this week detail
   dashboard next week
 
@@ -202,22 +204,25 @@ ____________________________________________________________
 Text timetable
 Format: timetable today|tomorrow [detail]
         timetable day/YYYY-MM-DD [detail]
+        timetable date/YYYY-MM-DD [detail]
         timetable week/YYYY-MM-DD [compact|detail]
         timetable this week [compact|detail]
         timetable next week [compact|detail]
 
 Shows fixed activities in chronological day sections. today/tomorrow are
-shorthand for day/ with the current/next date. Weekly views cover Monday
-through Sunday; next week is the following Monday-Sunday week. Flexible
-activities stay in a separate unscheduled section with their window and
-required duration; no time is invented for them. compact omits empty days
-for narrow terminals, while detail adds completion, category, rating,
-topic, and note information.
+shorthand for day/ with the current/next date; date/ is an interchangeable
+alias for day/ - use whichever you remember, dashboard accepts the same
+pair. Weekly views cover Monday through Sunday; next week is the
+following Monday-Sunday week. Flexible activities stay in a separate
+unscheduled section with their window and required duration; no time is
+invented for them. compact omits empty days for narrow terminals, while
+detail adds completion, category, rating, topic, and note information.
 
 Examples:
   timetable today
   timetable day/2026-08-17
   timetable day/2026-08-17 detail
+  timetable date/2026-08-17
   timetable week/2026-08-19 compact
   timetable this week detail
   timetable next week
@@ -252,6 +257,13 @@ Changes and reset require y/n confirmation. These settings are the
 planning inputs for recommend: start/end and buffer are enforced as hard
 scheduling constraints, and Tomato only affects advisory study
 suggestions, not slot generation or activity timing.
+
+Flexible activities already adopted from a recommendation keep their
+existing scheduled times - a preference change never moves them; it only
+affects future recommend proposals. An existing unadopted proposal is also
+unaffected until you act on it: recommend adopt re-checks it against your
+current preferences and rejects it if they no longer fit (see guide
+recommend).
 ____________________________________________________________
 ____________________________________________________________
 Recommended timetable
@@ -261,6 +273,7 @@ Format: recommend
         recommend today
         recommend tomorrow
         recommend date/YYYY-MM-DD
+        recommend day/YYYY-MM-DD
         recommend view
         recommend adopt
         recommend cancel
@@ -269,8 +282,9 @@ recommend and recommend this week generate one deterministic weekly
 preview for incomplete flexible activities; recommend next week does the
 same for the following Monday-Sunday week. recommend today/tomorrow are
 shorthand for recommend date/ with the current/next date; recommend
-date/YYYY-MM-DD generates a one-day preview for any date not before
-today. recommend view re-shows the current proposal, recommend adopt
+date/YYYY-MM-DD (or its recommend day/YYYY-MM-DD alias) generates a
+one-day preview for any date not before today. recommend view re-shows
+the current proposal, recommend adopt
 confirms and saves it once, and recommend cancel discards it with no
 change.
 
@@ -287,6 +301,9 @@ has already fully elapsed is left unscheduled rather than backdated; a
 partly elapsed today window starts at the next whole minute from now.
 recommend adopt is rejected as stale if any proposed start has already
 passed since the proposal was generated - regenerate with recommend.
+recommend adopt is also rejected if start/end preferences changed since
+generation and no longer contain one or more proposed placements -
+regenerate with recommend to pick up the new preferences.
 
 Examples:
   recommend
@@ -294,6 +311,7 @@ Examples:
   recommend next week
   recommend today
   recommend date/2026-08-15
+  recommend day/2026-08-15
   recommend view
   recommend adopt
 
@@ -552,22 +570,25 @@ ____________________________________________________________
 Text timetable
 Format: timetable today|tomorrow [detail]
         timetable day/YYYY-MM-DD [detail]
+        timetable date/YYYY-MM-DD [detail]
         timetable week/YYYY-MM-DD [compact|detail]
         timetable this week [compact|detail]
         timetable next week [compact|detail]
 
 Shows fixed activities in chronological day sections. today/tomorrow are
-shorthand for day/ with the current/next date. Weekly views cover Monday
-through Sunday; next week is the following Monday-Sunday week. Flexible
-activities stay in a separate unscheduled section with their window and
-required duration; no time is invented for them. compact omits empty days
-for narrow terminals, while detail adds completion, category, rating,
-topic, and note information.
+shorthand for day/ with the current/next date; date/ is an interchangeable
+alias for day/ - use whichever you remember, dashboard accepts the same
+pair. Weekly views cover Monday through Sunday; next week is the
+following Monday-Sunday week. Flexible activities stay in a separate
+unscheduled section with their window and required duration; no time is
+invented for them. compact omits empty days for narrow terminals, while
+detail adds completion, category, rating, topic, and note information.
 
 Examples:
   timetable today
   timetable day/2026-08-17
   timetable day/2026-08-17 detail
+  timetable date/2026-08-17
   timetable week/2026-08-19 compact
   timetable this week detail
   timetable next week
@@ -665,7 +686,7 @@ A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
 Dashboard: a planning-load summary
-Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week|next week [detail]
+Format: dashboard today|tomorrow|date/YYYY-MM-DD|day/YYYY-MM-DD|this week|next week [detail]
 Related commands: completion (see guide completion for mark/unmark/list status/)
 
 Shows how much is planned for a period, how much room is left, how
@@ -674,12 +695,14 @@ complete - using only activity data you already entered. this week
 means Monday through Sunday of the current week, the same as list
 this week; next week is the following Monday-Sunday week. detail adds
 fixed/flexible counts, a category breakdown, and the full 1-to-5
-energy/sensory rating distribution.
+energy/sensory rating distribution. date/ and day/ are interchangeable -
+use whichever you remember; timetable accepts the same pair.
 
 Examples:
   dashboard today
   dashboard tomorrow detail
   dashboard date/2026-08-20
+  dashboard day/2026-08-20
   dashboard this week detail
   dashboard next week
 
@@ -696,6 +719,7 @@ Format: recommend
         recommend today
         recommend tomorrow
         recommend date/YYYY-MM-DD
+        recommend day/YYYY-MM-DD
         recommend view
         recommend adopt
         recommend cancel
@@ -704,8 +728,9 @@ recommend and recommend this week generate one deterministic weekly
 preview for incomplete flexible activities; recommend next week does the
 same for the following Monday-Sunday week. recommend today/tomorrow are
 shorthand for recommend date/ with the current/next date; recommend
-date/YYYY-MM-DD generates a one-day preview for any date not before
-today. recommend view re-shows the current proposal, recommend adopt
+date/YYYY-MM-DD (or its recommend day/YYYY-MM-DD alias) generates a
+one-day preview for any date not before today. recommend view re-shows
+the current proposal, recommend adopt
 confirms and saves it once, and recommend cancel discards it with no
 change.
 
@@ -722,6 +747,9 @@ has already fully elapsed is left unscheduled rather than backdated; a
 partly elapsed today window starts at the next whole minute from now.
 recommend adopt is rejected as stale if any proposed start has already
 passed since the proposal was generated - regenerate with recommend.
+recommend adopt is also rejected if start/end preferences changed since
+generation and no longer contain one or more proposed placements -
+regenerate with recommend to pick up the new preferences.
 
 Examples:
   recommend
@@ -729,6 +757,7 @@ Examples:
   recommend next week
   recommend today
   recommend date/2026-08-15
+  recommend day/2026-08-15
   recommend view
   recommend adopt
 
@@ -810,22 +839,25 @@ ____________________________________________________________
 Text timetable
 Format: timetable today|tomorrow [detail]
         timetable day/YYYY-MM-DD [detail]
+        timetable date/YYYY-MM-DD [detail]
         timetable week/YYYY-MM-DD [compact|detail]
         timetable this week [compact|detail]
         timetable next week [compact|detail]
 
 Shows fixed activities in chronological day sections. today/tomorrow are
-shorthand for day/ with the current/next date. Weekly views cover Monday
-through Sunday; next week is the following Monday-Sunday week. Flexible
-activities stay in a separate unscheduled section with their window and
-required duration; no time is invented for them. compact omits empty days
-for narrow terminals, while detail adds completion, category, rating,
-topic, and note information.
+shorthand for day/ with the current/next date; date/ is an interchangeable
+alias for day/ - use whichever you remember, dashboard accepts the same
+pair. Weekly views cover Monday through Sunday; next week is the
+following Monday-Sunday week. Flexible activities stay in a separate
+unscheduled section with their window and required duration; no time is
+invented for them. compact omits empty days for narrow terminals, while
+detail adds completion, category, rating, topic, and note information.
 
 Examples:
   timetable today
   timetable day/2026-08-17
   timetable day/2026-08-17 detail
+  timetable date/2026-08-17
   timetable week/2026-08-19 compact
   timetable this week detail
   timetable next week
@@ -3167,7 +3199,7 @@ Period: 2099-06-02
 No activities found for the selected period.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Missing input: dashboard requires a period: today, tomorrow, date/YYYY-MM-DD, this week, or next week.
+[Error] Missing input: dashboard requires a period: today, tomorrow, date/YYYY-MM-DD (or day/YYYY-MM-DD), this week, or next week.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Missing input: date/ requires a value in yyyy-MM-dd format.
@@ -3305,7 +3337,7 @@ UNSCHEDULED FLEXIBLE ACTIVITIES
 [F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
 ____________________________________________________________
 ____________________________________________________________
-[Error] Missing input: timetable requires day/YYYY-MM-DD, week/YYYY-MM-DD, today, tomorrow, this week, or next week.
+[Error] Missing input: timetable requires day/YYYY-MM-DD (or date/YYYY-MM-DD), week/YYYY-MM-DD, today, tomorrow, this week, or next week.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Missing input: day/ requires a value in yyyy-MM-dd format.
@@ -3377,6 +3409,7 @@ Preferred daily start | Old: 08:00 | New: 07:30
 Preferred daily end | Old: 20:00 | New: 21:00
 Minimum buffer | Old: 15 minutes | New: 30 minutes
 Tomato suggestion | Old: OFF | New: ON
+Note: activities already adopted from a recommendation keep their existing scheduled times - this change does not move them; it only affects future recommend proposals.
 Apply these preference changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3395,6 +3428,7 @@ ____________________________________________________________
 ____________________________________________________________
 Proposed preference changes:
 Tomato suggestion | Old: OFF | New: ON
+Note: activities already adopted from a recommendation keep their existing scheduled times - this change does not move them; it only affects future recommend proposals.
 Apply these preference changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3424,6 +3458,7 @@ Proposed preference changes:
 Preferred daily start | Old: 08:00 | New: 07:30
 Preferred daily end | Old: 20:00 | New: 21:00
 Minimum buffer | Old: 15 minutes | New: 30 minutes
+Note: activities already adopted from a recommendation keep their existing scheduled times - this change does not move them; it only affects future recommend proposals.
 Apply these preference changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3457,6 +3492,7 @@ Preferred daily start | Old: 07:30 | New: 08:00
 Preferred daily end | Old: 21:00 | New: 20:00
 Minimum buffer | Old: 30 minutes | New: 15 minutes
 Tomato suggestion | Old: ON | New: OFF
+Note: activities already adopted from a recommendation keep their existing scheduled times - this reset does not move them; it only affects future recommend proposals.
 Reset these preferences? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3539,6 +3575,7 @@ Preferred daily start | Old: 07:30 | New: 08:00
 Preferred daily end | Old: 21:00 | New: 20:00
 Minimum buffer | Old: 30 minutes | New: 15 minutes
 Tomato suggestion | Old: ON | New: OFF
+Note: activities already adopted from a recommendation keep their existing scheduled times - this reset does not move them; it only affects future recommend proposals.
 Reset these preferences? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3566,6 +3603,7 @@ ____________________________________________________________
 ____________________________________________________________
 Proposed preference changes:
 Tomato suggestion | Old: OFF | New: ON
+Note: activities already adopted from a recommendation keep their existing scheduled times - this change does not move them; it only affects future recommend proposals.
 Apply these preference changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3617,6 +3655,7 @@ ____________________________________________________________
 ____________________________________________________________
 Proposed preference changes:
 Preferred daily start | Old: 08:00 | New: 09:00
+Note: activities already adopted from a recommendation keep their existing scheduled times - this change does not move them; it only affects future recommend proposals.
 Apply these preference changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3635,6 +3674,7 @@ ____________________________________________________________
 Proposed preference changes:
 Preferred daily end | Old: 20:00 | New: 21:00
 Minimum buffer | Old: 15 minutes | New: 30 minutes
+Note: activities already adopted from a recommendation keep their existing scheduled times - this change does not move them; it only affects future recommend proposals.
 Apply these preference changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3654,6 +3694,7 @@ Proposed preference changes:
 Preferred daily end | Old: 21:00 | New: 18:00
 Minimum buffer | Old: 30 minutes | New: 20 minutes
 Tomato suggestion | Old: OFF | New: ON
+Note: activities already adopted from a recommendation keep their existing scheduled times - this change does not move them; it only affects future recommend proposals.
 Apply these preference changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3671,6 +3712,7 @@ ____________________________________________________________
 ____________________________________________________________
 Proposed preference changes:
 Tomato suggestion | Old: ON | New: OFF
+Note: activities already adopted from a recommendation keep their existing scheduled times - this change does not move them; it only affects future recommend proposals.
 Apply these preference changes? (y/n)
 ____________________________________________________________
 ____________________________________________________________
@@ -3690,6 +3732,7 @@ Reset preference profile to defaults:
 Preferred daily start | Old: 09:00 | New: 08:00
 Preferred daily end | Old: 18:00 | New: 20:00
 Minimum buffer | Old: 20 minutes | New: 15 minutes
+Note: activities already adopted from a recommendation keep their existing scheduled times - this reset does not move them; it only affects future recommend proposals.
 Reset these preferences? (y/n)
 ____________________________________________________________
 ____________________________________________________________

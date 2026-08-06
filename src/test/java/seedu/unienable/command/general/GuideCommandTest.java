@@ -473,7 +473,8 @@ class GuideCommandTest {
         assertTrue(feedback.contains("dashboard this week detail"));
         assertTrue(feedback.contains("dashboard next week"));
         assertTrue(feedback.contains(
-                "Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week|next week [detail]"));
+                "Format: dashboard today|tomorrow|date/YYYY-MM-DD|day/YYYY-MM-DD|this week|next week "
+                        + "[detail]"));
     }
 
     @Test

@@ -5,10 +5,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.dashboard.DashboardService;
@@ -24,8 +27,16 @@ import seedu.unienable.model.timetable.TimetablePeriod;
 
 /** Builds deterministic recommendation proposals without mutating stored activities. */
 public final class RecommendationService {
-    private static final int HIGH_RATING_THRESHOLD = 4;
     private static final int TOMATO_MINUTES = 50;
+
+    /**
+     * Number of a single day's remaining flexible activities small enough to search exhaustively
+     * (every ordering tried). {@code PERMUTATION_CAP}! orderings is the resulting worst case -
+     * 8! = 40320, cheap even with a per-ordering placement pass - so real-world days (a handful of
+     * flexible activities) always get a provably optimal schedule; only implausibly large single
+     * days fall back to {@link #heuristicOrderings}.
+     */
+    private static final int PERMUTATION_CAP = 8;
 
     private RecommendationService() {
     }
@@ -84,6 +95,44 @@ public final class RecommendationService {
         return false;
     }
 
+    /**
+     * Returns whether any placement already proposed in proposal falls outside preferences'
+     * current preferred daily start/end - used to reject adopting a proposal generated under a
+     * profile that has since been changed (via {@code preference set}/{@code preference reset})
+     * to a boundary the proposal's placements were never checked against. Preferred start/end are
+     * a hard scheduling boundary, never a soft one (see {@link #withinPreferredRange}), so a
+     * proposal that no longer satisfies the current profile must never be silently adopted as-is.
+     *
+     * @param proposal the proposal to check
+     * @param preferences the current preference profile to check every placement against
+     * @return true if any placement starts before preferences' preferred start or ends after its
+     *     preferred end
+     */
+    public static boolean hasOutOfPreferredRangePlacement(RecommendationProposal proposal,
+            PreferenceProfile preferences) {
+        for (RecommendedPlacement placement : proposal.getPlacements()) {
+            if (!withinPreferredRange(placement.startTime(), placement.endTime(), preferences)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The final boundary guard: true only if start is not before preferences' preferred start and
+     * end is not after its preferred end. {@link #earliestValidSlot} already restricts every
+     * candidate it ever searches to this exact range, so in normal operation this can never
+     * evaluate false - it exists as defense-in-depth so that a future change to slot generation
+     * cannot silently reintroduce an out-of-range placement without also being caught here, at the
+     * point placements are committed to a proposal ({@link #build}) or adopted
+     * ({@link #hasOutOfPreferredRangePlacement}). Scoring inside {@link DaySchedule#betterThan} -
+     * count, duration, window tightness, aggregate earliest-placement, ID - never overrides this;
+     * it only ever ranks among candidates that already satisfy it.
+     */
+    private static boolean withinPreferredRange(LocalTime start, LocalTime end, PreferenceProfile preferences) {
+        return !start.isBefore(preferences.getPreferredStart()) && !end.isAfter(preferences.getPreferredEnd());
+    }
+
     /** Returns preview activities with proposal placements applied to flexible activities only. */
     public static List<Activity> applyPreview(List<Activity> activities, RecommendationProposal proposal) {
         Map<Integer, LocalTime> startsById = new HashMap<>();
@@ -103,23 +152,39 @@ public final class RecommendationService {
         List<Activity> all = activityManager.getAll();
         List<Commitment> commitments = existingCommitments(all);
         List<FlexibleActivity> remaining = eligibleFlexible(all, timetablePeriod);
+        Map<LocalDate, List<FlexibleActivity>> byDate = new LinkedHashMap<>();
+        for (FlexibleActivity activity : remaining) {
+            byDate.computeIfAbsent(activity.getDate(), date -> new ArrayList<>()).add(activity);
+        }
+        List<LocalDate> dates = new ArrayList<>(byDate.keySet());
+        dates.sort(Comparator.naturalOrder());
+
         List<RecommendedPlacement> placements = new ArrayList<>();
         List<Integer> unscheduled = new ArrayList<>();
-
-        while (true) {
-            CandidateSelection next = chooseNextActivity(remaining, commitments, preferences, now);
-            if (next == null) {
-                break;
+        for (LocalDate date : dates) {
+            List<FlexibleActivity> dayActivities = byDate.get(date);
+            DaySchedule daySchedule = optimizeDay(dayActivities, commitments, preferences, now);
+            List<Integer> guardRejectedIds = new ArrayList<>();
+            for (ScheduledItem item : daySchedule.items()) {
+                LocalTime end = item.start().plusMinutes(item.activity().getDurationMinutes());
+                if (!withinPreferredRange(item.start(), end, preferences)) {
+                    // Final guard: earliestValidSlot's own search range already makes this
+                    // unreachable in normal operation (see withinPreferredRange's javadoc), but a
+                    // slot that somehow fails it is discarded here rather than ever reaching the
+                    // proposal, per the hard-boundary design rule.
+                    guardRejectedIds.add(item.activity().getId());
+                    continue;
+                }
+                commitments.add(Commitment.fromFlexible(item.activity(), item.start()));
+                placements.add(new RecommendedPlacement(item.activity().getId(), item.activity().getDescription(),
+                        item.activity().getDate(), item.start(), end,
+                        shouldSuggestTomato(item.activity(), preferences)));
             }
-            remaining.remove(next.activity());
-            commitments.add(Commitment.fromFlexible(next.activity(), next.bestStart()));
-            placements.add(new RecommendedPlacement(next.activity().getId(), next.activity().getDescription(),
-                    next.activity().getDate(), next.bestStart(),
-                    next.bestStart().plusMinutes(next.activity().getDurationMinutes()),
-                    shouldSuggestTomato(next.activity(), preferences)));
-        }
-        for (FlexibleActivity activity : remaining) {
-            unscheduled.add(activity.getId());
+            for (FlexibleActivity activity : dayActivities) {
+                if (!daySchedule.containsId(activity.getId()) || guardRejectedIds.contains(activity.getId())) {
+                    unscheduled.add(activity.getId());
+                }
+            }
         }
         unscheduled.sort(Integer::compareTo);
         placements.sort(Comparator.comparing(RecommendedPlacement::date)
@@ -161,51 +226,149 @@ public final class RecommendationService {
         return flexible;
     }
 
-    private static CandidateSelection chooseNextActivity(List<FlexibleActivity> remaining, List<Commitment> commitments,
+    /**
+     * Finds the best whole-day placement for date's remaining flexible activities, searching
+     * combinations rather than placing each activity independently - a purely greedy,
+     * activity-by-activity search can leave activities unscheduled even when a valid schedule
+     * containing them exists (e.g. a short activity greedily claims a slot that was the only way
+     * to fit a longer one later the same day). Every candidate ordering is evaluated by placing
+     * each activity, in that order, at its own earliest feasible slot given the activities already
+     * placed earlier in the ordering; the best-scoring resulting {@link DaySchedule} across all
+     * orderings tried is returned. See {@link DaySchedule#betterThan} for the scoring rule.
+     */
+    private static DaySchedule optimizeDay(List<FlexibleActivity> dayActivities, List<Commitment> commitments,
             PreferenceProfile preferences, LocalDateTime now) {
-        CandidateSelection best = null;
-        for (FlexibleActivity activity : remaining) {
-            List<LocalTime> validSlots = validSlots(activity, commitments, preferences, now);
-            if (validSlots.isEmpty()) {
-                continue;
+        List<FlexibleActivity> candidates = new ArrayList<>();
+        for (FlexibleActivity activity : dayActivities) {
+            if (earliestValidSlot(activity, commitments, preferences, now).isPresent()) {
+                candidates.add(activity);
             }
-            LocalTime bestSlot = chooseBestSlot(activity, validSlots, commitments, preferences);
-            CandidateSelection candidate = new CandidateSelection(activity, validSlots.size(), bestSlot);
-            if (best == null || candidate.betterThan(best, commitments, preferences)) {
-                best = candidate;
+        }
+        if (candidates.isEmpty()) {
+            return DaySchedule.empty();
+        }
+
+        DaySchedule best = null;
+        if (candidates.size() <= PERMUTATION_CAP) {
+            List<List<FlexibleActivity>> orderings = new ArrayList<>();
+            permute(candidates, 0, orderings);
+            for (List<FlexibleActivity> ordering : orderings) {
+                DaySchedule attempt = placeInOrder(ordering, commitments, preferences, now);
+                if (best == null || attempt.betterThan(best)) {
+                    best = attempt;
+                }
+            }
+        } else {
+            for (List<FlexibleActivity> ordering : heuristicOrderings(candidates)) {
+                DaySchedule attempt = placeInOrder(ordering, commitments, preferences, now);
+                if (best == null || attempt.betterThan(best)) {
+                    best = attempt;
+                }
             }
         }
         return best;
     }
 
+    /** Fills orderings with every permutation of candidates via in-place backtracking. */
+    private static void permute(List<FlexibleActivity> candidates, int index,
+            List<List<FlexibleActivity>> orderings) {
+        if (index == candidates.size()) {
+            orderings.add(new ArrayList<>(candidates));
+            return;
+        }
+        for (int i = index; i < candidates.size(); i++) {
+            Collections.swap(candidates, index, i);
+            permute(candidates, index + 1, orderings);
+            Collections.swap(candidates, index, i);
+        }
+    }
+
     /**
-     * Enumerates every start minute that fits inside the intersection of activity's own window
+     * A small, fixed set of deterministic orderings used in place of exhaustive permutation once a
+     * single day has more remaining flexible activities than {@link #PERMUTATION_CAP} - factorial
+     * search is no longer practical, so this trades a guaranteed-optimal result for a bounded-cost
+     * search over orderings that tend to perform well: tightest window first (least slack to place
+     * elsewhere), longest duration first, earliest own-window first, and stable ID order.
+     */
+    private static List<List<FlexibleActivity>> heuristicOrderings(List<FlexibleActivity> candidates) {
+        List<List<FlexibleActivity>> orderings = new ArrayList<>();
+        orderings.add(sortedCopy(candidates, Comparator.comparingLong(RecommendationService::slackMinutes)
+                .thenComparingInt(Activity::getId)));
+        orderings.add(sortedCopy(candidates, Comparator.comparingInt(FlexibleActivity::getDurationMinutes)
+                .reversed().thenComparingInt(Activity::getId)));
+        orderings.add(sortedCopy(candidates, Comparator.comparing(FlexibleActivity::getEarliestStart)
+                .thenComparingInt(Activity::getId)));
+        orderings.add(sortedCopy(candidates, Comparator.comparingInt(Activity::getId)));
+        return orderings;
+    }
+
+    private static List<FlexibleActivity> sortedCopy(List<FlexibleActivity> source,
+            Comparator<FlexibleActivity> order) {
+        List<FlexibleActivity> copy = new ArrayList<>(source);
+        copy.sort(order);
+        return copy;
+    }
+
+    /**
+     * Places ordering's activities greedily in that exact sequence, each at its own earliest
+     * feasible slot given commitments plus every earlier activity in this same ordering that was
+     * successfully placed; an activity with no feasible slot at its turn is skipped (left out of
+     * the returned schedule) rather than aborting the rest of the ordering.
+     */
+    private static DaySchedule placeInOrder(List<FlexibleActivity> ordering, List<Commitment> baseCommitments,
+            PreferenceProfile preferences, LocalDateTime now) {
+        List<Commitment> working = new ArrayList<>(baseCommitments);
+        List<ScheduledItem> items = new ArrayList<>();
+        for (FlexibleActivity activity : ordering) {
+            Optional<LocalTime> start = earliestValidSlot(activity, working, preferences, now);
+            if (start.isEmpty()) {
+                continue;
+            }
+            items.add(new ScheduledItem(activity, start.get()));
+            working.add(Commitment.fromFlexible(activity, start.get()));
+        }
+        return new DaySchedule(items);
+    }
+
+    /**
+     * Returns the earliest start minute that fits inside the intersection of activity's own window
      * and preferences' preferred daily start/end - the preferred range is a hard boundary on the
      * searchable range, not merely a tie-break preference, so a candidate placed entirely outside
      * it is never proposed when a compliant slot exists. If the intersection is empty (or too
-     * narrow for activity's duration to fit inside it at all), returns an empty list rather than
-     * risking a wrapped-past-midnight {@code LocalTime} range.
+     * narrow for activity's duration to fit inside it at all), or no minute within it clears every
+     * commitment's buffer, returns empty rather than risking a wrapped-past-midnight
+     * {@code LocalTime} range or a non-existent slot. This is the slot-generation stage of the
+     * boundary-enforcement pipeline: the loop below never even considers a candidate before
+     * {@code effectiveEarliestStart} or after {@code effectiveLatestEnd}, so every value this
+     * method can return already satisfies {@link #withinPreferredRange} - {@link #build} still
+     * re-checks it as a final guard before committing to the proposal (defense-in-depth, not
+     * because this stage is expected to fail).
      */
-    private static List<LocalTime> validSlots(FlexibleActivity activity, List<Commitment> commitments,
+    private static Optional<LocalTime> earliestValidSlot(FlexibleActivity activity, List<Commitment> commitments,
             PreferenceProfile preferences, LocalDateTime now) {
-        List<LocalTime> valid = new ArrayList<>();
         LocalTime earliestStart = effectiveEarliestStart(activity, preferences, now);
         if (earliestStart == null) {
-            return valid;
+            return Optional.empty();
         }
         LocalTime effectiveEnd = effectiveLatestEnd(activity, preferences);
         int durationMinutes = activity.getDurationMinutes();
         if (Duration.between(earliestStart, effectiveEnd).toMinutes() < durationMinutes) {
-            return valid;
+            return Optional.empty();
         }
         LocalTime latestStart = effectiveEnd.minusMinutes(durationMinutes);
         for (LocalTime candidate = earliestStart; !candidate.isAfter(latestStart);
                 candidate = candidate.plusMinutes(1)) {
             if (fits(activity, candidate, commitments, preferences.getMinimumBufferMinutes())) {
-                valid.add(candidate);
+                return Optional.of(candidate);
             }
         }
-        return valid;
+        return Optional.empty();
+    }
+
+    /** An activity's intrinsic slack: how much wider its own window is than its duration. */
+    private static long slackMinutes(FlexibleActivity activity) {
+        return Duration.between(activity.getEarliestStart(), activity.getLatestEnd()).toMinutes()
+                - activity.getDurationMinutes();
     }
 
     /**
@@ -279,101 +442,6 @@ public final class RecommendationService {
         return true;
     }
 
-    private static LocalTime chooseBestSlot(FlexibleActivity activity, List<LocalTime> validSlots,
-            List<Commitment> commitments, PreferenceProfile preferences) {
-        LocalTime best = validSlots.get(0);
-        SlotScore bestScore = score(activity, best, commitments, preferences);
-        for (int i = 1; i < validSlots.size(); i++) {
-            LocalTime candidate = validSlots.get(i);
-            SlotScore candidateScore = score(activity, candidate, commitments, preferences);
-            if (candidateScore.betterThan(bestScore, candidate, best)) {
-                best = candidate;
-                bestScore = candidateScore;
-            }
-        }
-        return best;
-    }
-
-    private static SlotScore score(FlexibleActivity activity, LocalTime slot, List<Commitment> commitments,
-            PreferenceProfile preferences) {
-        LocalTime end = slot.plusMinutes(activity.getDurationMinutes());
-        long bufferPreservation = bufferPreservation(activity.getDate(), slot, end, commitments,
-                preferences.getMinimumBufferMinutes());
-        long energySpread = spreadDistance(activity.getDate(), slot, end, commitments, HIGH_RATING_THRESHOLD,
-                true, activity.getEnergyRating().getValue() >= HIGH_RATING_THRESHOLD);
-        long sensorySpread = spreadDistance(activity.getDate(), slot, end, commitments, HIGH_RATING_THRESHOLD,
-                false, activity.getSensoryRating().getValue() >= HIGH_RATING_THRESHOLD);
-        long preferencePenalty = preferredRangePenalty(slot, end, preferences);
-        return new SlotScore(bufferPreservation, energySpread, sensorySpread, preferencePenalty);
-    }
-
-    private static long bufferPreservation(LocalDate date, LocalTime start, LocalTime end,
-            List<Commitment> commitments, int buffer) {
-        LocalTime previousEnd = null;
-        LocalTime nextStart = null;
-        for (Commitment commitment : commitments) {
-            if (!commitment.date().equals(date)) {
-                continue;
-            }
-            if (!commitment.endTime().isAfter(start)
-                    && (previousEnd == null || commitment.endTime().isAfter(previousEnd))) {
-                previousEnd = commitment.endTime();
-            }
-            if (!end.isAfter(commitment.startTime())
-                    && (nextStart == null || commitment.startTime().isBefore(nextStart))) {
-                nextStart = commitment.startTime();
-            }
-        }
-        long before = previousEnd == null ? Long.MAX_VALUE / 4
-                : Duration.between(previousEnd, start).toMinutes() - buffer;
-        long after = nextStart == null ? Long.MAX_VALUE / 4
-                : Duration.between(end, nextStart).toMinutes() - buffer;
-        return Math.min(before, after);
-    }
-
-    private static long spreadDistance(LocalDate date, LocalTime start, LocalTime end,
-            List<Commitment> commitments, int threshold, boolean energy, boolean applies) {
-        if (!applies) {
-            return 0;
-        }
-        long best = Long.MAX_VALUE / 4;
-        for (Commitment commitment : commitments) {
-            if (!commitment.date().equals(date)) {
-                continue;
-            }
-            int rating = energy ? commitment.energyRating() : commitment.sensoryRating();
-            if (rating < threshold) {
-                continue;
-            }
-            if (!commitment.endTime().isAfter(start)) {
-                best = Math.min(best, Duration.between(commitment.endTime(), start).toMinutes());
-            } else if (!end.isAfter(commitment.startTime())) {
-                best = Math.min(best, Duration.between(end, commitment.startTime()).toMinutes());
-            } else {
-                best = 0;
-            }
-        }
-        return best == Long.MAX_VALUE / 4 ? Long.MAX_VALUE / 8 : best;
-    }
-
-    /**
-     * Always 0 now that {@link #validSlots} hard-clamps the searchable range to the preferred
-     * start/end - every slot reaching this method already satisfies both conditions below. Kept
-     * (rather than removed) as a documented, harmless tie-break no-op: if a future change ever
-     * lets a slot outside the preferred range reach scoring again, this stops being dead weight
-     * without anyone having to remember to re-add it.
-     */
-    private static long preferredRangePenalty(LocalTime start, LocalTime end, PreferenceProfile preferences) {
-        long penalty = 0;
-        if (start.isBefore(preferences.getPreferredStart())) {
-            penalty += Duration.between(start, preferences.getPreferredStart()).toMinutes();
-        }
-        if (end.isAfter(preferences.getPreferredEnd())) {
-            penalty += Duration.between(preferences.getPreferredEnd(), end).toMinutes();
-        }
-        return penalty;
-    }
-
     private static boolean shouldSuggestTomato(FlexibleActivity activity, PreferenceProfile preferences) {
         if (preferences.getTomatoSuggestion() != TomatoSuggestion.ON) {
             return false;
@@ -410,54 +478,97 @@ public final class RecommendationService {
         return copy;
     }
 
-    private record Commitment(int activityId, LocalDate date, LocalTime startTime, LocalTime endTime,
-            int energyRating, int sensoryRating) {
+    private record Commitment(int activityId, LocalDate date, LocalTime startTime, LocalTime endTime) {
         private static Commitment fromFixed(FixedActivity activity) {
-            return new Commitment(activity.getId(), activity.getDate(), activity.getStartTime(), activity.getEndTime(),
-                    activity.getEnergyRating().getValue(), activity.getSensoryRating().getValue());
+            return new Commitment(activity.getId(), activity.getDate(), activity.getStartTime(),
+                    activity.getEndTime());
         }
 
         private static Commitment fromFlexible(FlexibleActivity activity, LocalTime startTime) {
             return new Commitment(activity.getId(), activity.getDate(), startTime,
-                    startTime.plusMinutes(activity.getDurationMinutes()),
-                    activity.getEnergyRating().getValue(), activity.getSensoryRating().getValue());
+                    startTime.plusMinutes(activity.getDurationMinutes()));
         }
     }
 
-    private record CandidateSelection(FlexibleActivity activity, int validSlotCount, LocalTime bestStart) {
-        private boolean betterThan(CandidateSelection other, List<Commitment> commitments,
-                PreferenceProfile preferences) {
-            if (validSlotCount != other.validSlotCount) {
-                return validSlotCount < other.validSlotCount;
-            }
-            SlotScore thisScore = score(activity, bestStart, commitments, preferences);
-            SlotScore otherScore = score(other.activity, other.bestStart, commitments, preferences);
-            if (thisScore.betterThan(otherScore, bestStart, other.bestStart)) {
-                return true;
-            }
-            if (otherScore.betterThan(thisScore, other.bestStart, bestStart)) {
-                return false;
-            }
-            return activity.getId() < other.activity.getId();
-        }
+    private record ScheduledItem(FlexibleActivity activity, LocalTime start) {
     }
 
-    private record SlotScore(long bufferPreservation, long energySpread, long sensorySpread, long preferencePenalty) {
-        private boolean betterThan(SlotScore other, LocalTime candidate, LocalTime current) {
-            if (!candidate.equals(current)) {
-                return candidate.isBefore(current);
+    /**
+     * One candidate whole-day outcome: which of a day's remaining flexible activities got
+     * scheduled, and at what times. Compared against alternative outcomes via {@link #betterThan},
+     * which implements the fix's priority order: (1) more scheduled activities, (2) more total
+     * scheduled duration, (3) a lower total intrinsic slack among the scheduled activities (prefer
+     * activities whose own window is tighter - they have less room to be placed some other way),
+     * (4) earlier placements in aggregate, (5) the lower sorted set of activity IDs as a fully
+     * deterministic final tie-break.
+     */
+    private record DaySchedule(List<ScheduledItem> items) {
+        private static DaySchedule empty() {
+            return new DaySchedule(List.of());
+        }
+
+        private boolean containsId(int activityId) {
+            for (ScheduledItem item : items) {
+                if (item.activity().getId() == activityId) {
+                    return true;
+                }
             }
-            if (bufferPreservation != other.bufferPreservation) {
-                return bufferPreservation > other.bufferPreservation;
+            return false;
+        }
+
+        private int totalDurationMinutes() {
+            int total = 0;
+            for (ScheduledItem item : items) {
+                total += item.activity().getDurationMinutes();
             }
-            if (energySpread != other.energySpread) {
-                return energySpread > other.energySpread;
+            return total;
+        }
+
+        private long totalSlackMinutes() {
+            long total = 0;
+            for (ScheduledItem item : items) {
+                total += slackMinutes(item.activity());
             }
-            if (sensorySpread != other.sensorySpread) {
-                return sensorySpread > other.sensorySpread;
+            return total;
+        }
+
+        private long totalStartMinutesOfDay() {
+            long total = 0;
+            for (ScheduledItem item : items) {
+                total += item.start().toSecondOfDay() / 60;
             }
-            if (preferencePenalty != other.preferencePenalty) {
-                return preferencePenalty < other.preferencePenalty;
+            return total;
+        }
+
+        private List<Integer> sortedIds() {
+            List<Integer> ids = new ArrayList<>();
+            for (ScheduledItem item : items) {
+                ids.add(item.activity().getId());
+            }
+            ids.sort(Integer::compareTo);
+            return ids;
+        }
+
+        private boolean betterThan(DaySchedule other) {
+            if (items.size() != other.items.size()) {
+                return items.size() > other.items.size();
+            }
+            if (totalDurationMinutes() != other.totalDurationMinutes()) {
+                return totalDurationMinutes() > other.totalDurationMinutes();
+            }
+            if (totalSlackMinutes() != other.totalSlackMinutes()) {
+                return totalSlackMinutes() < other.totalSlackMinutes();
+            }
+            if (totalStartMinutesOfDay() != other.totalStartMinutesOfDay()) {
+                return totalStartMinutesOfDay() < other.totalStartMinutesOfDay();
+            }
+            List<Integer> theseIds = sortedIds();
+            List<Integer> otherIds = other.sortedIds();
+            for (int i = 0; i < theseIds.size(); i++) {
+                int compare = theseIds.get(i).compareTo(otherIds.get(i));
+                if (compare != 0) {
+                    return compare < 0;
+                }
             }
             return false;
         }

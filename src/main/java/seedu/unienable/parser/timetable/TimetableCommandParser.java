@@ -17,10 +17,13 @@ import seedu.unienable.parser.common.DateTimeParser;
 
 /**
  * Parses one-shot day and week timetable requests: {@code today}, {@code tomorrow},
- * {@code this week}, {@code next week}, {@code day/YYYY-MM-DD}, or {@code week/YYYY-MM-DD}.
+ * {@code this week}, {@code next week}, {@code day/YYYY-MM-DD} (or its {@code date/YYYY-MM-DD}
+ * alias, kept in sync with {@code dashboard}'s {@code date/}/{@code day/} aliases), or
+ * {@code week/YYYY-MM-DD}.
  */
 public class TimetableCommandParser {
     private static final String DAY_MARKER = "day/";
+    private static final String DATE_MARKER = "date/";
     private static final String WEEK_MARKER = "week/";
 
     /**
@@ -40,8 +43,8 @@ public class TimetableCommandParser {
         String trimmed = args.trim();
         if (trimmed.isEmpty()) {
             throw new MissingInputException(
-                    "timetable requires day/YYYY-MM-DD, week/YYYY-MM-DD, today, tomorrow, this week, "
-                            + "or next week.");
+                    "timetable requires day/YYYY-MM-DD (or date/YYYY-MM-DD), week/YYYY-MM-DD, today, "
+                            + "tomorrow, this week, or next week.");
         }
         String[] words = trimmed.split("\\s+");
         TimetablePeriod period;
@@ -70,6 +73,9 @@ public class TimetableCommandParser {
             consumedWords = 2;
         } else if (startsWith(words[0], DAY_MARKER)) {
             period = TimetableService.resolveDay(parseDateValue(words[0], DAY_MARKER));
+            consumedWords = 1;
+        } else if (startsWith(words[0], DATE_MARKER)) {
+            period = TimetableService.resolveDay(parseDateValue(words[0], DATE_MARKER));
             consumedWords = 1;
         } else if (startsWith(words[0], WEEK_MARKER)) {
             period = TimetableService.resolveWeek(parseDateValue(words[0], WEEK_MARKER));

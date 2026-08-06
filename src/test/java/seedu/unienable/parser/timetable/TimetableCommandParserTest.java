@@ -49,6 +49,20 @@ class TimetableCommandParserTest {
     }
 
     @Test
+    public void parse_dateMarkerEveryMode_succeeds() {
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "date/2026-08-19"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "date/2026-08-19 detail"));
+    }
+
+    @Test
+    public void parse_dateMarker_resolvesSameAsDayMarker() throws Exception {
+        String viaDay = parser.parse(activityManager, NOW, "day/2026-08-21").execute().getFeedback();
+        String viaDate = parser.parse(activityManager, NOW, "date/2026-08-21").execute().getFeedback();
+
+        assertEquals(viaDay, viaDate);
+    }
+
+    @Test
     public void parse_caseInsensitiveKeywords_succeeds() {
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "WEEK/2026-08-19 COMPACT"));
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "This Week Detail"));
@@ -69,6 +83,8 @@ class TimetableCommandParserTest {
                 () -> parser.parse(activityManager, NOW, "week/"));
         assertThrows(MissingInputException.class,
                 () -> parser.parse(activityManager, NOW, "day/"));
+        assertThrows(MissingInputException.class,
+                () -> parser.parse(activityManager, NOW, "date/"));
     }
 
     @Test
@@ -166,7 +182,7 @@ class TimetableCommandParserTest {
 
     @Test
     public void parse_rejectionsNeverTouchManager() {
-        String[] rejected = { "", "week/", "day/", "yesterday", "this", "next", "today compact",
+        String[] rejected = { "", "week/", "day/", "date/", "yesterday", "this", "next", "today compact",
             "day/2026-08-19 compact", "week/2026-08-19 wide", "this week compact detail" };
         for (String input : rejected) {
             try {

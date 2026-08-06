@@ -54,6 +54,21 @@ class DashboardCommandParserTest {
     }
 
     @Test
+    public void parse_dayWithValue_succeeds() {
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "day/2026-08-20"));
+    }
+
+    @Test
+    public void parse_dayWithValueDetail_succeeds() {
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "day/2026-08-20 detail"));
+    }
+
+    @Test
+    public void parse_emptyDayValue_throwsMissingInputException() {
+        assertThrows(MissingInputException.class, () -> parser.parse(activityManager, NOW, "day/"));
+    }
+
+    @Test
     public void parse_thisWeek_succeeds() {
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "this week"));
     }
@@ -141,11 +156,12 @@ class DashboardCommandParserTest {
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "This Week Detail"));
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "Next Week Detail"));
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "DATE/2026-08-20"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "DAY/2026-08-20"));
     }
 
     @Test
     public void parse_everyRejectCase_neverTouchesActivityManager() {
-        String[] rejectedInputs = { "", "date/", "date/2026-02-30", "2026-08-15", "week", "unknown",
+        String[] rejectedInputs = { "", "date/", "day/", "date/2026-02-30", "2026-08-15", "week", "unknown",
             "today detail detail", "tomorrow extra", "date/2026-08-15 unexpected", "next", "next week extra" };
         for (String input : rejectedInputs) {
             try {

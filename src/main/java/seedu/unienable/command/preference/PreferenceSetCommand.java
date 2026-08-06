@@ -51,7 +51,9 @@ public class PreferenceSetCommand extends Command implements Confirmable {
             return Confirmation.cancel("No preference changes were requested.");
         }
         return Confirmation.ask("Proposed preference changes:\n" + changes
-                + "\nApply these preference changes? (y/n)");
+                + "\nNote: activities already adopted from a recommendation keep their existing "
+                + "scheduled times - this change does not move them; it only affects future "
+                + "recommend proposals.\nApply these preference changes? (y/n)");
     }
 
     @Override

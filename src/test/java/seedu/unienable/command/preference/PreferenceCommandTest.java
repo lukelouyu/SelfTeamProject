@@ -61,7 +61,10 @@ class PreferenceCommandTest {
         PreferenceSetCommand change = new PreferenceSetCommand(manager, tomatoOn);
 
         assertEquals("Proposed preference changes:\nTomato suggestion | Old: OFF | New: ON\n"
-                + "Apply these preference changes? (y/n)", change.getConfirmation().getMessage());
+                + "Note: activities already adopted from a recommendation keep their existing "
+                + "scheduled times - this change does not move them; it only affects future "
+                + "recommend proposals.\nApply these preference changes? (y/n)",
+                change.getConfirmation().getMessage());
         assertTrue(change.hasChanges());
 
         PreferenceSetCommand noChange = new PreferenceSetCommand(manager, PreferenceProfile.defaults());

@@ -59,12 +59,20 @@ public class RecommendCommandParser {
                         + "proposed start times have already passed. Generate a new recommendation with "
                         + "recommend.");
             }
+            if (RecommendationService.hasOutOfPreferredRangePlacement(proposal, preferenceManager.getProfile())) {
+                throw new InvalidCommandException("This recommendation proposal no longer fits your current "
+                        + "preferred daily start/end - preferences changed since it was generated. Generate a "
+                        + "new recommendation with recommend.");
+            }
             return new RecommendAdoptCommand(activityManager, proposal);
         }
-        if (trimmed.toLowerCase().startsWith("date/")) {
-            String dateText = trimmed.substring("date/".length()).trim();
+        String dateMarker = trimmed.toLowerCase().startsWith("date/") ? "date/"
+                : trimmed.toLowerCase().startsWith("day/") ? "day/" : null;
+        if (dateMarker != null) {
+            String dateText = trimmed.substring(dateMarker.length()).trim();
             if (dateText.contains(" ")) {
-                throw new InvalidCommandException("\"recommend date/YYYY-MM-DD\" does not take extra arguments.");
+                throw new InvalidCommandException(
+                        "\"recommend " + dateMarker + "YYYY-MM-DD\" does not take extra arguments.");
             }
             LocalDate date = DateTimeParser.parseNotBeforeDate(dateText, now.toLocalDate());
             return new RecommendGenerateCommand(activityManager, preferenceManager, recommendationManager, now, date);

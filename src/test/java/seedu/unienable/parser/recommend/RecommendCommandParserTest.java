@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,8 @@ import seedu.unienable.logic.dashboard.DashboardService;
 import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.logic.recommend.RecommendationManager;
 import seedu.unienable.logic.timetable.TimetableService;
+import seedu.unienable.model.preference.PreferenceProfile;
+import seedu.unienable.model.preference.TomatoSuggestion;
 import seedu.unienable.model.recommend.RecommendationProposal;
 import seedu.unienable.model.recommend.RecommendedPlacement;
 
@@ -56,8 +59,20 @@ class RecommendCommandParserTest {
                 parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "tomorrow"));
         assertInstanceOf(RecommendGenerateCommand.class,
                 parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "date/2099-01-01"));
+        assertInstanceOf(RecommendGenerateCommand.class,
+                parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "day/2099-01-01"));
         assertEquals(0, activityManager.size());
         assertTrue(recommendationManager.getProposal().isEmpty());
+    }
+
+    @Test
+    public void parse_dayMarker_isCaseInsensitiveAndEquivalentToDateMarker() throws Exception {
+        RecommendGenerateCommand viaDay = (RecommendGenerateCommand) parser.parse(activityManager,
+                preferenceManager, recommendationManager, NOW, "DAY/2026-08-20");
+        RecommendGenerateCommand viaDate = (RecommendGenerateCommand) parser.parse(activityManager,
+                preferenceManager, recommendationManager, NOW, "date/2026-08-20");
+
+        assertEquals(viaDate.execute().getFeedback(), viaDay.execute().getFeedback());
     }
 
     @Test
@@ -128,6 +143,34 @@ class RecommendCommandParserTest {
     }
 
     @Test
+    public void parse_adopt_rejectsProposalThatNoLongerFitsPreferredRangeAfterPreferenceChange() throws Exception {
+        RecommendedPlacement placement = new RecommendedPlacement(1, "Early errand",
+                NOW.toLocalDate(), NOW.toLocalTime().plusMinutes(1), NOW.toLocalTime().plusMinutes(31), false);
+        recommendationManager.setProposal(new RecommendationProposal(
+                TimetableService.resolveThisWeek(NOW), DashboardService.resolveThisWeek(NOW),
+                List.of(placement), List.of()));
+        preferenceManager.setProfile(PreferenceProfile.of(
+                placement.startTime().plusMinutes(1), LocalTime.of(23, 0), 0, TomatoSuggestion.OFF));
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "adopt"));
+        assertEquals(0, activityManager.size());
+    }
+
+    @Test
+    public void parse_adopt_acceptsProposalThatStillFitsPreferredRangeAfterPreferenceChange() throws Exception {
+        RecommendedPlacement placement = new RecommendedPlacement(1, "Early errand",
+                NOW.toLocalDate(), NOW.toLocalTime().plusMinutes(1), NOW.toLocalTime().plusMinutes(31), false);
+        recommendationManager.setProposal(new RecommendationProposal(
+                TimetableService.resolveThisWeek(NOW), DashboardService.resolveThisWeek(NOW),
+                List.of(placement), List.of()));
+        preferenceManager.setProfile(PreferenceProfile.of(
+                placement.startTime(), LocalTime.of(23, 0), 0, TomatoSuggestion.OFF));
+
+        assertInstanceOf(RecommendAdoptCommand.class, assertDoesNotThrowParse("adopt"));
+    }
+
+    @Test
     public void parse_rejectsPastTrailingAndUnknownInputs() {
         assertThrows(InvalidDateTimeException.class,
                 () -> parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "date/2026-08-16"));
@@ -136,6 +179,13 @@ class RecommendCommandParserTest {
         assertThrows(InvalidCommandException.class,
                 () -> parser.parse(activityManager, preferenceManager, recommendationManager, NOW,
                         "date/2099-01-01 extra"));
+        assertThrows(InvalidDateTimeException.class,
+                () -> parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "day/2026-08-16"));
+        assertThrows(InvalidDateTimeException.class,
+                () -> parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "day/"));
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(activityManager, preferenceManager, recommendationManager, NOW,
+                        "day/2099-01-01 extra"));
         assertThrows(InvalidCommandException.class,
                 () -> parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "this"));
         assertThrows(InvalidCommandException.class,

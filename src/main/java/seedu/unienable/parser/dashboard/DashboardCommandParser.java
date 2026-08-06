@@ -14,13 +14,17 @@ import seedu.unienable.model.dashboard.DashboardPeriod;
 import seedu.unienable.parser.common.DateTimeParser;
 
 /**
- * Parses {@code dashboard today|tomorrow|date/YYYY-MM-DD|this week|next week [detail]} into a
- * {@link DashboardCommand}. Exactly one period selector is required; {@code detail} is an
- * optional single trailing keyword. See
- * {@code docs/tasks/v2/dashboard/ACCEPTANCE_CRITERIA.md} for the full accept/reject list.
+ * Parses {@code dashboard today|tomorrow|date/YYYY-MM-DD|day/YYYY-MM-DD|this week|next week
+ * [detail]} into a {@link DashboardCommand}. {@code date/} and {@code day/} are interchangeable
+ * aliases for the same single-day selector - kept in sync with {@code timetable}'s
+ * {@code day/}/{@code date/} aliases so the two commands never require different markers for the
+ * same concept. Exactly one period selector is required; {@code detail} is an optional single
+ * trailing keyword. See {@code docs/tasks/v2/dashboard/ACCEPTANCE_CRITERIA.md} for the full
+ * accept/reject list.
  */
 public class DashboardCommandParser {
     private static final String DATE_MARKER = "date/";
+    private static final String DAY_MARKER = "day/";
 
     /**
      * Parses a dashboard command's argument text.
@@ -40,8 +44,8 @@ public class DashboardCommandParser {
             throws MissingInputException, InvalidCommandException, InvalidDateTimeException {
         String trimmed = args.trim();
         if (trimmed.isEmpty()) {
-            throw new MissingInputException(
-                    "dashboard requires a period: today, tomorrow, date/YYYY-MM-DD, this week, or next week.");
+            throw new MissingInputException("dashboard requires a period: today, tomorrow, "
+                    + "date/YYYY-MM-DD (or day/YYYY-MM-DD), this week, or next week.");
         }
         String[] words = trimmed.split("\\s+");
 
@@ -67,8 +71,11 @@ public class DashboardCommandParser {
             }
             period = DashboardService.resolveNextWeek(now);
             consumedWords = 2;
-        } else if (startsWithDateMarker(words[0])) {
-            period = DashboardService.resolveDate(parseDateValue(words[0]));
+        } else if (startsWithMarker(words[0], DATE_MARKER)) {
+            period = DashboardService.resolveDate(parseDateValue(words[0], DATE_MARKER));
+            consumedWords = 1;
+        } else if (startsWithMarker(words[0], DAY_MARKER)) {
+            period = DashboardService.resolveDate(parseDateValue(words[0], DAY_MARKER));
             consumedWords = 1;
         } else {
             throw new InvalidCommandException("Unknown dashboard option \"" + words[0] + "\".");
@@ -78,14 +85,15 @@ public class DashboardCommandParser {
         return new DashboardCommand(activityManager, period, now, detail);
     }
 
-    private boolean startsWithDateMarker(String word) {
-        return word.toLowerCase(Locale.ROOT).startsWith(DATE_MARKER);
+    private boolean startsWithMarker(String word, String marker) {
+        return word.toLowerCase(Locale.ROOT).startsWith(marker);
     }
 
-    private LocalDate parseDateValue(String word) throws MissingInputException, InvalidDateTimeException {
-        String value = word.substring(DATE_MARKER.length());
+    private LocalDate parseDateValue(String word, String marker)
+            throws MissingInputException, InvalidDateTimeException {
+        String value = word.substring(marker.length());
         if (value.isEmpty()) {
-            throw new MissingInputException("date/ requires a value in yyyy-MM-dd format.");
+            throw new MissingInputException(marker + " requires a value in yyyy-MM-dd format.");
         }
         return DateTimeParser.parseDate(value);
     }

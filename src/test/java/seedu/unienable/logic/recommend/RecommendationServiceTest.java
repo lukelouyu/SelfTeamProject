@@ -21,6 +21,7 @@ import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.preference.PreferenceProfile;
 import seedu.unienable.model.preference.TomatoSuggestion;
 import seedu.unienable.model.recommend.RecommendationProposal;
+import seedu.unienable.model.recommend.RecommendedPlacement;
 
 class RecommendationServiceTest {
     private static final LocalDate MONDAY = LocalDate.of(2026, 8, 17);
@@ -368,5 +369,208 @@ class RecommendationServiceTest {
 
         assertEquals(1, proposal.getPlacements().size());
         assertEquals(LocalTime.of(10, 0), proposal.getPlacements().get(0).startTime());
+    }
+
+    // ---- Whole-day optimization (regression for the greedy-order defect) ----
+
+    private static LocalTime startTimeOf(RecommendationProposal proposal, int activityId) {
+        for (var placement : proposal.getPlacements()) {
+            if (placement.activityId() == activityId) {
+                return placement.startTime();
+            }
+        }
+        throw new AssertionError("Activity " + activityId + " was not scheduled");
+    }
+
+    @Test
+    public void recommendDate_threeActivitiesFitTogether_allAreScheduled() throws Exception {
+        // Bug-report Example A: a greedy, activity-by-activity search let the short "Company ABC
+        // application" and "Enablers check-in" each independently claim a slot, leaving no room for
+        // the longer "CS2113 coding" even though a whole-day arrangement fits all three (e.g.
+        // 14:00-16:00, 16:15-17:15, 18:00-19:00 with the default 15-minute buffer).
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "CS2113 coding", 14, 0, 18, 0, 120),
+                flexible(4, "Company ABC application", 16, 0, 20, 0, 60),
+                flexible(5, "Enablers check-in", 18, 0, 21, 0, 60)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(8, 0), LocalTime.of(20, 0), 15, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertEquals(3, proposal.getPlacements().size());
+        assertTrue(proposal.getUnscheduledActivityIds().isEmpty());
+    }
+
+    @Test
+    public void recommendDate_restrictiveProfileFourActivitiesFitTogether_allAreScheduled() throws Exception {
+        // Bug-report Example B (restrictive profile, 60-minute buffer): the greedy search left the
+        // "Company ABC interview" unscheduled even though CDE2001 project teaming, the interview,
+        // CS2113 project coding, and the Enablers meeting can all coexist in one arrangement.
+        // CDE2001 (09:30-11:00, 90 min) and Enablers (17:00-18:00, 60 min) each have a window
+        // exactly as wide as their own duration, so every valid arrangement places them at those
+        // exact times regardless of search order - that makes them a reliable anchor to assert on.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "CDE2001 project teaming", 9, 30, 11, 0, 90),
+                flexible(4, "Company ABC interview", 11, 0, 15, 0, 60),
+                flexible(5, "CS2113 project coding", 12, 0, 16, 0, 120),
+                flexible(6, "Enablers meeting", 17, 0, 18, 0, 60)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(9, 30), LocalTime.of(18, 30), 60, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertEquals(4, proposal.getPlacements().size());
+        assertTrue(proposal.getUnscheduledActivityIds().isEmpty());
+        assertEquals(LocalTime.of(9, 30), startTimeOf(proposal, 3));
+        assertEquals(LocalTime.of(17, 0), startTimeOf(proposal, 6));
+    }
+
+    @Test
+    public void recommendDate_restrictiveProfileTwoActivitiesFitTogether_bothAreScheduled() throws Exception {
+        // Bug-report Thursday scenario (restrictive profile): the interview and the PL2131 study
+        // task could both fit (14:00-15:00 and 16:00-18:00), but the greedy search selected only
+        // the study task. With this shape, the 60-minute buffer forces both activities' start times
+        // to a single feasible combination, so exact times can be asserted directly.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Interview", 14, 0, 16, 0, 60),
+                flexible(4, "PL2131 study task", 14, 0, 18, 0, 120)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(9, 0), LocalTime.of(20, 0), 60, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertEquals(2, proposal.getPlacements().size());
+        assertTrue(proposal.getUnscheduledActivityIds().isEmpty());
+        assertEquals(LocalTime.of(14, 0), startTimeOf(proposal, 3));
+        assertEquals(LocalTime.of(16, 0), startTimeOf(proposal, 4));
+    }
+
+    // ---- Boundary enforcement end-to-end (defense-in-depth verification) ----
+
+    @Test
+    public void recommendDate_earlyWindowClampsToPreferredStart_lateWindowLeftUnscheduled() throws Exception {
+        // Exact reported repro: preferred 07:30-21:00, buffer 30. An activity windowed
+        // 06:00-09:00 must clamp to 07:30; one windowed 20:30-23:00 (60 min) only has 30
+        // preferred-range minutes to work with (20:30-21:00), so it must stay unscheduled rather
+        // than ever being proposed past 21:00.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Test Early", 6, 0, 9, 0, 60),
+                flexible(4, "Test Late", 20, 30, 23, 0, 60)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(7, 30), LocalTime.of(21, 0), 30, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertEquals(1, proposal.getPlacements().size());
+        assertEquals(LocalTime.of(7, 30), startTimeOf(proposal, 3));
+        assertEquals(List.of(4), proposal.getUnscheduledActivityIds());
+    }
+
+    @Test
+    public void recommendThisWeek_everyPlacementStaysWithinPreferredRange() throws Exception {
+        LocalDate tuesday = MONDAY.plusDays(1);
+        LocalDate wednesday = MONDAY.plusDays(2);
+        ActivityManager manager = managerWith(List.of(
+                new FlexibleActivity(3, "Monday early", ActivityCategory.ACADEMIC, MONDAY,
+                        LocalTime.of(6, 0), LocalTime.of(9, 0), 60, EnergyRating.of(2), SensoryRating.of(2),
+                        null, null),
+                new FlexibleActivity(4, "Tuesday late", ActivityCategory.ACADEMIC, tuesday,
+                        LocalTime.of(20, 30), LocalTime.of(23, 0), 60, EnergyRating.of(2), SensoryRating.of(2),
+                        null, null),
+                new FlexibleActivity(5, "Wednesday mid", ActivityCategory.ACADEMIC, wednesday,
+                        LocalTime.of(10, 0), LocalTime.of(12, 0), 60, EnergyRating.of(2), SensoryRating.of(2),
+                        null, null)));
+        PreferenceProfile preferences = PreferenceProfile.of(LocalTime.of(7, 30), LocalTime.of(21, 0), 30,
+                TomatoSuggestion.OFF);
+
+        RecommendationProposal proposal = RecommendationService.recommendThisWeek(manager, preferences, MIDNIGHT);
+
+        for (RecommendedPlacement placement : proposal.getPlacements()) {
+            assertFalse(placement.startTime().isBefore(preferences.getPreferredStart()));
+            assertFalse(placement.endTime().isAfter(preferences.getPreferredEnd()));
+        }
+        assertEquals(List.of(4), proposal.getUnscheduledActivityIds());
+    }
+
+    @Test
+    public void recommendNextWeek_everyPlacementStaysWithinPreferredRange() throws Exception {
+        LocalDate nextWeekMonday = MONDAY.plusDays(7);
+        LocalDate nextWeekTuesday = nextWeekMonday.plusDays(1);
+        ActivityManager manager = managerWith(List.of(
+                new FlexibleActivity(3, "Next Monday early", ActivityCategory.ACADEMIC, nextWeekMonday,
+                        LocalTime.of(6, 0), LocalTime.of(9, 0), 60, EnergyRating.of(2), SensoryRating.of(2),
+                        null, null),
+                new FlexibleActivity(4, "Next Tuesday late", ActivityCategory.ACADEMIC, nextWeekTuesday,
+                        LocalTime.of(20, 30), LocalTime.of(23, 0), 60, EnergyRating.of(2), SensoryRating.of(2),
+                        null, null)));
+        PreferenceProfile preferences = PreferenceProfile.of(LocalTime.of(7, 30), LocalTime.of(21, 0), 30,
+                TomatoSuggestion.OFF);
+
+        RecommendationProposal proposal = RecommendationService.recommendNextWeek(manager, preferences,
+                MONDAY.atTime(23, 59));
+
+        for (RecommendedPlacement placement : proposal.getPlacements()) {
+            assertFalse(placement.startTime().isBefore(preferences.getPreferredStart()));
+            assertFalse(placement.endTime().isAfter(preferences.getPreferredEnd()));
+        }
+        assertEquals(List.of(4), proposal.getUnscheduledActivityIds());
+    }
+
+    @Test
+    public void recommendDate_todayClampAndPreferredEndBothApply() throws Exception {
+        // now (08:15) is later than preferred start (07:30), so the today-clamp wins for the
+        // lower bound; the upper bound (preferred end 21:00) still applies independently and
+        // still leaves the 20:30-23:00 activity unscheduled.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Morning task", 6, 0, 10, 0, 60),
+                flexible(4, "Late task", 20, 30, 23, 0, 60)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(7, 30), LocalTime.of(21, 0), 30, TomatoSuggestion.OFF), MONDAY,
+                MONDAY.atTime(8, 15));
+
+        assertEquals(1, proposal.getPlacements().size());
+        assertEquals(LocalTime.of(8, 15), startTimeOf(proposal, 3));
+        assertEquals(List.of(4), proposal.getUnscheduledActivityIds());
+    }
+
+    @Test
+    public void hasOutOfPreferredRangePlacement_everyPlacementWithinRange_isFalse() throws Exception {
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Study block", 10, 0, 12, 0, 60)));
+        PreferenceProfile preferences = PreferenceProfile.of(LocalTime.of(8, 0), LocalTime.of(20, 0), 0,
+                TomatoSuggestion.OFF);
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager, preferences, MONDAY,
+                MIDNIGHT);
+
+        assertFalse(RecommendationService.hasOutOfPreferredRangePlacement(proposal, preferences));
+    }
+
+    @Test
+    public void hasOutOfPreferredRangePlacement_placementStartsBeforeNewPreferredStart_isTrue() {
+        RecommendedPlacement placement = new RecommendedPlacement(1, "Early block", MONDAY,
+                LocalTime.of(7, 0), LocalTime.of(8, 0), false);
+        RecommendationProposal proposal = new RecommendationProposal(
+                seedu.unienable.logic.timetable.TimetableService.resolveDay(MONDAY),
+                seedu.unienable.logic.dashboard.DashboardService.resolveDate(MONDAY),
+                List.of(placement), List.of());
+        PreferenceProfile narrowedProfile = PreferenceProfile.of(LocalTime.of(9, 0), LocalTime.of(20, 0), 0,
+                TomatoSuggestion.OFF);
+
+        assertTrue(RecommendationService.hasOutOfPreferredRangePlacement(proposal, narrowedProfile));
+    }
+
+    @Test
+    public void hasOutOfPreferredRangePlacement_placementEndsAfterNewPreferredEnd_isTrue() {
+        RecommendedPlacement placement = new RecommendedPlacement(1, "Late block", MONDAY,
+                LocalTime.of(19, 0), LocalTime.of(20, 0), false);
+        RecommendationProposal proposal = new RecommendationProposal(
+                seedu.unienable.logic.timetable.TimetableService.resolveDay(MONDAY),
+                seedu.unienable.logic.dashboard.DashboardService.resolveDate(MONDAY),
+                List.of(placement), List.of());
+        PreferenceProfile narrowedProfile = PreferenceProfile.of(LocalTime.of(8, 0), LocalTime.of(19, 30), 0,
+                TomatoSuggestion.OFF);
+
+        assertTrue(RecommendationService.hasOutOfPreferredRangePlacement(proposal, narrowedProfile));
     }
 }

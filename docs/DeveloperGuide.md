@@ -550,9 +550,79 @@ Separately, this closed a regression where a today-dated flexible activity's win
 already fully or partly elapsed by the time `recommend` ran could still be proposed at its original,
 already-past earliest time - see `RecommendationServiceTest`'s `recommendDate_wholeWindowElapsed...`
 and `..._partiallyElapsedWindow...` cases, and `PE_REGRESSION_DEBUG_PLAN.md`'s "Critical recommender
-regression" batch, which this fix directly answers. The next activity chosen for placement is the
-one with the fewest valid slots; ties fall through to that activity's best slot and then to the
-lower stable ID.
+regression" batch, which this fix directly answers.
+
+**Whole-day optimization.** Placement used to be a purely greedy, activity-by-activity search: on
+each iteration, whichever remaining activity had the fewest valid slots claimed its own
+earliest-fitting slot, independently of every other activity still waiting to be placed. A
+PE-style review confirmed this is an observable functionality defect, not just a theoretical one:
+a short activity could grab a slot that was the *only* way a longer activity later the same day
+could have fit, so `recommend` reported an activity as unscheduled even when a valid whole-day
+schedule containing it existed.
+
+`RecommendationService` now groups each period's eligible flexible activities by date and searches
+each date independently (dates never interact, since every buffer/overlap check in `fits` is
+already scoped to a single date). For up to `PERMUTATION_CAP` (8) remaining activities on a date -
+comfortably more than a real day's flexible workload - it exhaustively tries every ordering
+(`permute`, 8! = 40320 worst case) and, for each ordering, places its activities in that exact
+sequence at each one's own earliest feasible slot given the activities already placed earlier in
+the same ordering (`placeInOrder`/`earliestValidSlot`). This is provably at least as good as any
+other placement of that ordering's activities: placing each one as early as possible can only
+free up room for the activities considered afterwards, never take room away, so trying every
+ordering explores every combination of which activities end up schedulable together. Beyond the
+cap, `heuristicOrderings` substitutes a small, fixed set of orderings (tightest window first,
+longest duration first, earliest own-window first, stable ID order) to keep the search bounded,
+trading a guaranteed-optimal result for implausibly large single days.
+
+Every resulting `DaySchedule` (which activities were placed, and when) is compared via
+`DaySchedule.betterThan` using the fix's priority order: (1) more scheduled activities beats fewer,
+(2) given a tie, more total scheduled duration wins, (3) given a further tie, a lower total
+intrinsic slack among the scheduled activities wins (an activity's slack is how much wider its own
+window is than its duration - preferring tighter-window activities when there is a genuine choice
+of *which* activities to schedule), (4) given a further tie, an earlier aggregate placement wins,
+and (5) the lower sorted list of scheduled activity IDs is the final, fully deterministic
+tie-break. `RecommendationServiceTest`'s `recommendDate_threeActivitiesFitTogether...`,
+`..._restrictiveProfileFourActivitiesFitTogether...`, and
+`..._restrictiveProfileTwoActivitiesFitTogether...` cases reproduce the review's reported scenarios
+directly and assert every activity in them is now scheduled.
+
+This search replaces `chooseNextActivity`/`chooseBestSlot` and the buffer-slack/energy-spread/
+sensory-spread/preference-penalty scoring fields entirely (previously recorded as known technical
+debt in this section, since those fields were live only in the rare case of two different
+activities' already-chosen best slots coincidentally sharing a clock time) - superseded rather than
+patched, since the greedy one-activity-at-a-time design those fields were built around is exactly
+what this section's fix removes. Tomato never changes slot selection; it only controls whether
+certain study-like placements print an advisory suggestion line in the preview.
+
+**Boundary-enforcement pipeline (defense-in-depth).** Preferred start/end are a hard constraint,
+never a soft one, and this is enforced at every stage a candidate time passes through, not solely
+inside slot generation:
+
+1. **Slot generation** - `earliestValidSlot`'s search loop never even considers a candidate minute
+   before `effectiveEarliestStart` or after `effectiveLatestEnd`, so every value it can return is
+   already inside `[preferredStart, preferredEnd]` by construction.
+2. **Slot selection** - `DaySchedule.betterThan` (the whole-day search's ranking, described above)
+   only ever compares and ranks among the candidates stage 1 already produced; it has no path to
+   introduce a time stage 1 didn't offer, so ranking can narrow the choice but never widen it back
+   outside the boundary.
+3. **Final proposal construction** - `RecommendationService.withinPreferredRange` is re-checked in
+   `build` immediately before each `ScheduledItem` becomes a `RecommendedPlacement`; anything that
+   somehow fails it is discarded from the proposal and reported unscheduled instead, rather than
+   ever reaching the caller. In normal operation this can never trigger, since stage 1 already
+   guarantees it - it exists so that a future change to slot generation cannot silently reintroduce
+   an out-of-range placement without also being caught here.
+4. **Adoption** - see "Stale-proposal rejection" below: `recommend adopt` re-validates every
+   placement against the *current* preference profile (not the one active when the proposal was
+   generated), since `preference set`/`preference reset` can run at any time between `recommend`
+   and `recommend adopt`.
+
+`RecommendationService.hasOutOfPreferredRangePlacement` is the reusable check backing stages 3 and
+4; `RecommendationServiceTest`'s `recommendDate_earlyWindowClampsToPreferredStart...`,
+`recommendThisWeek_everyPlacementStaysWithinPreferredRange...`,
+`recommendNextWeek_everyPlacementStaysWithinPreferredRange...`,
+`recommendDate_todayClampAndPreferredEndBothApply...`, and the `hasOutOfPreferredRangePlacement_*`
+cases cover this directly, alongside `RecommendCommandParserTest`'s
+`parse_adopt_rejects/acceptsProposalThat...AfterPreferenceChange` cases for stage 4.
 
 **Stale-proposal rejection.** A proposal is generated once and can sit unadopted while the user
 keeps working; by the time `recommend adopt` is entered, real time may have advanced past one or
@@ -561,25 +631,9 @@ more of its proposed starts. `RecommendCommandParser` checks
 `RecommendAdoptCommand` at all - stale adoption is rejected with a specific message *before* the
 confirmation prompt, never as a partial or silently-backdated adoption. "Stale" means strictly
 `now.isAfter(placementDate.atTime(placementStart))`; a placement whose start is exactly `now` is
-still adoptable.
-
-For one activity's candidate slots, the current implementation's ordering is deterministic:
-`chooseBestSlot`'s comparison (`SlotScore.betterThan`) checks the two candidates' clock times
-first, and only falls through to the buffer-slack/energy-spread/sensory-spread/preference-penalty
-score fields when the two times are identical. Since `validSlots` enumerates one activity's own
-candidates as strictly increasing, distinct one-minute steps, no two of that activity's own
-candidates ever share a start time - so in practice this always resolves to "the earliest valid
-slot wins," and the four score fields are live only when comparing the *already-chosen* best slots
-of two *different* activities in `chooseNextActivity` (`CandidateSelection.betterThan`), which can
-coincidentally share a clock time. **This is recorded as known technical debt / future recommender
-work, not something introduced by (or fixed alongside) the preferred-start/end fix above** -
-flagged here rather than silently reworked, since fixing it (e.g. making `chooseBestSlot` genuinely
-rank by score instead of time-first) is a separate, larger behavioural change with its own
-trade-offs to decide explicitly, not a byproduct of a targeted bug fix. `chooseBestSlot` keeps its
-current earliest-valid-slot behaviour; the buffer-slack/energy-spread/sensory-spread scoring fields
-remain in place, unused in practice, until that follow-up work is explicitly taken on. Tomato never
-changes slot selection; it only controls whether certain study-like placements print an advisory
-suggestion line in the preview.
+still adoptable. Immediately after this check, the parser also rejects adoption if
+`RecommendationService.hasOutOfPreferredRangePlacement(proposal, preferenceManager.getProfile())` is
+true - see the boundary-enforcement pipeline above.
 
 <p align="center"><img src="diagrams/sequence/RecommendationSequence.png" width="760" alt="Recommendation sequence diagram"></p>
 

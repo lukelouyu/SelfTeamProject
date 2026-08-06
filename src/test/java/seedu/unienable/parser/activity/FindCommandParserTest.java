@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidCommandException;
-import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;

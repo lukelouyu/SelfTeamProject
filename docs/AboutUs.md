@@ -14,6 +14,4 @@ accessible route search, planning dashboard, read-only timetable, global plannin
 deterministic schedule recommendation), the JUnit and text-UI test suites, and the User Guide and
 Developer Guide.
 
-This is a solo, self-directed CS2113 tP-style simulation, not a registered course team submission -
-see the "Project role" note above and `docs/DeveloperGuide.md`'s Acknowledgements section for how
-this project began (the se-education.org Duke template) and what it builds on.
+

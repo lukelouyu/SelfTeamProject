@@ -83,15 +83,19 @@ cancel (anything other than y is treated as n).
 ____________________________________________________________
 ____________________________________________________________
 Find activities
-Format: find [k/KEYWORD ...] [FILTERS]
+Format: find [today|tomorrow|this week|next week] [k/KEYWORD ...] [FILTERS]
 Multiple keywords and filters use AND. k/ accepts one or two
-words; three or more words is rejected.
+words; three or more words is rejected. An optional leading
+today/tomorrow/this week/next week phrase works the same as in
+list, and cannot be combined with date/.
 
 Examples:
   find k/PL1101E
   find k/lecture
   find c/ACADEMIC
   find date/2026-08-15
+  find today
+  find next week c/ACADEMIC
   find k/PL1101E c/ACADEMIC
   find k/finish assignment order/time
 
@@ -171,21 +175,23 @@ repaired, or changed by UniEnable itself - including by reset all.
 ____________________________________________________________
 ____________________________________________________________
 Dashboard: a planning-load summary
-Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]
+Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week|next week [detail]
 Related commands: completion (see guide completion for mark/unmark/list status/)
 
 Shows how much is planned for a period, how much room is left, how
 energy/sensory-demanding it is, and how much of what's already due is
 complete - using only activity data you already entered. this week
 means Monday through Sunday of the current week, the same as list
-this week. detail adds fixed/flexible counts, a category breakdown,
-and the full 1-to-5 energy/sensory rating distribution.
+this week; next week is the following Monday-Sunday week. detail adds
+fixed/flexible counts, a category breakdown, and the full 1-to-5
+energy/sensory rating distribution.
 
 Examples:
   dashboard today
   dashboard tomorrow detail
   dashboard date/2026-08-20
   dashboard this week detail
+  dashboard next week
 
 "Nominal buffer" is arithmetic capacity minus planned workload - not
 a promise that time is actually free or usable. Energy and sensory
@@ -194,21 +200,27 @@ never as a medical or performance judgement.
 ____________________________________________________________
 ____________________________________________________________
 Text timetable
-Format: timetable day/YYYY-MM-DD [detail]
+Format: timetable today|tomorrow [detail]
+        timetable day/YYYY-MM-DD [detail]
         timetable week/YYYY-MM-DD [compact|detail]
         timetable this week [compact|detail]
+        timetable next week [compact|detail]
 
-Shows fixed activities in chronological day sections. Weekly views cover
-Monday through Sunday. Flexible activities stay in a separate unscheduled
-section with their window and required duration; no time is invented for
-them. compact omits empty days for narrow terminals, while detail adds
-completion, category, rating, topic, and note information.
+Shows fixed activities in chronological day sections. today/tomorrow are
+shorthand for day/ with the current/next date. Weekly views cover Monday
+through Sunday; next week is the following Monday-Sunday week. Flexible
+activities stay in a separate unscheduled section with their window and
+required duration; no time is invented for them. compact omits empty days
+for narrow terminals, while detail adds completion, category, rating,
+topic, and note information.
 
 Examples:
+  timetable today
   timetable day/2026-08-17
   timetable day/2026-08-17 detail
   timetable week/2026-08-19 compact
   timetable this week detail
+  timetable next week
 
 Timetable is read-only. It does not schedule flexible activities, create
 recommendations, infer buffers, or change any stored data.
@@ -240,25 +252,39 @@ ____________________________________________________________
 Recommended timetable
 Format: recommend
         recommend this week
+        recommend next week
+        recommend today
+        recommend tomorrow
         recommend date/YYYY-MM-DD
         recommend view
         recommend adopt
         recommend cancel
 
 recommend and recommend this week generate one deterministic weekly
-preview for incomplete flexible activities. recommend date/YYYY-MM-DD
-generates a one-day preview. recommend view re-shows the current
-proposal, recommend adopt confirms and saves it once, and recommend
-cancel discards it with no change.
+preview for incomplete flexible activities; recommend next week does the
+same for the following Monday-Sunday week. recommend today/tomorrow are
+shorthand for recommend date/ with the current/next date; recommend
+date/YYYY-MM-DD generates a one-day preview for any date not before
+today. recommend view re-shows the current proposal, recommend adopt
+confirms and saves it once, and recommend cancel discards it with no
+change.
 
 The recommender uses fixed activities, flexible windows, and your
 global planning preferences. Minimum buffer is enforced; Tomato only
 adds advisory study suggestions when enabled. Activities keep their
 stable IDs and original flexible windows.
 
+No proposed start is ever before the current time. A today window that
+has already fully elapsed is left unscheduled rather than backdated; a
+partly elapsed today window starts at the next whole minute from now.
+recommend adopt is rejected as stale if any proposed start has already
+passed since the proposal was generated - regenerate with recommend.
+
 Examples:
   recommend
   recommend this week
+  recommend next week
+  recommend today
   recommend date/2026-08-15
   recommend view
   recommend adopt
@@ -516,21 +542,27 @@ Sample local accessibility reference data. Distances are estimates and may be in
 ____________________________________________________________
 ____________________________________________________________
 Text timetable
-Format: timetable day/YYYY-MM-DD [detail]
+Format: timetable today|tomorrow [detail]
+        timetable day/YYYY-MM-DD [detail]
         timetable week/YYYY-MM-DD [compact|detail]
         timetable this week [compact|detail]
+        timetable next week [compact|detail]
 
-Shows fixed activities in chronological day sections. Weekly views cover
-Monday through Sunday. Flexible activities stay in a separate unscheduled
-section with their window and required duration; no time is invented for
-them. compact omits empty days for narrow terminals, while detail adds
-completion, category, rating, topic, and note information.
+Shows fixed activities in chronological day sections. today/tomorrow are
+shorthand for day/ with the current/next date. Weekly views cover Monday
+through Sunday; next week is the following Monday-Sunday week. Flexible
+activities stay in a separate unscheduled section with their window and
+required duration; no time is invented for them. compact omits empty days
+for narrow terminals, while detail adds completion, category, rating,
+topic, and note information.
 
 Examples:
+  timetable today
   timetable day/2026-08-17
   timetable day/2026-08-17 detail
   timetable week/2026-08-19 compact
   timetable this week detail
+  timetable next week
 
 Timetable is read-only. It does not schedule flexible activities, create
 recommendations, infer buffers, or change any stored data.
@@ -625,21 +657,23 @@ A topic cannot be deleted while any activity is still using it.
 ____________________________________________________________
 ____________________________________________________________
 Dashboard: a planning-load summary
-Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]
+Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week|next week [detail]
 Related commands: completion (see guide completion for mark/unmark/list status/)
 
 Shows how much is planned for a period, how much room is left, how
 energy/sensory-demanding it is, and how much of what's already due is
 complete - using only activity data you already entered. this week
 means Monday through Sunday of the current week, the same as list
-this week. detail adds fixed/flexible counts, a category breakdown,
-and the full 1-to-5 energy/sensory rating distribution.
+this week; next week is the following Monday-Sunday week. detail adds
+fixed/flexible counts, a category breakdown, and the full 1-to-5
+energy/sensory rating distribution.
 
 Examples:
   dashboard today
   dashboard tomorrow detail
   dashboard date/2026-08-20
   dashboard this week detail
+  dashboard next week
 
 "Nominal buffer" is arithmetic capacity minus planned workload - not
 a promise that time is actually free or usable. Energy and sensory
@@ -650,25 +684,39 @@ ____________________________________________________________
 Recommended timetable
 Format: recommend
         recommend this week
+        recommend next week
+        recommend today
+        recommend tomorrow
         recommend date/YYYY-MM-DD
         recommend view
         recommend adopt
         recommend cancel
 
 recommend and recommend this week generate one deterministic weekly
-preview for incomplete flexible activities. recommend date/YYYY-MM-DD
-generates a one-day preview. recommend view re-shows the current
-proposal, recommend adopt confirms and saves it once, and recommend
-cancel discards it with no change.
+preview for incomplete flexible activities; recommend next week does the
+same for the following Monday-Sunday week. recommend today/tomorrow are
+shorthand for recommend date/ with the current/next date; recommend
+date/YYYY-MM-DD generates a one-day preview for any date not before
+today. recommend view re-shows the current proposal, recommend adopt
+confirms and saves it once, and recommend cancel discards it with no
+change.
 
 The recommender uses fixed activities, flexible windows, and your
 global planning preferences. Minimum buffer is enforced; Tomato only
 adds advisory study suggestions when enabled. Activities keep their
 stable IDs and original flexible windows.
 
+No proposed start is ever before the current time. A today window that
+has already fully elapsed is left unscheduled rather than backdated; a
+partly elapsed today window starts at the next whole minute from now.
+recommend adopt is rejected as stale if any proposed start has already
+passed since the proposal was generated - regenerate with recommend.
+
 Examples:
   recommend
   recommend this week
+  recommend next week
+  recommend today
   recommend date/2026-08-15
   recommend view
   recommend adopt
@@ -749,21 +797,27 @@ Sample local accessibility reference data. Distances are estimates and may be in
 ____________________________________________________________
 ____________________________________________________________
 Text timetable
-Format: timetable day/YYYY-MM-DD [detail]
+Format: timetable today|tomorrow [detail]
+        timetable day/YYYY-MM-DD [detail]
         timetable week/YYYY-MM-DD [compact|detail]
         timetable this week [compact|detail]
+        timetable next week [compact|detail]
 
-Shows fixed activities in chronological day sections. Weekly views cover
-Monday through Sunday. Flexible activities stay in a separate unscheduled
-section with their window and required duration; no time is invented for
-them. compact omits empty days for narrow terminals, while detail adds
-completion, category, rating, topic, and note information.
+Shows fixed activities in chronological day sections. today/tomorrow are
+shorthand for day/ with the current/next date. Weekly views cover Monday
+through Sunday; next week is the following Monday-Sunday week. Flexible
+activities stay in a separate unscheduled section with their window and
+required duration; no time is invented for them. compact omits empty days
+for narrow terminals, while detail adds completion, category, rating,
+topic, and note information.
 
 Examples:
+  timetable today
   timetable day/2026-08-17
   timetable day/2026-08-17 detail
   timetable week/2026-08-19 compact
   timetable this week detail
+  timetable next week
 
 Timetable is read-only. It does not schedule flexible activities, create
 recommendations, infer buffers, or change any stored data.
@@ -2907,7 +2961,7 @@ Got it. Activity [26] has been added:
 You now have 25 activities.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Conflict: This timing overlaps activity [26], Blocking event (12:30 -> 13:30).
+[Error] Conflict: Week 9 (2027-03-16): This timing overlaps activity [26], Blocking event (12:30 -> 13:30).
 ____________________________________________________________
 ____________________________________________________________
 No activities found.
@@ -3102,7 +3156,7 @@ Period: 2099-06-02
 No activities found for the selected period.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Missing input: dashboard requires a period: today, tomorrow, date/YYYY-MM-DD, or this week.
+[Error] Missing input: dashboard requires a period: today, tomorrow, date/YYYY-MM-DD, this week, or next week.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Missing input: date/ requires a value in yyyy-MM-dd format.
@@ -3240,7 +3294,7 @@ UNSCHEDULED FLEXIBLE ACTIVITIES
 [F] Fixed activity | [R] Adopted flexible activity | [U] Unscheduled flexible activity
 ____________________________________________________________
 ____________________________________________________________
-[Error] Missing input: timetable requires day/YYYY-MM-DD, week/YYYY-MM-DD, or this week.
+[Error] Missing input: timetable requires day/YYYY-MM-DD, week/YYYY-MM-DD, today, tomorrow, this week, or next week.
 ____________________________________________________________
 ____________________________________________________________
 [Error] Missing input: day/ requires a value in yyyy-MM-dd format.
@@ -3249,7 +3303,10 @@ ____________________________________________________________
 [Error] Invalid input: date does not exist. Please enter a valid calendar date in yyyy-MM-dd format.
 ____________________________________________________________
 ____________________________________________________________
-[Error] Invalid input: Unknown timetable option "today".
+[Error] Invalid input: Unknown timetable option "yesterday".
+____________________________________________________________
+____________________________________________________________
+[Error] Invalid input: Unknown timetable mode "extra".
 ____________________________________________________________
 ____________________________________________________________
 [Error] Invalid input: compact is only available for weekly timetables.

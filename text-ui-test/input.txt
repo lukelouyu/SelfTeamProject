@@ -424,7 +424,8 @@ timetable day/2099-06-02
 timetable
 timetable day/
 timetable day/2026-02-30
-timetable today
+timetable yesterday
+timetable today extra
 timetable day/2099-06-01 compact
 timetable week/2099-06-01 compact detail
 

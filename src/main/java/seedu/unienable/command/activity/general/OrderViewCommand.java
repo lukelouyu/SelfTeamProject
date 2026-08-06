@@ -2,14 +2,14 @@ package seedu.unienable.command.activity.general;
 
 import java.util.Locale;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.model.enums.ActivityOrder;
 
 /** Displays the saved default activity list order. */
-public class OrderViewCommand extends Command {
+public class OrderViewCommand extends ReadOnlyCommand {
     private final ActivityManager activityManager;
 
     /**

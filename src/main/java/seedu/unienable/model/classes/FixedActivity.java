@@ -2,6 +2,7 @@ package seedu.unienable.model.classes;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,9 +34,7 @@ public class FixedActivity extends Activity {
             LocalTime startTime, LocalTime endTime, EnergyRating energyRating, SensoryRating sensoryRating,
             String topic, String note) {
         super(id, description, category, date, energyRating, sensoryRating, topic, note);
-        assert endTime.isAfter(startTime)
-                : "FixedActivity constructed with end time not after start time - every caller "
-                        + "(parsers, storage) must validate this before constructing";
+        requireValidTiming(startTime, endTime);
         this.startTime = startTime;
         this.endTime = endTime;
     }
@@ -45,10 +44,14 @@ public class FixedActivity extends Activity {
         return startTime;
     }
 
-    /** Sets the confirmed start time. */
+    /**
+     * Sets the confirmed start time if it remains before the current end time.
+     *
+     * @param startTime proposed confirmed start time
+     * @throws IllegalArgumentException if the resulting interval would be invalid
+     */
     public void setStartTime(LocalTime startTime) {
-        logger.log(Level.INFO, "Updated start time for activity [" + getId() + "].");
-        this.startTime = startTime;
+        updateTiming(startTime, endTime);
     }
 
     /** Returns the confirmed end time. */
@@ -56,10 +59,36 @@ public class FixedActivity extends Activity {
         return endTime;
     }
 
-    /** Sets the confirmed end time. */
+    /**
+     * Sets the confirmed end time if it remains after the current start time.
+     *
+     * @param endTime proposed confirmed end time
+     * @throws IllegalArgumentException if the resulting interval would be invalid
+     */
     public void setEndTime(LocalTime endTime) {
-        logger.log(Level.INFO, "Updated end time for activity [" + getId() + "].");
+        updateTiming(startTime, endTime);
+    }
+
+    /**
+     * Atomically replaces both confirmed times after validating the complete proposed interval.
+     *
+     * @param startTime proposed confirmed start time
+     * @param endTime proposed confirmed end time
+     * @throws IllegalArgumentException if end is not after start
+     */
+    public void updateTiming(LocalTime startTime, LocalTime endTime) {
+        requireValidTiming(startTime, endTime);
+        logger.log(Level.INFO, "Updated timing for activity [" + getId() + "].");
+        this.startTime = startTime;
         this.endTime = endTime;
+    }
+
+    private static void requireValidTiming(LocalTime startTime, LocalTime endTime) {
+        Objects.requireNonNull(startTime, "start time must not be null");
+        Objects.requireNonNull(endTime, "end time must not be null");
+        if (!endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("end time must be after start time");
+        }
     }
 
     @Override

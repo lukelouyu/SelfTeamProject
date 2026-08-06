@@ -7,6 +7,7 @@ autonumber
 
 actor User
 participant ApplicationRunner as Runner
+participant CommandTransactionExecutor as Transaction
 participant CommandConfirmationHandler as Confirmation
 participant RecurCommand as Command
 participant ActivityManager as Manager
@@ -20,8 +21,9 @@ Command --> Confirmation : preview Confirmation
 Confirmation --> User : show planned and skipped dates
 User --> Confirmation : y
 Confirmation --> Runner : true
-Runner -> Runner : capture ApplicationStateSnapshot
-Runner -> Command : execute()
+Runner -> Transaction : execute(command)
+Transaction -> Transaction : capture Snapshot
+Transaction -> Command : execute()
 Command -> Command : extract planned FixedActivity objects
 Command -> Manager : addAllAtomically(candidates)
 Manager -> Manager : copy existing activities to validated list
@@ -33,7 +35,8 @@ loop each candidate in input order
 end
 Manager -> Manager : append whole batch; advance nextId
 Manager --> Command
-Command --> Runner : CommandResult
+Command --> Transaction : CommandResult
+Transaction --> Runner : Execution(result, snapshot)
 Runner -> Storage : saveAll(activities, topics, order, preferences)
 Storage --> Runner : saved
 Runner -> Ui : showFramed(feedback)

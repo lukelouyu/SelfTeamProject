@@ -1,6 +1,6 @@
 package seedu.unienable.command.timetable;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.timetable.TimetableService;
@@ -10,7 +10,7 @@ import seedu.unienable.model.timetable.TimetableView;
 import seedu.unienable.ui.timetable.TimetableFormatter;
 
 /** Shows a deterministic read-only day or week timetable. */
-public class TimetableCommand extends Command {
+public class TimetableCommand extends ReadOnlyCommand {
     private final ActivityManager activityManager;
     private final TimetablePeriod period;
     private final TimetableMode mode;

@@ -12,6 +12,7 @@ package "Application" {
   [UniEnable] as Entry
   [ApplicationRunner] as Runner
   [CommandConfirmationHandler] as Confirm
+  [CommandTransactionExecutor] as Transaction
 }
 
 package "User interface" {
@@ -57,10 +58,15 @@ User --> Entry : starts
 Entry --> Runner
 Runner --> UI
 Runner --> Confirm
+Runner --> Transaction
 Confirm --> UI
 Runner --> Dispatcher
 Dispatcher --> Parsers
 Parsers --> Commands : creates
+Transaction --> Commands : executes
+Transaction --> ActivityLogic : snapshots/restores
+Transaction --> TopicLogic : snapshots/restores
+Transaction --> PreferenceLogic : snapshots/restores
 Commands --> ActivityLogic
 Commands --> TopicLogic
 Commands --> FacilityLogic

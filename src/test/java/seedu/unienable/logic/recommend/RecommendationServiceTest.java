@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 
@@ -102,6 +103,26 @@ class RecommendationServiceTest {
 
         assertEquals(1, proposal.getPlacements().size());
         assertTrue(proposal.getPlacements().get(0).tomatoSuggested());
+    }
+
+    @Test
+    public void recommendDate_turkishLocale_keywordMatchingRemainsStable() throws Exception {
+        Locale originalLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            FlexibleActivity reading = new FlexibleActivity(3, "READING", ActivityCategory.OTHERS, MONDAY,
+                    LocalTime.of(10, 0), LocalTime.of(12, 0), 60,
+                    EnergyRating.of(4), SensoryRating.of(3), null, null);
+            ActivityManager manager = managerWith(List.of(reading));
+
+            RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                    PreferenceProfile.of(LocalTime.of(8, 0), LocalTime.of(20, 0), 0, TomatoSuggestion.ON),
+                    MONDAY, MIDNIGHT);
+
+            assertTrue(proposal.getPlacements().get(0).tomatoSuggested());
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
     }
 
     @Test

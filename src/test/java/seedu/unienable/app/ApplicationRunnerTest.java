@@ -38,8 +38,8 @@ import seedu.unienable.testutil.recur.RecurrenceTestData;
 /**
  * Verifies that a save failure occurring right after any mutating command rolls back that
  * command's complete pre-command state instead of just being reported -
- * {@code ApplicationRunner.ApplicationStateSnapshot}'s job for every mutating command, not just
- * recur/reset. Uses the package-private constructor that injects a {@link Storage} whose
+ * {@code CommandTransactionExecutor}'s job for every mutating command, not just recur/reset. Uses
+ * the package-private constructor that injects a {@link Storage} whose
  * {@code saveAll} fails in a controlled, deterministic way, so none of this depends on real
  * filesystem permission quirks.
  */

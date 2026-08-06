@@ -3,6 +3,7 @@ package seedu.unienable.model.classes;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,12 +52,7 @@ public class FlexibleActivity extends Activity {
             EnergyRating energyRating, SensoryRating sensoryRating, String topic, String note,
             LocalTime adoptedStartTime) {
         super(id, description, category, date, energyRating, sensoryRating, topic, note);
-        assert latestEnd.isAfter(earliestStart)
-                : "FlexibleActivity constructed with latest end not after earliest start - every "
-                        + "caller (parsers, storage) must validate this before constructing";
-        assert durationMinutes <= Duration.between(earliestStart, latestEnd).toMinutes()
-                : "FlexibleActivity constructed with a duration that does not fit the "
-                        + "earliest/latest window - every caller must validate this before constructing";
+        requireValidWindow(earliestStart, latestEnd, durationMinutes);
         this.earliestStart = earliestStart;
         this.latestEnd = latestEnd;
         this.durationMinutes = durationMinutes;
@@ -69,10 +65,14 @@ public class FlexibleActivity extends Activity {
         return earliestStart;
     }
 
-    /** Sets the earliest allowed start time. */
+    /**
+     * Sets the earliest allowed start if the complete resulting window remains valid.
+     *
+     * @param earliestStart proposed earliest start
+     * @throws IllegalArgumentException if the duration or adopted placement would no longer fit
+     */
     public void setEarliestStart(LocalTime earliestStart) {
-        logger.log(Level.INFO, "Updated earliest start for activity [" + getId() + "].");
-        this.earliestStart = earliestStart;
+        updateWindow(earliestStart, latestEnd, durationMinutes);
     }
 
     /** Returns the latest allowed end time. */
@@ -80,10 +80,14 @@ public class FlexibleActivity extends Activity {
         return latestEnd;
     }
 
-    /** Sets the latest allowed end time. */
+    /**
+     * Sets the latest allowed end if the complete resulting window remains valid.
+     *
+     * @param latestEnd proposed latest end
+     * @throws IllegalArgumentException if the duration or adopted placement would no longer fit
+     */
     public void setLatestEnd(LocalTime latestEnd) {
-        logger.log(Level.INFO, "Updated latest end for activity [" + getId() + "].");
-        this.latestEnd = latestEnd;
+        updateWindow(earliestStart, latestEnd, durationMinutes);
     }
 
     /** Returns the required duration in minutes. */
@@ -91,9 +95,31 @@ public class FlexibleActivity extends Activity {
         return durationMinutes;
     }
 
-    /** Sets the required duration in minutes. */
+    /**
+     * Sets the duration if it and any adopted placement still fit the current window.
+     *
+     * @param durationMinutes proposed positive duration in minutes
+     * @throws IllegalArgumentException if the resulting state would be invalid
+     */
     public void setDurationMinutes(int durationMinutes) {
-        logger.log(Level.INFO, "Updated duration for activity [" + getId() + "].");
+        updateWindow(earliestStart, latestEnd, durationMinutes);
+    }
+
+    /**
+     * Atomically replaces the flexible window and duration after validating the full proposed
+     * state, including any existing adopted placement.
+     *
+     * @param earliestStart proposed earliest start
+     * @param latestEnd proposed latest end
+     * @param durationMinutes proposed positive duration in minutes
+     * @throws IllegalArgumentException if the window, duration, or adopted placement is invalid
+     */
+    public void updateWindow(LocalTime earliestStart, LocalTime latestEnd, int durationMinutes) {
+        requireValidWindow(earliestStart, latestEnd, durationMinutes);
+        requireValidAdoptedPlacement(earliestStart, latestEnd, durationMinutes, adoptedStartTime);
+        logger.log(Level.INFO, "Updated flexible window for activity [" + getId() + "].");
+        this.earliestStart = earliestStart;
+        this.latestEnd = latestEnd;
         this.durationMinutes = durationMinutes;
     }
 
@@ -119,6 +145,21 @@ public class FlexibleActivity extends Activity {
         this.adoptedStartTime = adoptedStartTime;
     }
 
+    /**
+     * Returns whether the proposed non-null adopted start would fit the current flexible window.
+     *
+     * @param proposedStart proposed adopted start
+     * @return true if the placement would fit
+     */
+    public boolean canAdoptAt(LocalTime proposedStart) {
+        if (proposedStart == null) {
+            return false;
+        }
+        return !proposedStart.isBefore(earliestStart)
+                && !proposedStart.isAfter(latestEnd)
+                && Duration.between(proposedStart, latestEnd).toMinutes() >= durationMinutes;
+    }
+
     /** Clears any adopted placement and returns this activity to an unscheduled flexible state. */
     public void clearAdoptedPlacement() {
         logger.log(Level.INFO, "Cleared adopted schedule for activity [" + getId() + "].");
@@ -130,9 +171,25 @@ public class FlexibleActivity extends Activity {
         if (adoptedStartTime == null) {
             return;
         }
-        LocalTime adoptedEndTime = adoptedStartTime.plusMinutes(durationMinutes);
-        if (adoptedStartTime.isBefore(earliestStart) || adoptedEndTime.isAfter(latestEnd)) {
+        if (adoptedStartTime.isBefore(earliestStart)
+                || adoptedStartTime.isAfter(latestEnd)
+                || Duration.between(adoptedStartTime, latestEnd).toMinutes() < durationMinutes) {
             throw new IllegalArgumentException("adopted placement must fit inside the flexible window");
+        }
+    }
+
+    private static void requireValidWindow(LocalTime earliestStart, LocalTime latestEnd,
+            int durationMinutes) {
+        Objects.requireNonNull(earliestStart, "earliest start must not be null");
+        Objects.requireNonNull(latestEnd, "latest end must not be null");
+        if (!latestEnd.isAfter(earliestStart)) {
+            throw new IllegalArgumentException("latest end must be after earliest start");
+        }
+        if (durationMinutes <= 0) {
+            throw new IllegalArgumentException("duration must be positive");
+        }
+        if (durationMinutes > Duration.between(earliestStart, latestEnd).toMinutes()) {
+            throw new IllegalArgumentException("duration must fit inside the flexible window");
         }
     }
 

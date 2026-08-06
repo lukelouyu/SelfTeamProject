@@ -2,7 +2,7 @@ package seedu.unienable.command.dashboard;
 
 import java.time.LocalDateTime;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.dashboard.DashboardService;
@@ -14,7 +14,7 @@ import seedu.unienable.ui.dashboard.DashboardFormatter;
  * Shows a read-only planning summary for a period. Never mutates activities, topics, settings,
  * or any file, and requires no confirmation - executing it is always safe.
  */
-public class DashboardCommand extends Command {
+public class DashboardCommand extends ReadOnlyCommand {
     private final ActivityManager activityManager;
     private final DashboardPeriod period;
     private final LocalDateTime now;

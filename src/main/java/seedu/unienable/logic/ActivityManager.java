@@ -75,8 +75,13 @@ public class ActivityManager {
      * @param activity the activity to add, constructed using getNextId()'s current value
      * @throws DuplicateActivityException if it exactly duplicates an existing activity, or (for a
      *     FixedActivity) overlaps another fixed activity on the same date
+     * @throws IllegalArgumentException if the activity does not carry the current next ID
      */
     public void add(Activity activity) throws DuplicateActivityException {
+        if (activity.getId() != nextId) {
+            throw new IllegalArgumentException("expected activity ID " + nextId
+                    + " but received " + activity.getId());
+        }
         conflictChecker.checkNoConflicts(activity, -1, activities);
         activities.add(activity);
         nextId++;
@@ -123,11 +128,17 @@ public class ActivityManager {
      * @throws InvalidIndexException if no activity has that ID
      * @throws DuplicateActivityException if the replacement exactly duplicates another activity,
      *     or (for a FixedActivity) overlaps another fixed activity on the same date
+     * @throws IllegalArgumentException if the replacement does not carry the stable ID being
+     *     replaced
      */
     public void replace(int id, Activity newActivity) throws InvalidIndexException, DuplicateActivityException {
         int index = indexOfId(id);
         if (index == -1) {
             throw new InvalidIndexException("Activity [" + id + "] does not exist.");
+        }
+        if (newActivity.getId() != id) {
+            throw new IllegalArgumentException("replacement ID " + newActivity.getId()
+                    + " does not match stable activity ID " + id);
         }
         conflictChecker.checkNoConflicts(newActivity, id, activities);
         activities.set(index, newActivity);

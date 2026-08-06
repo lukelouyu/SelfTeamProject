@@ -1,6 +1,6 @@
 package seedu.unienable.command.activity.general;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 
 import java.util.List;
@@ -12,7 +12,7 @@ import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.ui.MessageFormatter;
 
 /** Finds activities matching every given keyword and an optional filter, in concise or detail view. */
-public class FindCommand extends Command {
+public class FindCommand extends ReadOnlyCommand {
     private final ActivityManager activityManager;
     private final List<String> keywords;
     private final ActivityFilter filter;

@@ -24,7 +24,7 @@ jobs:
           java-package: jdk+fx
 
       - name: Build and check with Gradle
-        run: ./gradlew check
+        run: ./gradlew clean check javadoc verifyReleaseZip
 
       - name: Install dos2unix on Linux
         if: runner.os == 'Linux'

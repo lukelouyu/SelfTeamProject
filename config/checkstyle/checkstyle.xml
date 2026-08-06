@@ -281,6 +281,15 @@
             <property name="tokens" value="METHOD_DEF, ANNOTATION_FIELD_DEF"/>
         </module>
 
+        <!-- Requires public/protected production APIs to carry a contract comment. Obvious Java
+        bean-style accessors may use their property name as the self-explanatory contract, while
+        overrides may inherit the parent API documentation. -->
+        <module name="MissingJavadocMethod">
+            <property name="scope" value="protected"/>
+            <property name="allowedAnnotations" value="Override"/>
+            <property name="allowMissingPropertyJavadoc" value="true"/>
+        </module>
+
         <module name="InvalidJavadocPosition"/>
 
     </module>

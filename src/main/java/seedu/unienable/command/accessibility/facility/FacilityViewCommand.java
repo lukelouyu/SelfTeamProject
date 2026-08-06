@@ -1,6 +1,6 @@
 package seedu.unienable.command.accessibility.facility;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 
@@ -12,7 +12,7 @@ import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.FacilityManager;
 
 /** Displays one facility's every recorded accessibility feature. */
-public class FacilityViewCommand extends Command {
+public class FacilityViewCommand extends ReadOnlyCommand {
     private final FacilityManager facilityManager;
     private final String name;
 

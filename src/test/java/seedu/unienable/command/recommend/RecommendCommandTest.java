@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.Confirmation;
 import seedu.unienable.exception.InvalidCommandException;
+import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.dashboard.DashboardService;
 import seedu.unienable.logic.preference.PreferenceManager;
@@ -97,6 +98,46 @@ class RecommendCommandTest {
         assertEquals(LocalTime.of(11, 0), flexible.getAdoptedStartTime());
         assertEquals("Recommendation adopted.\nScheduled flexible activities: 1\nUnscheduled flexible activities: 0",
                 result.getFeedback());
+    }
+
+    @Test
+    public void adopt_laterActivityMissing_rejectsBeforeApplyingEarlierPlacement() throws Exception {
+        FlexibleActivity flexible = flexible(2, "Essay draft", LocalTime.of(9, 0), LocalTime.of(14, 0), 60);
+        ActivityManager activityManager = managerWith(List.of(flexible));
+        RecommendationProposal proposal = new RecommendationProposal(
+                TimetableService.resolveThisWeek(NOW), DashboardService.resolveThisWeek(NOW),
+                List.of(
+                        new RecommendedPlacement(2, "Essay draft", DATE,
+                                LocalTime.of(11, 0), LocalTime.of(12, 0), false),
+                        new RecommendedPlacement(999, "Missing", DATE,
+                                LocalTime.of(12, 0), LocalTime.of(13, 0), false)),
+                List.of());
+
+        assertThrows(InvalidIndexException.class,
+                () -> new RecommendAdoptCommand(activityManager, proposal).execute());
+
+        assertFalse(flexible.hasAdoptedPlacement());
+    }
+
+    @Test
+    public void adopt_laterPlacementInvalid_rejectsBeforeApplyingEarlierPlacement() throws Exception {
+        FlexibleActivity first = flexible(2, "Essay draft", LocalTime.of(9, 0), LocalTime.of(14, 0), 60);
+        FlexibleActivity second = flexible(3, "Revision", LocalTime.of(9, 0), LocalTime.of(14, 0), 60);
+        ActivityManager activityManager = managerWith(List.of(first, second));
+        RecommendationProposal proposal = new RecommendationProposal(
+                TimetableService.resolveThisWeek(NOW), DashboardService.resolveThisWeek(NOW),
+                List.of(
+                        new RecommendedPlacement(2, "Essay draft", DATE,
+                                LocalTime.of(11, 0), LocalTime.of(12, 0), false),
+                        new RecommendedPlacement(3, "Revision", DATE,
+                                LocalTime.of(13, 30), LocalTime.of(14, 30), false)),
+                List.of());
+
+        assertThrows(InvalidCommandException.class,
+                () -> new RecommendAdoptCommand(activityManager, proposal).execute());
+
+        assertFalse(first.hasAdoptedPlacement());
+        assertFalse(second.hasAdoptedPlacement());
     }
 
     private static ActivityManager managerWith(List<Activity> activities) {

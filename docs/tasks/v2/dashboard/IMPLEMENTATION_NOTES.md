@@ -13,8 +13,8 @@ parser/dashboard/DashboardCommandParser.java
 command/dashboard/DashboardCommand.java
     execute() -> CommandResult
     Orchestration only: calls DashboardService.summarize(activityManager, period, now), then
-    DashboardFormatter.format(summary, detail). Read-only - implements neither Confirmable nor
-    MenuConfirmable, and is not in ApplicationRunner.mutatesState's set.
+    DashboardFormatter.format(summary, detail). Read-only - inherits ReadOnlyCommand and
+    implements neither Confirmable nor MenuConfirmable.
 
 logic/dashboard/DashboardService.java
     Stateless (private constructor, all-static), mirroring feature/v2-route's

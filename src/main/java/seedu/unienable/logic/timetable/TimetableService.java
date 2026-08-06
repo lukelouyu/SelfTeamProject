@@ -53,6 +53,13 @@ public final class TimetableService {
         return build(activityManager.getAll(), period);
     }
 
+    /**
+     * Builds one timetable from the supplied activity snapshot without mutating it.
+     *
+     * @param activities activities to project into the timetable
+     * @param period inclusive date period to display
+     * @return the deterministic timetable projection
+     */
     public static TimetableView build(List<Activity> activities, TimetablePeriod period) {
         List<ScheduledEntrySource> scheduled = new ArrayList<>();
         List<FlexibleActivity> flexible = new ArrayList<>();

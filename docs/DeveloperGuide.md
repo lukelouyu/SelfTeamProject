@@ -60,7 +60,7 @@ application-owned files and the accessibility reference dataset.
 | `logic` | Owns in-memory activity/topic/preference/recommendation state, read-only accessibility lookups, filters, conflict policy, recurrence planning, and deterministic recommendation calculation. |
 | `model` | Defines activities, topics, preferences, ratings, enums, academic-calendar records, recurrence plans, and recommendation proposals. |
 | `accessibility` | Defines immutable facility, feature, connection, and three-state accessibility records. |
-| `storage` | Loads validated text records and atomically saves activities, topics, settings, and preferences. |
+| `storage` | Loads validated text records and transactionally saves activities, topics, settings, and preferences. |
 | `exception` | Provides user-facing checked exception categories such as invalid input, conflict, and storage error. |
 
 `ActivityManager` owns the activity list, permanent-ID counter, saved ordering, CRUD operations,
@@ -78,9 +78,10 @@ earliest start, latest end, and required duration.
 <p align="center"><img src="diagrams/class/ActivityDomainClassDiagram.png" width="760" alt="Activity domain class diagram"></p>
 
 Activities are mutable because edits, completion changes, and topic renames update existing user
-state. Ratings are validated value objects. Constructor assertions protect the internal
-end-after-start and duration-fits-window invariants; callers validate untrusted input before
-construction, as described in Section 14.
+state. Ratings are validated value objects. Constructors and timing update methods use explicit
+argument checks for the end-after-start and duration-fits-window invariants, so invalid model
+state is rejected even when Java assertions are disabled. Callers additionally validate untrusted
+input before construction, as described in Section 14.
 
 ## 6. Command and parser design
 
@@ -185,16 +186,19 @@ state changed after planning. Any failure leaves the real activity list and ID c
 
 ## 10. Atomic mutation and rollback
 
-`ApplicationRunner` classifies these as state-changing commands: activity add, edit, delete, mark,
-unmark, `order set`, recurrence, topic add/rename/delete, preference set/reset, and `reset all`
-when reset would actually change state. Before executing one, it captures deep copies of
+Each command declares a `CommandEffect`. Query commands inherit the explicit `ReadOnlyCommand`
+contract; commands that alter persistent state declare `MUTATING` beside their implementation.
+`Command.getEffect()` is abstract, so a new command cannot compile until its effect is chosen. A
+command whose execution may be a no-op (reset or an already-applied preference operation) also
+reports whether this invocation has a state change. `ApplicationRunner` therefore has no central
+`instanceof` list to maintain. Before executing a changing command, it captures deep copies of
 activities and topics plus the exact `nextId`, saved order, and immutable preference profile.
 
-Success feedback is withheld until `Storage.saveAll` succeeds. If saving fails, the runner restores
-the snapshot through `ActivityManager.restoreState`, `TopicManager.loadAll`, and
-`PreferenceManager.setProfile`; the attempted
-command is therefore not left visible only in memory. The unsaved-change flag remains set so `bye`
-retries and cannot falsely claim that data was saved.
+Success feedback is withheld until `Storage.saveAll` succeeds. If command execution throws after
+mutation, or if saving fails, the runner restores the snapshot through
+`ActivityManager.restoreState`, `TopicManager.loadAll`, and `PreferenceManager.setProfile`; the
+attempted command is therefore never left partially applied in memory. After a save failure the
+unsaved-change flag remains set so `bye` retries and cannot falsely claim that data was saved.
 
 <p align="center"><img src="diagrams/sequence/MutationRollbackSequence.png" width="760" alt="Mutation rollback sequence diagram"></p>
 
@@ -209,8 +213,14 @@ There are two complementary rollback layers:
 The `Storage` facade owns loaders for activities, topics, settings, preferences, facilities, and
 connections. Application-owned planning state is pipe-delimited in `activities.txt`,
 `topics.txt`, `settings.txt`, and `preferences.txt`. `saveAll` stages all four temporary files,
-checks destinations, retains backups,
-and commits them as one operation; a later failure triggers restoration of earlier file states.
+checks destinations, retains backups, and commits them as one operation; a later caught failure
+triggers restoration of earlier file states. Backup creation itself is covered by cleanup, so a
+failure partway through that phase does not leak earlier backup files. Each destination replacement
+requests `ATOMIC_MOVE` and explicitly falls back when the file system does not support it.
+
+The transaction guarantee covers caught in-process I/O failures. A process termination or power
+loss between the four destination moves can still expose mixed generations; the file set is not
+claimed to be fully crash-atomic.
 
 <p align="center"><img src="diagrams/class/StorageClassDiagram.png" width="760" alt="Storage class diagram"></p>
 
@@ -308,9 +318,8 @@ Responsibilities are split the same way `route` splits parsing/policy/formatting
   `LocalDate.now()`/`LocalDateTime.now()` directly in production code or tests), and captures the
   `detail` flag.
 - `command.dashboard.DashboardCommand` - orchestration only: calls `DashboardService.summarize`,
-  then `DashboardFormatter.format`. Implements neither `Confirmable` nor `MenuConfirmable`, and is
-  not in `ApplicationRunner.mutatesState`'s recognised set, so it never triggers a snapshot or a
-  save - a `dashboard` command is architecturally incapable of persisting anything.
+  then `DashboardFormatter.format`. Implements neither `Confirmable` nor `MenuConfirmable` and
+  inherits `ReadOnlyCommand`, so it never triggers a snapshot or save.
 - `logic.dashboard.DashboardService` - stateless (all-static, mirroring
   `logic.route.AccessibleRouteGraphFactory`); owns period resolution and every metric calculation.
 - `model.dashboard.DashboardPeriod`/`RatingSummary`/`DashboardSummary` - immutable calculated
@@ -345,8 +354,8 @@ however much of its window overlaps the period - stated and tested as a limitati
 invented data.
 
 **Cross-midnight clipping - generic by construction, not reachable by real data today.** Both
-`FixedActivity` and `FlexibleActivity` constrain start/end to one calendar date
-(constructor-enforced assertions), so no activity in this codebase can actually span midnight.
+`FixedActivity` and `FlexibleActivity` constrain start/end to one calendar date through explicit
+constructor checks, so no activity in this codebase can actually span midnight.
 `clip(...)` is nonetheless implemented generically over raw `LocalDateTime` boundaries with no
 same-day assumption - exactly as correct for a hypothetical midnight-spanning interval as for an
 ordinary one. `DashboardServiceTest` exercises this directly with synthetic
@@ -430,8 +439,8 @@ Responsibilities follow the established command/parser/logic/model/formatter spl
   mode. It uses the existing strict `yyyy-MM-dd` parser and captures the injected `now` for
   `today`/`tomorrow`/`this week`/`next week`.
 - `command.timetable.TimetableCommand` calls the service and formatter. It implements no
-  confirmation interface and is absent from `ApplicationRunner.mutatesState`, so execution does
-  not take a mutation snapshot or save.
+  confirmation interface and inherits `ReadOnlyCommand`, so execution does not
+  take a mutation snapshot or save.
 - `logic.timetable.TimetableService` resolves day and Monday-Sunday periods, selects activities,
   sorts them, detects fixed-activity overlaps, and creates immutable projections.
 - `model.timetable.TimetablePeriod`, `TimetableEntry`, and `TimetableView` hold immutable calculated
@@ -488,9 +497,9 @@ all-or-default: a missing file silently returns the complete default profile, wh
 incomplete, duplicate, unknown, invalid, or internally inconsistent profile returns all defaults
 with concise startup warnings. Valid fields from a broken profile are never mixed with defaults.
 
-Preferences participate in the four-file `Storage.saveAll` transaction and in
-`ApplicationStateSnapshot`, so a persistence failure restores both disk state and the prior
-in-memory profile before any success feedback. `reset all` option 1 restores profile defaults;
+Preferences participate in the four-file `Storage.saveAll` transaction and in the
+`CommandTransactionExecutor` snapshot, so a persistence failure restores both disk state and the
+prior in-memory profile before any success feedback. `reset all` option 1 restores profile defaults;
 option 2 retains the profile while keeping class schedules; option 3 cancels without change.
 
 Tomato/Pomodoro is still data only in this feature itself. `preference` does not create previews
@@ -638,12 +647,12 @@ true - see the boundary-enforcement pipeline above.
 <p align="center"><img src="diagrams/sequence/RecommendationSequence.png" width="760" alt="Recommendation sequence diagram"></p>
 
 Adoption is handled as a normal mutating command through `ApplicationRunner`. After the user
-confirms `recommend adopt`, the runner snapshots activities/topics/order/preferences, the command
-writes adopted start times back onto the targeted `FlexibleActivity` objects, and the runner
-persists the normal four user-state files through `Storage.saveAll`. If saving fails, the runner
-restores the full pre-adoption snapshot and reports the storage error instead of showing a false
-success. On save success, the active in-memory proposal is cleared; on save failure, it remains
-available because the adoption never committed.
+confirms `recommend adopt`, the runner snapshots activities/topics/order/preferences. The command
+first resolves and validates every placement against current activity state, then writes adopted
+start times only after the whole proposal passes. The runner persists the normal four user-state
+files through `Storage.saveAll`. Any execution or save failure restores the full pre-adoption
+snapshot and reports the error instead of showing a false success. On save success, the active
+in-memory proposal is cleared; on failure, it remains available because adoption never committed.
 
 Route-aware recommendation remains deliberately out of scope here. Activities still do not carry
 approved facility/location bindings, so recommendation cannot incorporate campus travel time or
@@ -661,15 +670,11 @@ Activity and topic mutations log at `INFO`. The runner logs startup/load warning
 at `WARNING`, and unexpected runtime failures at `SEVERE`. A storage rollback failure is also
 `SEVERE` because the persisted state may need manual inspection.
 
-Java assertions protect programmer-only invariants:
-
-- `ApplicationRunner.processCommand` requires its collaborators to have been initialised;
-- a fixed activity's end must be after its start;
-- a flexible activity's latest end must be after its earliest start and its duration must fit.
-
-Assertions are not used for user or persisted input. Parsers and storage validate those inputs and
-raise checked domain exceptions or load warnings, so behaviour does not depend on whether `-ea` is
-enabled.
+Java assertions protect programmer-only lifecycle assumptions such as
+`ApplicationRunner.processCommand` requiring its collaborators to be initialised. Domain model
+invariants use explicit checks, while parsers and storage validate untrusted input and raise
+checked domain exceptions or load warnings. Required behaviour therefore does not depend on
+whether `-ea` is enabled.
 
 ## 18. Design considerations
 
@@ -875,7 +880,7 @@ confirmation and rollback rules while restoring all documented defaults.
   activity used by recurrence and the reset keep option.
 - **Occurrence:** One independent fixed activity planned from a recurrence source.
 - **Academic calendar:** The supplied read-only file mapping teaching weeks and no-class dates.
-- **Snapshot:** A deep in-memory copy used to restore state after a failed save.
+- **Snapshot:** A deep in-memory copy used to restore state after failed command execution or save.
 - **Reference data:** Facility, connection, and calendar information that commands do not mutate.
 - **Confirmed-accessible connection:** A connection whose `accessibility` field is `YES`; `route`
   uses only these as graph edges, never `NO` or `UNKNOWN`.

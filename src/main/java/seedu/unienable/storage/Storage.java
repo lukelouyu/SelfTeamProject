@@ -2,6 +2,7 @@ package seedu.unienable.storage;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -221,6 +222,9 @@ public class Storage {
      * backup, and a destination that did not exist before this call is deleted if the commit
      * sequence had already created it. A plain pre-existing-but-unwritable destination is still
      * rejected upfront via {@link #checkWritable}, before any backup or commit happens at all.
+     * Destination replacement requests an atomic file-system move and falls back explicitly when
+     * unsupported. Rollback covers caught in-process failures; this method does not claim that a
+     * four-file commit is crash-atomic across process termination or power loss.
      *
      * @param activities the activities to save
      * @param topics the topics to save
@@ -256,7 +260,14 @@ public class Storage {
         }
     }
 
-    /** Backward-compatible overload used by existing storage-level callers. */
+    /**
+     * Saves activities, topics, and order with default preferences for legacy callers.
+     *
+     * @param activities the activities to save
+     * @param topics the topics to save
+     * @param order the default activity order to save
+     * @throws StorageException if validation, writing, backup, or commit fails
+     */
     public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order)
             throws StorageException {
         saveAll(activities, topics, order, PreferenceProfile.defaults());
@@ -268,20 +279,28 @@ public class Storage {
         boolean topicsExisted = Files.exists(topicsFile);
         boolean settingsExisted = Files.exists(settingsFile);
         boolean preferencesExisted = Files.exists(preferencesFile);
-        Path activitiesBak = backupIfExists(activitiesFile, activitiesExisted);
-        Path topicsBak = backupIfExists(topicsFile, topicsExisted);
-        Path settingsBak = backupIfExists(settingsFile, settingsExisted);
-        Path preferencesBak = backupIfExists(preferencesFile, preferencesExisted);
+        Path activitiesBak = null;
+        Path topicsBak = null;
+        Path settingsBak = null;
+        Path preferencesBak = null;
+        boolean commitStarted = false;
         try {
+            activitiesBak = backupIfExists(activitiesFile, activitiesExisted);
+            topicsBak = backupIfExists(topicsFile, topicsExisted);
+            settingsBak = backupIfExists(settingsFile, settingsExisted);
+            preferencesBak = backupIfExists(preferencesFile, preferencesExisted);
+            commitStarted = true;
             commit(activitiesTmp, activitiesFile);
             commit(topicsTmp, topicsFile);
             commit(settingsTmp, settingsFile);
             commit(preferencesTmp, preferencesFile);
         } catch (StorageException e) {
-            restore(activitiesFile, activitiesBak, activitiesExisted);
-            restore(topicsFile, topicsBak, topicsExisted);
-            restore(settingsFile, settingsBak, settingsExisted);
-            restore(preferencesFile, preferencesBak, preferencesExisted);
+            if (commitStarted) {
+                restore(activitiesFile, activitiesBak, activitiesExisted);
+                restore(topicsFile, topicsBak, topicsExisted);
+                restore(settingsFile, settingsBak, settingsExisted);
+                restore(preferencesFile, preferencesBak, preferencesExisted);
+            }
             throw e;
         } finally {
             deleteQuietly(activitiesBak);
@@ -378,7 +397,12 @@ public class Storage {
 
     private void commit(Path tempFile, Path destination) throws StorageException {
         try {
-            Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             throw new StorageException("could not write " + destination, e);
         }

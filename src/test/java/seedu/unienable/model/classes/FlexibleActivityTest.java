@@ -74,18 +74,39 @@ class FlexibleActivityTest {
     }
 
     @Test
-    public void constructor_latestEndNotAfterEarliestStart_throwsAssertionError() {
-        assertThrows(AssertionError.class, () -> new FlexibleActivity(1, "desc", ActivityCategory.ACADEMIC,
+    public void constructor_latestEndNotAfterEarliestStart_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> new FlexibleActivity(1, "desc", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(18, 0), LocalTime.of(10, 0), 30,
                 EnergyRating.of(1), SensoryRating.of(1), null, null));
     }
 
     @Test
-    public void constructor_durationExceedsWindow_throwsAssertionError() {
-        // Programmer-invariant check, not user-input validation - every real caller (parsers,
-        // storage) already rejects this before constructing.
-        assertThrows(AssertionError.class, () -> new FlexibleActivity(1, "desc", ActivityCategory.ACADEMIC,
+    public void constructor_durationExceedsWindow_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> new FlexibleActivity(1, "desc", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(11, 0), 90,
                 EnergyRating.of(1), SensoryRating.of(1), null, null));
+    }
+
+    @Test
+    public void setDurationMinutes_exceedsWindow_rejectsWithoutChangingState() throws Exception {
+        FlexibleActivity activity = newFlexibleActivity();
+
+        assertThrows(IllegalArgumentException.class, () -> activity.setDurationMinutes(600));
+
+        assertEquals(90, activity.getDurationMinutes());
+        assertEquals(LocalTime.of(10, 0), activity.getEarliestStart());
+        assertEquals(LocalTime.of(18, 0), activity.getLatestEnd());
+    }
+
+    @Test
+    public void updateWindow_invalidatesAdoptedPlacement_rejectsWithoutChangingState() throws Exception {
+        FlexibleActivity activity = newFlexibleActivity();
+        activity.setAdoptedStartTime(LocalTime.of(16, 0));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> activity.updateWindow(LocalTime.of(10, 0), LocalTime.of(16, 30), 90));
+
+        assertEquals(LocalTime.of(18, 0), activity.getLatestEnd());
+        assertEquals(LocalTime.of(16, 0), activity.getAdoptedStartTime());
     }
 }

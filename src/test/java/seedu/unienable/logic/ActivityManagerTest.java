@@ -136,6 +136,18 @@ class ActivityManagerTest {
     }
 
     @Test
+    public void add_wrongId_rejectsWithoutMutatingState() throws Exception {
+        ActivityManager manager = new ActivityManager();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> manager.add(newFixedActivity(42)));
+
+        assertEquals("expected activity ID 1 but received 42", exception.getMessage());
+        assertEquals(0, manager.size());
+        assertEquals(1, manager.getNextId());
+    }
+
+    @Test
     public void addAllAtomically_candidateConflictsWithEarlierCandidate_rollsBackBatch() throws Exception {
         ActivityManager manager = new ActivityManager();
         FixedActivity first = newFixedActivity(1, "First", LocalTime.of(9, 0), LocalTime.of(11, 0));
@@ -664,6 +676,20 @@ class ActivityManagerTest {
 
         assertEquals("New description", manager.getById(1).getDescription());
         assertEquals(1, manager.size());
+    }
+
+    @Test
+    public void replace_mismatchedId_rejectsWithoutMutatingState() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(1, "Original", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        FixedActivity wrongId = newFixedActivity(99, "Replacement", LocalTime.of(11, 0), LocalTime.of(12, 0));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> manager.replace(1, wrongId));
+
+        assertEquals("replacement ID 99 does not match stable activity ID 1", exception.getMessage());
+        assertEquals("Original", manager.getById(1).getDescription());
+        assertThrows(InvalidIndexException.class, () -> manager.getById(99));
     }
 
     @Test

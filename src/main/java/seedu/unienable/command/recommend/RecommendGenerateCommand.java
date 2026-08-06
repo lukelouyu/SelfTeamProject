@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.preference.PreferenceManager;
@@ -15,7 +15,7 @@ import seedu.unienable.model.recommend.RecommendationProposal;
 import seedu.unienable.ui.recommend.RecommendationFormatter;
 
 /** Generates and stores one in-memory recommendation preview without persisting it. */
-public class RecommendGenerateCommand extends Command {
+public class RecommendGenerateCommand extends ReadOnlyCommand {
     private final ActivityManager activityManager;
     private final PreferenceManager preferenceManager;
     private final RecommendationManager recommendationManager;

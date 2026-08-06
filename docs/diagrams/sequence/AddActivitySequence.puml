@@ -7,6 +7,7 @@ autonumber
 
 actor User
 participant ApplicationRunner as Runner
+participant CommandTransactionExecutor as Transaction
 participant CommandDispatcher as Dispatcher
 participant ActivityCommandParser as Parser
 participant AddCommand as Command
@@ -23,14 +24,16 @@ Manager --> Parser : nextId
 Parser -> Parser : validate fields and construct Activity
 Parser --> Dispatcher : AddCommand
 Dispatcher --> Runner : command
-Runner -> Runner : capture ApplicationStateSnapshot
-Runner -> Command : execute()
+Runner -> Transaction : execute(command)
+Transaction -> Transaction : capture Snapshot
+Transaction -> Command : execute()
 Command -> Manager : add(activity)
 Manager -> Checker : checkNoConflicts(activity, -1, activities)
 Checker --> Manager : accepted
 Manager -> Manager : append activity; increment nextId
 Manager --> Command
-Command --> Runner : CommandResult
+Command --> Transaction : CommandResult
+Transaction --> Runner : Execution(result, snapshot)
 Runner -> Storage : saveAll(activities, topics, order, preferences)
 Storage --> Runner : saved
 Runner -> Ui : showFramed(feedback)

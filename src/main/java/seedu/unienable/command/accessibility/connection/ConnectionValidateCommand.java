@@ -3,7 +3,7 @@ package seedu.unienable.command.accessibility.connection;
 import java.util.List;
 
 import seedu.unienable.accessibility.classes.Facility;
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.common.ValidationReportFormatter;
 import seedu.unienable.exception.StorageException;
@@ -15,7 +15,7 @@ import seedu.unienable.storage.Storage;
  * facilities.txt. Read-only: this never changes connections.txt, and never replaces the
  * already-loaded ConnectionManager the rest of the running application is using.
  */
-public class ConnectionValidateCommand extends Command {
+public class ConnectionValidateCommand extends ReadOnlyCommand {
     private final Storage storage;
 
     /**

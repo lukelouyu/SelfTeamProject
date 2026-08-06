@@ -195,6 +195,27 @@ class StorageTest {
     }
 
     @Test
+    public void saveAll_laterBackupCreationFails_cleansEarlierBackup() throws Exception {
+        write("activities.txt", "FIXED|1|Old activity|ACADEMIC|2026-08-15|09:00|10:00|2|2|INCOMPLETE||");
+        write("topics.txt");
+        Path blockedTopicBackup = tempDir.resolve("topics.txt.bak");
+        Files.createDirectory(blockedTopicBackup);
+        Files.writeString(blockedTopicBackup.resolve("blocker.txt"), "keep");
+        Storage storage = new Storage(tempDir);
+        FixedActivity newActivity = new FixedActivity(2, "New activity", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 16), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null);
+
+        assertThrows(StorageException.class,
+                () -> storage.saveAll(List.of(newActivity), List.of(), ActivityOrder.INPUT));
+
+        assertEquals("Old activity", storage.loadActivities().getRecords().get(0).getDescription());
+        assertFalse(Files.exists(tempDir.resolve("activities.txt.bak")));
+        assertTrue(Files.isDirectory(blockedTopicBackup));
+        assertTrue(Files.exists(blockedTopicBackup.resolve("blocker.txt")));
+    }
+
+    @Test
     public void saveAll_laterFileCommitFails_earlierCommittedFileIsRolledBack() throws Exception {
         // Regression test for RC01 (v1.0 RC retest, 2026-08-01): saveAll() previously moved each
         // temporary file into place sequentially with no way to undo an earlier successful move

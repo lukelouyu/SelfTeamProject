@@ -64,14 +64,30 @@ class FixedActivityTest {
     }
 
     @Test
-    public void constructor_endTimeNotAfterStartTime_throwsAssertionError() {
-        // Programmer-invariant check, not user-input validation - every real caller (parsers,
-        // storage) already rejects this before constructing; this proves the internal invariant
-        // actually fires when a caller doesn't, which only happens with assertions enabled
-        // (confirms the Gradle test task runs with -ea, per build.gradle's `test { enableAssertions
-        // = true }`).
-        assertThrows(AssertionError.class, () -> new FixedActivity(1, "desc", ActivityCategory.ACADEMIC,
+    public void constructor_endTimeNotAfterStartTime_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> new FixedActivity(1, "desc", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(9, 0),
                 EnergyRating.of(1), SensoryRating.of(1), null, null));
+    }
+
+    @Test
+    public void setStartTime_afterEnd_rejectsWithoutChangingTiming() throws Exception {
+        FixedActivity activity = newFixedActivity();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> activity.setStartTime(LocalTime.of(12, 0)));
+
+        assertEquals(LocalTime.of(9, 0), activity.getStartTime());
+        assertEquals(LocalTime.of(11, 0), activity.getEndTime());
+    }
+
+    @Test
+    public void updateTiming_validPair_updatesBothTimesAtomically() throws Exception {
+        FixedActivity activity = newFixedActivity();
+
+        activity.updateTiming(LocalTime.of(12, 0), LocalTime.of(14, 0));
+
+        assertEquals(LocalTime.of(12, 0), activity.getStartTime());
+        assertEquals(LocalTime.of(14, 0), activity.getEndTime());
     }
 }

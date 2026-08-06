@@ -2,7 +2,7 @@ package seedu.unienable.command.accessibility.facility;
 
 import java.util.List;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.common.ValidationReportFormatter;
 import seedu.unienable.exception.StorageException;
@@ -15,7 +15,7 @@ import seedu.unienable.storage.Storage;
  * facilities.txt self-check it for mistakes without restarting the application or having to notice
  * the one-time warnings shown at startup.
  */
-public class FacilityValidateCommand extends Command {
+public class FacilityValidateCommand extends ReadOnlyCommand {
     private final Storage storage;
 
     /**

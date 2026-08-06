@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -17,6 +18,7 @@ import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.dashboard.DashboardService;
 import seedu.unienable.logic.timetable.TimetableService;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.ActivityCopyFactory;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.preference.PreferenceProfile;
@@ -141,7 +143,8 @@ public final class RecommendationService {
         }
         List<Activity> copies = new ArrayList<>(activities.size());
         for (Activity activity : activities) {
-            copies.add(copyOf(activity, startsById.get(activity.getId())));
+            copies.add(ActivityCopyFactory.copyWithAdoptedStart(
+                    activity, startsById.get(activity.getId())));
         }
         return copies;
     }
@@ -446,36 +449,13 @@ public final class RecommendationService {
         if (preferences.getTomatoSuggestion() != TomatoSuggestion.ON) {
             return false;
         }
-        String topic = activity.getTopic() == null ? "" : activity.getTopic().toLowerCase();
-        String description = activity.getDescription().toLowerCase();
+        String topic = activity.getTopic() == null ? "" : activity.getTopic().toLowerCase(Locale.ROOT);
+        String description = activity.getDescription().toLowerCase(Locale.ROOT);
         boolean studyLike = description.contains("study") || description.contains("revision")
                 || description.contains("reading") || description.contains("assignment")
                 || topic.contains("study") || topic.contains("lab") || topic.contains("tutorial")
                 || activity.getCategory().name().equals("ACADEMIC");
         return studyLike && activity.getDurationMinutes() >= TOMATO_MINUTES;
-    }
-
-    private static Activity copyOf(Activity activity, LocalTime proposedStart) {
-        if (activity instanceof FixedActivity) {
-            FixedActivity fixed = (FixedActivity) activity;
-            Activity copy = new FixedActivity(fixed.getId(), fixed.getDescription(), fixed.getCategory(),
-                    fixed.getDate(), fixed.getStartTime(), fixed.getEndTime(), fixed.getEnergyRating(),
-                    fixed.getSensoryRating(), fixed.getTopic(), fixed.getNote());
-            if (fixed.isComplete()) {
-                copy.mark();
-            }
-            return copy;
-        }
-        FlexibleActivity flexible = (FlexibleActivity) activity;
-        LocalTime adopted = proposedStart != null ? proposedStart : flexible.getAdoptedStartTime();
-        Activity copy = new FlexibleActivity(flexible.getId(), flexible.getDescription(), flexible.getCategory(),
-                flexible.getDate(), flexible.getEarliestStart(), flexible.getLatestEnd(),
-                flexible.getDurationMinutes(), flexible.getEnergyRating(), flexible.getSensoryRating(),
-                flexible.getTopic(), flexible.getNote(), adopted);
-        if (flexible.isComplete()) {
-            copy.mark();
-        }
-        return copy;
     }
 
     private record Commitment(int activityId, LocalDate date, LocalTime startTime, LocalTime endTime) {

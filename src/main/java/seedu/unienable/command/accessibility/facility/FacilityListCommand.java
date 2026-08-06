@@ -1,6 +1,6 @@
 package seedu.unienable.command.accessibility.facility;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 
@@ -10,7 +10,7 @@ import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.logic.FacilityManager;
 
 /** Lists every known facility's stable ID and name. */
-public class FacilityListCommand extends Command {
+public class FacilityListCommand extends ReadOnlyCommand {
     private final FacilityManager facilityManager;
 
     /**

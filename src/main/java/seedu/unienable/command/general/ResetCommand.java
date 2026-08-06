@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.MenuConfirmable;
 import seedu.unienable.command.MenuOutcome;
@@ -48,6 +49,16 @@ public class ResetCommand extends Command implements MenuConfirmable {
         this.activityManager = activityManager;
         this.topicManager = topicManager;
         this.preferenceManager = preferenceManager;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
+    }
+
+    @Override
+    public boolean hasStateChange() {
+        return hasAnythingToReset();
     }
 
     /** Returns the number of activities currently stored, for the menu preview. */

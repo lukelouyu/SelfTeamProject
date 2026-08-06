@@ -1,6 +1,7 @@
 package seedu.unienable.command.preference;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.Confirmable;
 import seedu.unienable.command.Confirmation;
@@ -19,6 +20,16 @@ public class PreferenceResetCommand extends Command implements Confirmable {
      */
     public PreferenceResetCommand(PreferenceManager preferenceManager) {
         this.preferenceManager = preferenceManager;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
+    }
+
+    @Override
+    public boolean hasStateChange() {
+        return hasChanges();
     }
 
     /**

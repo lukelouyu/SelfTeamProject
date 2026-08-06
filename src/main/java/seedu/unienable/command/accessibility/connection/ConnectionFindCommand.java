@@ -1,6 +1,6 @@
 package seedu.unienable.command.accessibility.connection;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 
@@ -18,7 +18,7 @@ import seedu.unienable.logic.ConnectionManager;
  * AND. Since every stored connection is two-way, from/ and to/ each match either endpoint rather
  * than a specific direction.
  */
-public class ConnectionFindCommand extends Command {
+public class ConnectionFindCommand extends ReadOnlyCommand {
     private final ConnectionManager connectionManager;
     private final String from;
     private final String to;

@@ -12,7 +12,17 @@ class RecommendCommandParser {
       recommendationManager : RecommendationManager, now : LocalDateTime, args : String) : Command
 }
 
-abstract class Command
+abstract class Command {
+  + getEffect() : CommandEffect
+  + hasStateChange() : boolean
+}
+
+abstract class ReadOnlyCommand
+
+enum CommandEffect {
+  READ_ONLY
+  MUTATING
+}
 
 class RecommendGenerateCommand <<Command>> {
   - activityManager : ActivityManager
@@ -60,6 +70,8 @@ class RecommendationService <<static>> {
       preferences : PreferenceProfile) : boolean
 }
 
+class ActivityCopyFactory <<static>>
+
 class RecommendationFormatter <<static>> {
   + {static} formatPreview(proposal : RecommendationProposal,
       previewActivities : List<Activity>) : String
@@ -92,6 +104,13 @@ RecommendCommandParser ..> RecommendationManager : reads active proposal
 RecommendCommandParser ..> PreferenceManager : reads current profile
 RecommendCommandParser ..> RecommendationService : hasElapsedPlacement(),\nhasOutOfPreferredRangePlacement()
 
+Command --> CommandEffect
+Command <|-- ReadOnlyCommand
+ReadOnlyCommand <|-- RecommendGenerateCommand
+ReadOnlyCommand <|-- RecommendViewCommand
+ReadOnlyCommand <|-- RecommendCancelCommand
+Command <|-- RecommendAdoptCommand
+
 RecommendGenerateCommand --> RecommendationService : build preview
 RecommendGenerateCommand --> RecommendationManager : store proposal
 RecommendGenerateCommand --> RecommendationFormatter : formatPreview()
@@ -115,10 +134,11 @@ RecommendationService ..> PreferenceProfile : reads
 RecommendationService ..> RecommendationProposal : builds
 RecommendationService ..> RecommendedPlacement : builds
 RecommendationService ..> FlexibleActivity : reads/copies/adopts preview
+RecommendationService ..> ActivityCopyFactory : copies preview activities
 RecommendationFormatter ..> TimetableService : build()
 RecommendationFormatter ..> DashboardService : summarize()
 RecommendationFormatter ..> RecommendationProposal : reads
-RecommendationProposal "1" *-- "1..*" RecommendedPlacement
+RecommendationProposal "1" *-- "0..*" RecommendedPlacement
 
 note bottom of RecommendationManager
   Proposal state is in-memory only for the

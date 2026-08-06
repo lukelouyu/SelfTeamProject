@@ -1,6 +1,6 @@
 package seedu.unienable.command.activity.general;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 
 import java.time.LocalDateTime;
@@ -13,7 +13,7 @@ import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.ui.MessageFormatter;
 
 /** Lists activities matching an optional filter, in concise or detail view. */
-public class ListCommand extends Command {
+public class ListCommand extends ReadOnlyCommand {
     private final ActivityManager activityManager;
     private final ActivityFilter filter;
     private final ActivityOrder order;

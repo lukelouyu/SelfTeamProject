@@ -3,7 +3,6 @@ package seedu.unienable.app;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.function.Supplier;
@@ -14,20 +13,6 @@ import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
-import seedu.unienable.command.activity.crud.AddCommand;
-import seedu.unienable.command.activity.crud.DeleteCommand;
-import seedu.unienable.command.activity.crud.EditCommand;
-import seedu.unienable.command.activity.general.MarkCommand;
-import seedu.unienable.command.activity.general.OrderSetCommand;
-import seedu.unienable.command.activity.general.UnmarkCommand;
-import seedu.unienable.command.general.ResetCommand;
-import seedu.unienable.command.preference.PreferenceResetCommand;
-import seedu.unienable.command.preference.PreferenceSetCommand;
-import seedu.unienable.command.recommend.RecommendAdoptCommand;
-import seedu.unienable.command.recur.RecurCommand;
-import seedu.unienable.command.topic.TopicAddCommand;
-import seedu.unienable.command.topic.TopicDeleteCommand;
-import seedu.unienable.command.topic.TopicRenameCommand;
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.exception.UniEnableException;
 import seedu.unienable.logic.ActivityManager;
@@ -37,8 +22,6 @@ import seedu.unienable.logic.TopicManager;
 import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.logic.recommend.RecommendationManager;
 import seedu.unienable.model.classes.Activity;
-import seedu.unienable.model.classes.FixedActivity;
-import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.Topic;
 import seedu.unienable.model.enums.ActivityOrder;
 import seedu.unienable.model.preference.PreferenceProfile;
@@ -73,6 +56,7 @@ public class ApplicationRunner {
     private ConnectionManager connectionManager;
     private PreferenceManager preferenceManager;
     private RecommendationManager recommendationManager;
+    private CommandTransactionExecutor transactionExecutor;
     private CommandDispatcher dispatcher;
     private CommandConfirmationHandler confirmationHandler;
     private boolean hasUnsavedChanges;
@@ -155,6 +139,8 @@ public class ApplicationRunner {
             return;
         }
 
+        transactionExecutor = new CommandTransactionExecutor(
+                activityManager, topicManager, preferenceManager);
         dispatcher = new CommandDispatcher(activityManager, topicManager, facilityManager,
                 connectionManager, preferenceManager, recommendationManager, storage);
         runCommandLoop();
@@ -239,18 +225,19 @@ public class ApplicationRunner {
     /**
      * Dispatches, confirms if needed, and executes one line of input. A command that mutates
      * application state has a complete pre-execution snapshot captured, is persisted before its
-     * success feedback is shown, and - if that save fails - has the snapshot restored, so a save
-     * failure is reported instead of a false success message and never leaves a partially-applied
-     * change sitting in memory only; a command that only reads state is never snapshotted or
-     * saved. "bye" always ends the loop, attempting one final save first only if an earlier save
-     * this session failed.
+     * success feedback is shown, and has the snapshot restored if execution or saving fails. A
+     * failure is therefore reported instead of a false success message and never leaves a
+     * partially-applied change sitting in memory only; a command that only reads state is never
+     * snapshotted or saved. "bye" always ends the loop, attempting one final save first only if
+     * an earlier save this session failed.
      *
      * @param line one full line of raw user input
      * @return true if the command loop should keep reading input; false if this command should
      *     end the application (e.g. "bye")
      */
     private boolean processCommand(String line) {
-        assert dispatcher != null && confirmationHandler != null && activityManager != null
+        assert dispatcher != null && confirmationHandler != null && transactionExecutor != null
+                && activityManager != null
                 && topicManager != null && ui != null
                 : "processCommand requires run() to have completed its setup first";
         try {
@@ -258,20 +245,17 @@ public class ApplicationRunner {
             if (!confirmationHandler.confirmIfNeeded(command)) {
                 return true;
             }
-            boolean mutates = mutatesState(command);
-            ApplicationStateSnapshot snapshot = mutates ? new ApplicationStateSnapshot() : null;
-            CommandResult result = command.execute();
+            CommandTransactionExecutor.Execution execution = transactionExecutor.execute(command);
+            CommandResult result = execution.getResult();
             if (result.isShouldExit()) {
                 return handleExit(result);
             }
-            if (mutates) {
+            if (execution.hasStateChange()) {
                 hasUnsavedChanges = true;
                 if (!trySave()) {
-                    snapshot.restore();
+                    execution.rollback();
                     return true;
                 }
-                recommendationManager.clear();
-            } else if (command instanceof RecommendAdoptCommand) {
                 recommendationManager.clear();
             }
             ui.showFramed(result.getFeedback());
@@ -280,12 +264,9 @@ public class ApplicationRunner {
             ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());
             return true;
         } catch (RuntimeException e) {
-            // Last-resort catch at the application boundary: nothing here currently reaches this
-            // (e.g. ApplicationStateSnapshot.restore()'s IllegalArgumentException path is
-            // unreachable given atomic snapshot capture, see its Javadoc), but without this catch
-            // a genuinely unexpected internal bug would crash the whole command loop with no
-            // diagnostic trail beyond an uncaught stack trace on stderr, instead of a logged
-            // record and a graceful message.
+            // Last-resort catch at the application boundary. The pre-execution snapshot has
+            // already been restored by the transaction executor, so an unexpected bug is logged and
+            // reported without crashing the command loop or retaining partial state.
             LOGGER.log(Level.SEVERE, "Unexpected internal error while processing command: " + line, e);
             ui.showFramed("[Error] An unexpected internal error occurred. Enter guide for help.");
             return true;
@@ -309,123 +290,6 @@ public class ApplicationRunner {
             ui.showFramed(result.getFeedback());
         }
         return false;
-    }
-
-    /**
-     * Returns whether executing the given command may change activity, topic, settings, or preference state
-     * that needs persisting - and, for a command whose effect depends on current state rather
-     * than its type alone, whether it would actually change anything this time. Read-only
-     * commands (list, find, view, next, guide, facility/connection lookups, order view, bye) are
-     * deliberately excluded so they never trigger a snapshot or a save. "reset all" is checked
-     * against its own {@link ResetCommand#hasAnythingToReset()} rather than unconditionally,
-     * since resetting already-empty/default state has nothing to persist - without this, the
-     * no-menu-shown "nothing to reset" path (see {@link ResetCommand#getMenuPrompt()}) would
-     * still trigger a real save of unchanged data on every run.
-     *
-     * @param command the command about to execute (or, for the post-execute save check, the one
-     *     that just did)
-     * @return true if command is one of the mutating command types, and - for reset all -
-     *     actually has something to change
-     */
-    private boolean mutatesState(Command command) {
-        if (command instanceof ResetCommand) {
-            return ((ResetCommand) command).hasAnythingToReset();
-        }
-        return command instanceof AddCommand
-                || command instanceof DeleteCommand
-                || command instanceof EditCommand
-                || command instanceof MarkCommand
-                || command instanceof UnmarkCommand
-                || command instanceof OrderSetCommand
-                || command instanceof TopicAddCommand
-                || command instanceof TopicRenameCommand
-                || command instanceof TopicDeleteCommand
-                || (command instanceof PreferenceSetCommand
-                        && ((PreferenceSetCommand) command).hasChanges())
-                || (command instanceof PreferenceResetCommand
-                        && ((PreferenceResetCommand) command).hasChanges())
-                || command instanceof RecurCommand
-                || command instanceof RecommendAdoptCommand;
-    }
-
-    /**
-     * Exact pre-command state used to roll back any mutating command when persistence fails.
-     * Activities and topics are captured as independent copies, not shared references -
-     * {@code mark}/{@code unmark} and a cascading {@code topic rename} mutate the stored
-     * Activity/Topic objects in place, so a snapshot that merely copied the list (as this class
-     * used to, when only recur/reset used it) would silently "restore" the already-mutated
-     * objects instead of their pre-command values.
-     *
-     * <p>Deliberately does not restore {@code hasUnsavedChanges} to its pre-command value: even
-     * though the attempted mutation itself is fully undone, the save attempt still failed, and
-     * {@link #handleExit} needs that fact to warn the user and retry at exit rather than showing
-     * a normal goodbye - a rolled-back mutation is not the same as a session with no save
-     * problems at all.
-     */
-    private final class ApplicationStateSnapshot {
-        private final List<Activity> activities = copyActivities(activityManager.getAll());
-        private final List<Topic> topics = copyTopics(topicManager.getAll());
-        private final int nextId = activityManager.getNextId();
-        private final ActivityOrder order = activityManager.getDefaultOrder();
-        private final PreferenceProfile preferences = preferenceManager.getProfile();
-
-        private void restore() {
-            activityManager.restoreState(activities, nextId, order);
-            topicManager.loadAll(topics);
-            preferenceManager.setProfile(preferences);
-        }
-    }
-
-    /**
-     * Returns an independent copy of each activity, preserving its concrete type, every field,
-     * and its completion status - see {@link ApplicationStateSnapshot}'s Javadoc for why a plain
-     * list copy is not enough.
-     *
-     * @param source the activities to copy
-     * @return a new list of new Activity instances with the same field values
-     */
-    private static List<Activity> copyActivities(List<Activity> source) {
-        List<Activity> copies = new ArrayList<>(source.size());
-        for (Activity activity : source) {
-            copies.add(copyOf(activity));
-        }
-        return copies;
-    }
-
-    private static Activity copyOf(Activity activity) {
-        Activity copy;
-        if (activity instanceof FixedActivity) {
-            FixedActivity fixed = (FixedActivity) activity;
-            copy = new FixedActivity(fixed.getId(), fixed.getDescription(), fixed.getCategory(), fixed.getDate(),
-                    fixed.getStartTime(), fixed.getEndTime(), fixed.getEnergyRating(), fixed.getSensoryRating(),
-                    fixed.getTopic(), fixed.getNote());
-        } else {
-            FlexibleActivity flexible = (FlexibleActivity) activity;
-            copy = new FlexibleActivity(flexible.getId(), flexible.getDescription(), flexible.getCategory(),
-                    flexible.getDate(), flexible.getEarliestStart(), flexible.getLatestEnd(),
-                    flexible.getDurationMinutes(), flexible.getEnergyRating(), flexible.getSensoryRating(),
-                    flexible.getTopic(), flexible.getNote(), flexible.getAdoptedStartTime());
-        }
-        if (activity.isComplete()) {
-            copy.mark();
-        }
-        return copy;
-    }
-
-    /**
-     * Returns an independent copy of each topic - see {@link ApplicationStateSnapshot}'s Javadoc
-     * for why a plain list copy is not enough ({@code topic rename} mutates a Topic's name in
-     * place).
-     *
-     * @param source the topics to copy
-     * @return a new list of new Topic instances with the same field values
-     */
-    private static List<Topic> copyTopics(List<Topic> source) {
-        List<Topic> copies = new ArrayList<>(source.size());
-        for (Topic topic : source) {
-            copies.add(new Topic(topic.getCategory(), topic.getName()));
-        }
-        return copies;
     }
 
     /**

@@ -1,6 +1,6 @@
 package seedu.unienable.command.accessibility.facility;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 
@@ -12,7 +12,7 @@ import seedu.unienable.accessibility.enums.AccessibilityStatus;
 import seedu.unienable.logic.FacilityManager;
 
 /** Finds every facility with a given accessibility feature at a given status. */
-public class FacilityFindCommand extends Command {
+public class FacilityFindCommand extends ReadOnlyCommand {
     private final FacilityManager facilityManager;
     private final FacilityFeature.Type type;
     private final AccessibilityStatus status;

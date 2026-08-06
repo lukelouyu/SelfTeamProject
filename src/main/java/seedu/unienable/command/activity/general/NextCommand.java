@@ -1,6 +1,6 @@
 package seedu.unienable.command.activity.general;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 
 import java.time.LocalDateTime;
@@ -15,7 +15,7 @@ import seedu.unienable.ui.MessageFormatter;
  * current date and time explicitly (never reads the system clock), matching
  * ActivityManager.next()'s deterministic, directly testable design.
  */
-public class NextCommand extends Command {
+public class NextCommand extends ReadOnlyCommand {
     private final ActivityManager activityManager;
     private final LocalDateTime now;
 

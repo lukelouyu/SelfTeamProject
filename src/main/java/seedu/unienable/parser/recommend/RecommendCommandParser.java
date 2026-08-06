@@ -2,6 +2,7 @@ package seedu.unienable.parser.recommend;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.recommend.RecommendAdoptCommand;
@@ -66,8 +67,9 @@ public class RecommendCommandParser {
             }
             return new RecommendAdoptCommand(activityManager, proposal);
         }
-        String dateMarker = trimmed.toLowerCase().startsWith("date/") ? "date/"
-                : trimmed.toLowerCase().startsWith("day/") ? "day/" : null;
+        String normalized = trimmed.toLowerCase(Locale.ROOT);
+        String dateMarker = normalized.startsWith("date/") ? "date/"
+                : normalized.startsWith("day/") ? "day/" : null;
         if (dateMarker != null) {
             String dateText = trimmed.substring(dateMarker.length()).trim();
             if (dateText.contains(" ")) {

@@ -1,6 +1,6 @@
 package seedu.unienable.command.topic;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 
 import java.util.List;
@@ -13,7 +13,7 @@ import seedu.unienable.model.enums.ActivityCategory;
  * Lists topics. With no category filter, shows every category's topics on one line each. With a
  * category filter, shows only that category's topics as a numbered list.
  */
-public class TopicListCommand extends Command {
+public class TopicListCommand extends ReadOnlyCommand {
     private static final String CATEGORY_LINE_FORMAT = "%-15s: %s";
 
     private final TopicManager topicManager;

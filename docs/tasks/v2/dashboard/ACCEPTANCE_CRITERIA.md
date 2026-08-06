@@ -160,5 +160,5 @@ IDs are referenced from `TEST_PLAN.md`.
 - **AC-DASH-NOMUTATE-01**: Executing any `dashboard` command (valid or invalid) never adds,
   edits, deletes, marks, or unmarks an activity; never changes topic data, the saved default
   order, or any stable ID; never writes any file; never shows a confirmation prompt.
-- **AC-DASH-NOMUTATE-02**: `dashboard` is not in `ApplicationRunner.mutatesState`'s recognised
-  mutating-command set, so it never triggers a snapshot or a save.
+- **AC-DASH-NOMUTATE-02**: `DashboardCommand` inherits the explicit `ReadOnlyCommand` contract, so
+  it never triggers a snapshot or a save.

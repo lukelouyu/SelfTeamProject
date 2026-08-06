@@ -1,6 +1,6 @@
 package seedu.unienable.command.activity.crud;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 
 import seedu.unienable.exception.InvalidIndexException;
@@ -8,7 +8,7 @@ import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.ui.MessageFormatter;
 
 /** Displays every stored field of one activity. */
-public class ViewCommand extends Command {
+public class ViewCommand extends ReadOnlyCommand {
     private final ActivityManager activityManager;
     private final int id;
 

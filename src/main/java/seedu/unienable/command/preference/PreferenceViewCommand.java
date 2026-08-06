@@ -1,12 +1,12 @@
 package seedu.unienable.command.preference;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.ui.preference.PreferenceFormatter;
 
 /** Displays the active global preference profile without mutation or persistence. */
-public class PreferenceViewCommand extends Command {
+public class PreferenceViewCommand extends ReadOnlyCommand {
     private final PreferenceManager preferenceManager;
 
     /**

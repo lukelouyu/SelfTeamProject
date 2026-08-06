@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.Confirmable;
 import seedu.unienable.command.Confirmation;
@@ -23,6 +24,11 @@ public class RecurCommand extends Command implements Confirmable {
     public RecurCommand(ActivityManager activityManager, RecurrencePlan plan) {
         this.activityManager = activityManager;
         this.plan = plan;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
     }
 
     /** Returns the complete plan for confirmation and formatting. */

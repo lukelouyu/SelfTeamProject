@@ -1,6 +1,6 @@
 package seedu.unienable.command.accessibility.connection;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 
@@ -9,7 +9,7 @@ import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ConnectionManager;
 
 /** Displays one connection's complete stored details. */
-public class ConnectionViewCommand extends Command {
+public class ConnectionViewCommand extends ReadOnlyCommand {
     private static final int LABEL_WIDTH = 14;
 
     private final ConnectionManager connectionManager;

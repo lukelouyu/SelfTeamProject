@@ -1,6 +1,7 @@
 package seedu.unienable.command.topic;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.Confirmable;
 import seedu.unienable.command.Confirmation;
@@ -34,6 +35,11 @@ public class TopicRenameCommand extends Command implements Confirmable {
         this.category = category;
         this.oldName = oldName;
         this.newName = newName;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
     }
 
     /** Returns the category of the topic this command will rename, for the UI loop's preview. */

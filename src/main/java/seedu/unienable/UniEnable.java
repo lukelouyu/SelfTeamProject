@@ -15,7 +15,7 @@ public class UniEnable {
     private static final String FIXED_NOW_PROPERTY = "unienable.fixedNow";
 
     /**
-     * Application entry point. Runs against the real "data" folder and standard input.
+     * Runs the application against the real "data" folder and standard input.
      *
      * @param args unused
      */

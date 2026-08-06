@@ -1,6 +1,7 @@
 package seedu.unienable.command.topic;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.Confirmable;
 import seedu.unienable.command.Confirmation;
@@ -31,6 +32,11 @@ public class TopicDeleteCommand extends Command implements Confirmable {
         this.topicManager = topicManager;
         this.category = category;
         this.name = name;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
     }
 
     /** Returns the category of the topic this command will delete, for the UI loop's preview. */

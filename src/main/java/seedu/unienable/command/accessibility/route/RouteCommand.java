@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Locale;
 
 import seedu.unienable.accessibility.classes.Connection;
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ConnectionManager;
@@ -25,7 +25,7 @@ import seedu.unienable.ui.accessibility.RouteFormatter;
  * facilities with no confirmed-accessible path between them get the documented no-route fallback
  * rather than an exception (AC11); only an unrecognised facility name is an error (AC10).
  */
-public class RouteCommand extends Command {
+public class RouteCommand extends ReadOnlyCommand {
     private final FacilityManager facilityManager;
     private final ConnectionManager connectionManager;
     private final String from;

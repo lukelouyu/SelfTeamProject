@@ -3,6 +3,7 @@ package seedu.unienable.command.activity.general;
 import java.util.Locale;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 
 import seedu.unienable.logic.ActivityManager;
@@ -22,6 +23,11 @@ public class OrderSetCommand extends Command {
     public OrderSetCommand(ActivityManager activityManager, ActivityOrder order) {
         this.activityManager = activityManager;
         this.order = order;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
     }
 
     @Override

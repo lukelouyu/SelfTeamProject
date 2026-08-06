@@ -1,6 +1,7 @@
 package seedu.unienable.command.activity.general;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 
 import seedu.unienable.exception.InvalidIndexException;
@@ -22,6 +23,11 @@ public class MarkCommand extends Command {
     public MarkCommand(ActivityManager activityManager, int id) {
         this.activityManager = activityManager;
         this.id = id;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
     }
 
     @Override

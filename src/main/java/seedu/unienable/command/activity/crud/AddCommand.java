@@ -1,6 +1,7 @@
 package seedu.unienable.command.activity.crud;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 
 import seedu.unienable.exception.DuplicateActivityException;
@@ -23,6 +24,11 @@ public class AddCommand extends Command {
     public AddCommand(ActivityManager activityManager, Activity activity) {
         this.activityManager = activityManager;
         this.activity = activity;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
     }
 
     @Override

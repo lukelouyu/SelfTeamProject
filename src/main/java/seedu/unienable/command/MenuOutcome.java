@@ -15,14 +15,13 @@ public final class MenuOutcome {
         this.message = message;
     }
 
-    /** The answer selected a valid, non-cancelling option; execute() should now run. */
+    /** Returns an outcome that proceeds with command execution. */
     public static MenuOutcome proceed() {
         return new MenuOutcome(true, null);
     }
 
     /**
-     * The answer requested cancellation, or wasn't a recognised choice; show message instead of
-     * running execute().
+     * Returns an outcome that cancels execution and displays the supplied message.
      *
      * @param message the framed message to show in place of executing
      */

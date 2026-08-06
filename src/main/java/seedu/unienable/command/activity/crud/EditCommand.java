@@ -1,6 +1,7 @@
 package seedu.unienable.command.activity.crud;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.Confirmable;
 import seedu.unienable.command.Confirmation;
@@ -32,6 +33,11 @@ public class EditCommand extends Command implements Confirmable {
         this.activityManager = activityManager;
         this.id = id;
         this.newActivity = newActivity;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
     }
 
     /** Returns the stable ID of the activity this command will update, for the UI loop's preview. */

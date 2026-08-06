@@ -1,6 +1,6 @@
 package seedu.unienable.command.accessibility.connection;
 
-import seedu.unienable.command.Command;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 
@@ -10,7 +10,7 @@ import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.logic.ConnectionManager;
 
 /** Lists every known connection's ID, endpoints, distance, accessibility, traversal type, and shelter status. */
-public class ConnectionListCommand extends Command {
+public class ConnectionListCommand extends ReadOnlyCommand {
     private final ConnectionManager connectionManager;
 
     /**

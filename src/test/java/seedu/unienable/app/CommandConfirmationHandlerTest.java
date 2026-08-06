@@ -13,10 +13,10 @@ import java.util.Scanner;
 
 import org.junit.jupiter.api.Test;
 
-import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.Confirmable;
 import seedu.unienable.command.Confirmation;
+import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.exception.UniEnableException;
 import seedu.unienable.ui.Ui;
@@ -28,14 +28,14 @@ import seedu.unienable.ui.Ui;
  * anything about it.
  */
 class CommandConfirmationHandlerTest {
-    private static final class NotConfirmable extends Command {
+    private static final class NotConfirmable extends ReadOnlyCommand {
         @Override
         public CommandResult execute() {
             return new CommandResult("done");
         }
     }
 
-    private static final class FixedConfirmation extends Command implements Confirmable {
+    private static final class FixedConfirmation extends ReadOnlyCommand implements Confirmable {
         private final Confirmation confirmation;
 
         private FixedConfirmation(Confirmation confirmation) {
@@ -53,7 +53,7 @@ class CommandConfirmationHandlerTest {
         }
     }
 
-    private static final class ThrowsOnConfirmation extends Command implements Confirmable {
+    private static final class ThrowsOnConfirmation extends ReadOnlyCommand implements Confirmable {
         @Override
         public Confirmation getConfirmation() throws UniEnableException {
             throw new InvalidIndexException("referenced ID does not exist.");

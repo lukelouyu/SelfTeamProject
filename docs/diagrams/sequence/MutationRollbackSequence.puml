@@ -7,6 +7,8 @@ autonumber
 
 actor User
 participant ApplicationRunner as Runner
+participant CommandTransactionExecutor as Transaction
+participant "CommandTransactionExecutor.Execution" as Execution
 participant "Mutating Command" as Command
 participant ActivityManager
 participant TopicManager
@@ -14,30 +16,43 @@ participant PreferenceManager
 participant Storage
 participant Ui
 
-Runner -> Runner : mutatesState(command)
-Runner -> Runner : capture deep ApplicationStateSnapshot
-Runner -> Command : execute()
-Command --> Runner : CommandResult
-Runner -> Storage : saveAll(activities, topics, order, preferences)
-Storage -> Storage : stage four temporary files
-Storage -> Storage : commit activities, topics, settings, preferences
-alt a file commit fails
-  Storage -> Storage : restore prior file states
-  Storage --> Runner : throw StorageException
-  Runner -> Runner : snapshot.restore()
-  Runner -> ActivityManager : restoreState(activities, nextId, order)
-  Runner -> TopicManager : loadAll(topics)
-  Runner -> PreferenceManager : setProfile(preferences)
-  Runner -> Ui : show storage error
-  Ui --> User : failure; no success feedback
-  note over Runner
-    hasUnsavedChanges stays true so bye retries
-    and never falsely claims the change was saved.
-  end note
-else all commits succeed
-  Storage --> Runner : saved
-  Runner -> Ui : show success feedback
-  Ui --> User : success
+Runner -> Command : hasStateChange()
+Command --> Runner : true
+Runner -> Transaction : execute(command)
+Transaction -> Transaction : capture deep Snapshot
+Transaction -> Command : execute()
+alt command execution fails after mutation
+  Command --> Transaction : throw exception
+  Transaction -> ActivityManager : restoreState(activities, nextId, order)
+  Transaction -> TopicManager : loadAll(topics)
+  Transaction -> PreferenceManager : setProfile(preferences)
+  Transaction --> Runner : rethrow exception
+  Runner -> Ui : show command error
+  Ui --> User : failure; no partial mutation
+else command execution succeeds
+  Command --> Transaction : CommandResult
+  Transaction --> Runner : Execution(result, snapshot)
+  Runner -> Storage : saveAll(activities, topics, order, preferences)
+  Storage -> Storage : stage four temporary files
+  Storage -> Storage : commit activities, topics, settings, preferences
+  alt a file commit fails
+    Storage -> Storage : restore prior file states
+    Storage --> Runner : throw StorageException
+    Runner -> Execution : rollback()
+    Execution -> ActivityManager : restoreState(activities, nextId, order)
+    Execution -> TopicManager : loadAll(topics)
+    Execution -> PreferenceManager : setProfile(preferences)
+    Runner -> Ui : show storage error
+    Ui --> User : failure; no success feedback
+    note over Runner
+      hasUnsavedChanges stays true so bye retries
+      and never falsely claims the change was saved.
+    end note
+  else all commits succeed
+    Storage --> Runner : saved
+    Runner -> Ui : show success feedback
+    Ui --> User : success
+  end
 end
 
 @enduml

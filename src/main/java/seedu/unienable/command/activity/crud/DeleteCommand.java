@@ -1,6 +1,7 @@
 package seedu.unienable.command.activity.crud;
 
 import seedu.unienable.command.Command;
+import seedu.unienable.command.CommandEffect;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.Confirmable;
 import seedu.unienable.command.Confirmation;
@@ -27,6 +28,11 @@ public class DeleteCommand extends Command implements Confirmable {
     public DeleteCommand(ActivityManager activityManager, int id) {
         this.activityManager = activityManager;
         this.id = id;
+    }
+
+    @Override
+    public CommandEffect getEffect() {
+        return CommandEffect.MUTATING;
     }
 
     /** Returns the stable ID of the activity this command will delete, for the UI loop's preview. */

@@ -51,6 +51,14 @@ checkstyle {
     toolVersion = '10.2'
 }
 
+tasks.withType(Javadoc).configureEach {
+    // The course standard permits omitted tags when names/returns are self-explanatory. Suppress
+    // only doclint's blanket "missing" category; malformed HTML/references and every other
+    // doclint warning remain fatal in CI.
+    options.addBooleanOption('Xdoclint:all,-missing', true)
+    options.addBooleanOption('Werror', true)
+}
+
 // The editable academic calendar must remain outside the JAR (see recur's external-calendar
 // requirement). CS2113 permits packaging the release as a single portable ZIP when an
 // application needs an external editable file, so this task produces that complete distribution
@@ -67,12 +75,49 @@ tasks.register('releaseZip', Zip) {
     }
 }
 
+// Verifies the final user-facing distribution rather than only the build-tree JAR. The smoke
+// test runs from the extracted directory, proving that the external editable calendar is placed
+// where the documented application layout expects it.
+tasks.register('verifyReleaseZip') {
+    dependsOn releaseZip
+    doLast {
+        def archive = layout.buildDirectory.file('distributions/unienable.zip').get().asFile
+        def extractionDirectory = layout.buildDirectory.dir('release-smoke').get().asFile
+        delete extractionDirectory
+        copy {
+            from zipTree(archive)
+            into extractionDirectory
+        }
+
+        def releaseJar = new File(extractionDirectory, 'unienable.jar')
+        def releaseCalendar = new File(extractionDirectory, 'data/academic-calendar.txt')
+        if (!releaseJar.isFile() || !releaseCalendar.isFile()) {
+            throw new GradleException('Release ZIP is missing unienable.jar or data/academic-calendar.txt')
+        }
+
+        def javaExecutableName = System.getProperty('os.name').toLowerCase().contains('windows')
+                ? 'java.exe' : 'java'
+        def javaExecutable = new File(System.getProperty('java.home'), 'bin/' + javaExecutableName)
+        def smokeOutput = new ByteArrayOutputStream()
+        def smokeResult = exec {
+            workingDir extractionDirectory
+            commandLine javaExecutable.absolutePath, '-jar', releaseJar.absolutePath
+            standardInput = new ByteArrayInputStream('bye\n'.getBytes('UTF-8'))
+            standardOutput = smokeOutput
+            errorOutput = smokeOutput
+            ignoreExitValue = true
+        }
+        if (smokeResult.exitValue != 0 || !smokeOutput.toString('UTF-8').contains('Bye!')) {
+            throw new GradleException('Extracted release ZIP smoke test failed:\n'
+                    + smokeOutput.toString('UTF-8'))
+        }
+    }
+}
+
 run {
     standardInput = System.in
     enableAssertions = true
 }
 
-// Java disables assert statements by default; -ea only affects a JVM you launch yourself, and
-// there is no way to bake it into a runnable jar's manifest. `./gradlew run` and `./gradlew test`
-// both enable assertions above; running the built jar directly needs the flag passed explicitly:
-//   java -ea -jar unienable.jar
+// `run` and `test` enable programmer-only lifecycle assertions. Required domain validation uses
+// explicit checks, so the documented `java -jar unienable.jar` release command is equally safe.

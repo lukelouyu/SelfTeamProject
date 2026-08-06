@@ -35,7 +35,7 @@ public class RecommendGenerateCommand extends Command {
     public CommandResult execute() {
         RecommendationProposal proposal = date == null
                 ? RecommendationService.recommendThisWeek(activityManager, preferenceManager.getProfile(), now)
-                : RecommendationService.recommendDate(activityManager, preferenceManager.getProfile(), date);
+                : RecommendationService.recommendDate(activityManager, preferenceManager.getProfile(), date, now);
         recommendationManager.setProposal(proposal);
         List<Activity> previewActivities = RecommendationService.applyPreview(activityManager.getAll(), proposal);
         return new CommandResult(RecommendationFormatter.formatPreview(proposal, previewActivities));

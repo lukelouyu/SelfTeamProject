@@ -14,6 +14,7 @@ import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.logic.recommend.RecommendationManager;
+import seedu.unienable.logic.recommend.RecommendationService;
 import seedu.unienable.model.recommend.RecommendationProposal;
 import seedu.unienable.parser.common.DateTimeParser;
 
@@ -40,6 +41,11 @@ public class RecommendCommandParser {
             RecommendationProposal proposal = recommendationManager.getProposal()
                     .orElseThrow(() -> new InvalidCommandException(
                             "No recommendation proposal is currently active. Generate one with recommend."));
+            if (RecommendationService.hasElapsedPlacement(proposal, now)) {
+                throw new InvalidCommandException("This recommendation proposal is stale - one or more "
+                        + "proposed start times have already passed. Generate a new recommendation with "
+                        + "recommend.");
+            }
             return new RecommendAdoptCommand(activityManager, proposal);
         }
         if (trimmed.toLowerCase().startsWith("date/")) {

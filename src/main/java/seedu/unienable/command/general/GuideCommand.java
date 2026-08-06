@@ -28,10 +28,10 @@ public class GuideCommand extends Command {
      * each other; each overview topic points onward to the individual command topics for detail.
      * Facility and connection are independent command families with independent guide topics, so
      * unlike "activities"/"browse" they each get their own direct number (7 and 8) rather than
-     * being folded into one combined overview. Item 11 ("Route search") was added as the next
+     * being folded into one combined overview. Item 10 ("Route search") was added as the next
      * available number when v2.0's {@code route} shipped. Item 11 ("Text timetable") was added
-     * when v2.0's {@code timetable} shipped. Item 12 ("Return") is handled separately, not
-     * through this list.
+     * after that, when v2.0's {@code timetable} shipped. Item 12 ("Return") is handled
+     * separately, not through this list.
      */
     private static final String[] MENU_NUMBER_TOPICS = {
         "getting-started", "activities", "browse", "topic", "dashboard",
@@ -433,6 +433,12 @@ public class GuideCommand extends Command {
                 + "global planning preferences. Minimum buffer is enforced; Tomato only\n"
                 + "adds advisory study suggestions when enabled. Activities keep their\n"
                 + "stable IDs and original flexible windows.\n"
+                + "\n"
+                + "No proposed start is ever before the current time. A today window that\n"
+                + "has already fully elapsed is left unscheduled rather than backdated; a\n"
+                + "partly elapsed today window starts at the next whole minute from now.\n"
+                + "recommend adopt is rejected as stale if any proposed start has already\n"
+                + "passed since the proposal was generated - regenerate with recommend.\n"
                 + "\n"
                 + "Examples:\n"
                 + "  recommend\n"

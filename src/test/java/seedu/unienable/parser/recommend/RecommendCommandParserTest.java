@@ -24,6 +24,7 @@ import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.logic.recommend.RecommendationManager;
 import seedu.unienable.logic.timetable.TimetableService;
 import seedu.unienable.model.recommend.RecommendationProposal;
+import seedu.unienable.model.recommend.RecommendedPlacement;
 
 class RecommendCommandParserTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 17, 10, 0);
@@ -74,6 +75,30 @@ class RecommendCommandParserTest {
 
         assertInstanceOf(RecommendAdoptCommand.class,
                 assertDoesNotThrowParse("adopt"));
+    }
+
+    @Test
+    public void parse_adopt_rejectsStaleProposalWhoseProposedStartHasPassed() throws Exception {
+        RecommendedPlacement pastPlacement = new RecommendedPlacement(1, "Study block",
+                NOW.toLocalDate(), NOW.toLocalTime().minusMinutes(1), NOW.toLocalTime().plusMinutes(29), false);
+        recommendationManager.setProposal(new RecommendationProposal(
+                TimetableService.resolveThisWeek(NOW), DashboardService.resolveThisWeek(NOW),
+                List.of(pastPlacement), List.of()));
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "adopt"));
+        assertEquals(0, activityManager.size());
+    }
+
+    @Test
+    public void parse_adopt_acceptsProposalWhoseProposedStartHasNotYetPassed() throws Exception {
+        RecommendedPlacement futurePlacement = new RecommendedPlacement(1, "Study block",
+                NOW.toLocalDate(), NOW.toLocalTime().plusMinutes(1), NOW.toLocalTime().plusMinutes(31), false);
+        recommendationManager.setProposal(new RecommendationProposal(
+                TimetableService.resolveThisWeek(NOW), DashboardService.resolveThisWeek(NOW),
+                List.of(futurePlacement), List.of()));
+
+        assertInstanceOf(RecommendAdoptCommand.class, assertDoesNotThrowParse("adopt"));
     }
 
     @Test

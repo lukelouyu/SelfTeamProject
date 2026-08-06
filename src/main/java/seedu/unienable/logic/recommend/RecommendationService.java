@@ -35,15 +35,39 @@ public final class RecommendationService {
             PreferenceProfile preferences, LocalDateTime now) {
         TimetablePeriod timetablePeriod = TimetableService.resolveThisWeek(now);
         return build(activityManager, preferences, timetablePeriod,
-                DashboardService.resolveThisWeek(now));
+                DashboardService.resolveThisWeek(now), now);
     }
 
-    /** Builds a one-day proposal for the specified date. */
+    /**
+     * Builds a one-day proposal for the specified date.
+     *
+     * @param now the current date and time, threaded down from the application's single
+     *     {@code now} seam so that a candidate start on today's date is never before now,
+     *     rather than read via a new {@code LocalDateTime.now()} call
+     */
     public static RecommendationProposal recommendDate(ActivityManager activityManager,
-            PreferenceProfile preferences, LocalDate date) {
+            PreferenceProfile preferences, LocalDate date, LocalDateTime now) {
         TimetablePeriod timetablePeriod = TimetableService.resolveDay(date);
         return build(activityManager, preferences, timetablePeriod,
-                DashboardService.resolveDate(date));
+                DashboardService.resolveDate(date), now);
+    }
+
+    /**
+     * Returns whether any placement already proposed in proposal has a start date/time that now
+     * has passed - used to reject adopting a stale proposal generated earlier in the session
+     * rather than silently persisting a placement that can no longer be acted on.
+     *
+     * @param proposal the proposal to check
+     * @param now the current date and time
+     * @return true if now is strictly after any placement's proposed start
+     */
+    public static boolean hasElapsedPlacement(RecommendationProposal proposal, LocalDateTime now) {
+        for (RecommendedPlacement placement : proposal.getPlacements()) {
+            if (now.isAfter(placement.date().atTime(placement.startTime()))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Returns preview activities with proposal placements applied to flexible activities only. */
@@ -60,7 +84,8 @@ public final class RecommendationService {
     }
 
     private static RecommendationProposal build(ActivityManager activityManager, PreferenceProfile preferences,
-            TimetablePeriod timetablePeriod, seedu.unienable.model.dashboard.DashboardPeriod dashboardPeriod) {
+            TimetablePeriod timetablePeriod, seedu.unienable.model.dashboard.DashboardPeriod dashboardPeriod,
+            LocalDateTime now) {
         List<Activity> all = activityManager.getAll();
         List<Commitment> commitments = existingCommitments(all);
         List<FlexibleActivity> remaining = eligibleFlexible(all, timetablePeriod);
@@ -68,7 +93,7 @@ public final class RecommendationService {
         List<Integer> unscheduled = new ArrayList<>();
 
         while (true) {
-            CandidateSelection next = chooseNextActivity(remaining, commitments, preferences);
+            CandidateSelection next = chooseNextActivity(remaining, commitments, preferences, now);
             if (next == null) {
                 break;
             }
@@ -123,10 +148,10 @@ public final class RecommendationService {
     }
 
     private static CandidateSelection chooseNextActivity(List<FlexibleActivity> remaining, List<Commitment> commitments,
-            PreferenceProfile preferences) {
+            PreferenceProfile preferences, LocalDateTime now) {
         CandidateSelection best = null;
         for (FlexibleActivity activity : remaining) {
-            List<LocalTime> validSlots = validSlots(activity, commitments, preferences.getMinimumBufferMinutes());
+            List<LocalTime> validSlots = validSlots(activity, commitments, preferences.getMinimumBufferMinutes(), now);
             if (validSlots.isEmpty()) {
                 continue;
             }
@@ -139,16 +164,49 @@ public final class RecommendationService {
         return best;
     }
 
-    private static List<LocalTime> validSlots(FlexibleActivity activity, List<Commitment> commitments, int buffer) {
+    private static List<LocalTime> validSlots(FlexibleActivity activity, List<Commitment> commitments, int buffer,
+            LocalDateTime now) {
         List<LocalTime> valid = new ArrayList<>();
         LocalTime latestStart = activity.getLatestEnd().minusMinutes(activity.getDurationMinutes());
-        for (LocalTime candidate = activity.getEarliestStart(); !candidate.isAfter(latestStart);
+        LocalTime earliestStart = effectiveEarliestStart(activity, now);
+        if (earliestStart == null) {
+            return valid;
+        }
+        for (LocalTime candidate = earliestStart; !candidate.isAfter(latestStart);
                 candidate = candidate.plusMinutes(1)) {
             if (fits(activity, candidate, commitments, buffer)) {
                 valid.add(candidate);
             }
         }
         return valid;
+    }
+
+    /**
+     * Returns the earliest candidate start time for activity, no earlier than its own declared
+     * window and never before now - so a today window that has already fully or partly elapsed by
+     * now is never proposed in the past. A date strictly before now's date has no valid start at
+     * all (returns null); a date equal to now's date is clipped to now, rounded up to the next
+     * whole minute if now carries seconds; a future date is unrestricted.
+     *
+     * @param activity the flexible activity being placed
+     * @param now the current date and time
+     * @return the earliest allowed start time, or null if the entire date has already elapsed
+     */
+    private static LocalTime effectiveEarliestStart(FlexibleActivity activity, LocalDateTime now) {
+        LocalDateTime notBefore = ceilingToWholeMinute(now);
+        LocalDate activityDate = activity.getDate();
+        if (activityDate.isBefore(notBefore.toLocalDate())) {
+            return null;
+        }
+        LocalTime earliest = activity.getEarliestStart();
+        if (activityDate.isEqual(notBefore.toLocalDate()) && notBefore.toLocalTime().isAfter(earliest)) {
+            return notBefore.toLocalTime();
+        }
+        return earliest;
+    }
+
+    private static LocalDateTime ceilingToWholeMinute(LocalDateTime now) {
+        return now.getSecond() == 0 && now.getNano() == 0 ? now : now.plusMinutes(1).withSecond(0).withNano(0);
     }
 
     private static boolean fits(FlexibleActivity activity, LocalTime start, List<Commitment> commitments, int buffer) {

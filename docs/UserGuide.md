@@ -1042,6 +1042,11 @@ This is the only `recommend` command that changes saved activity data. It asks f
 then writes each proposed placement onto the targeted flexible activity as its adopted scheduled
 time.
 
+If the current proposal has gone stale - time has moved on since it was generated and any proposed
+start has now passed - `recommend adopt` is rejected outright, before the confirmation prompt, with
+a message telling you to generate a fresh proposal with `recommend`. This prevents silently
+persisting a placement that can no longer be acted on.
+
 After adoption:
 
 - the flexible activity keeps the same permanent ID;
@@ -1070,6 +1075,13 @@ Clears the current in-memory proposal without changing any activity and without 
 - Recommendations are deterministic for the same activities, preferences, and date/week input.
 - Route-aware recommendation is intentionally out of scope because activities do not store
   facility/location bindings.
+- **No proposed start is ever before the current time.** For an activity scheduled today, the
+  earliest candidate start is clamped to now (rounded up to the next whole minute if now carries
+  seconds); a today window whose latest possible start has already passed is left unscheduled
+  instead of being backdated. Activities on a later date within the same preview are unaffected.
+- **A stale proposal cannot be adopted.** If you generate a proposal and enough time passes that
+  any of its proposed starts is now in the past, `recommend adopt` rejects it with a specific
+  message instead of persisting an impossible schedule; generate a new proposal with `recommend`.
 
 ## 13. Built-In Guide: `guide`
 
@@ -1079,7 +1091,7 @@ guide TOPIC
 guide NUMBER
 ```
 
-`guide` alone shows a 13-item numbered menu. `guide TOPIC` shows one topic's text directly.
+`guide` alone shows a 12-item numbered menu. `guide TOPIC` shows one topic's text directly.
 Implemented topics: `getting-started`, `activities`, `browse`, `add`, `view`,
 `list`, `edit`, `delete`, `completion`, `mark`, `unmark`, `find`, `next`, `order`, `reset`,
 `recur`, `topic`, `facility`, `connection`, `route`, `dashboard`, `timetable`, `preference`,
@@ -1091,14 +1103,14 @@ started"). Menu items that span more than one command topic use a dedicated over
 instead of picking just one: item `2` ("Add, edit and delete activities") is the `activities`
 topic, and item `3` ("List, find and view activities") is the `browse` topic; each overview
 points onward to the individual command's own topic (`add`, `edit`, `delete`, `list`, `find`,
-`view`) for full detail. `facility` (item `7`), `connection` (item `8`), and `route` (item `11`,
+`view`) for full detail. `facility` (item `7`), `connection` (item `8`), and `route` (item `10`,
 added when v2.0's `route` shipped) are separate, independently and uniquely numbered topics -
 each describes only its own command family, with no combined item grouping them together. Item
 `5` ("Completion and dashboard") was already reserved for the `dashboard` topic in v1.0's menu -
 unlike `route`, `dashboard` did not need a new number; only its text changed, from "Coming soon"
-to real syntax. Item `12` is the implemented `timetable` topic. Item `13` ("Return") is not a
-topic; it just acknowledges the selection and returns to the command prompt. Items `1`-`11`
-retain their prior meanings.
+to real syntax. Item `11` is the implemented `timetable` topic, added after `route`. Item `12`
+("Return") is not a topic; it just acknowledges the selection and returns to the command prompt.
+Items `1`-`9` retain their prior meanings.
 
 ## 14. Exit: `bye`
 

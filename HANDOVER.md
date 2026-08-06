@@ -5,6 +5,55 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0d. Divergence resolved, pushed, and v2.0.1 retagged (2026-08-06, Claude Code) — read this first
+
+**Supersedes Section 0c's "push blocked" status below - the divergence it describes is resolved
+and everything from that section is now on `origin/main`.**
+
+**Merge.** Section 0c's blocker (`origin/main` at `9dca6a9`, a sibling of local `HEAD` rather than
+an ancestor) was resolved on explicit user instruction ("merge"): `git fetch origin` confirmed
+`9dca6a9` unchanged, then `git merge origin/main --no-edit` produced a clean merge commit
+(`2897709`) with **zero conflicts** - `9dca6a9` only touched `docs/AboutUs.md`, no overlap with
+Section 0c's three commits. Full validation was re-run fresh on the merged tree before pushing:
+`./gradlew clean test` **1199 passed, 0 failed**; `checkstyleMain`/`checkstyleTest` clean;
+`bash text-ui-test/runtest.sh` → `Test passed!`. `git fetch origin` immediately before pushing
+confirmed `origin/main` was still `9dca6a9` (no further drift), so the fast-forward
+`git push origin main` succeeded cleanly - no force-push, no rebase. Verified after push:
+`git rev-parse HEAD` and `git rev-parse origin/main` both `2897709`, `git status` "up to date,"
+clean tree.
+
+**v2.0.1 retagged, explicit user instruction ("retag v2.0.1 with release notes").** The `v2.0.1`
+tag/release created in Section 0b (before Section 0c's preference-boundary fix existed) pointed at
+`b07e577` - meaning the originally-published v2.0.1 asset **never actually contained the
+preference-boundary fix**, the exact defect that release's own notes didn't yet know about. Per
+explicit instruction, this was corrected by moving the tag rather than leaving two overlapping
+patch releases:
+1. `gh release delete v2.0.1 --yes` (removed the GitHub Release; the underlying tag is not deleted
+   by this alone).
+2. `git push origin :refs/tags/v2.0.1` + `git tag -d v2.0.1` (removed the tag both remotely and
+   locally).
+3. Rebuilt fresh from `HEAD` (`./gradlew clean shadowJar releaseZip`) and smoke-tested the exact
+   asset before publishing, per this file's own established release discipline (Section 4/Section
+   2's `v1.0.1` lesson): extracted to a clean temp directory, ran `recur 1 week 1 to 13` against
+   the packaged calendar, set `preference set start/07:30 end/21:00`, added a flexible "Jogging"
+   activity with window `06:30-09:30`, and confirmed `recommend date/2026-08-08` placed it at
+   `07:30 -> 08:15` (not `06:30`) - live proof the shipped jar actually contains the fix, not just
+   the source tree.
+4. `git tag -a v2.0.1 -m "..." HEAD` (now points at `2897709`, the merge commit) + `git push origin
+   v2.0.1`.
+5. `gh release create v2.0.1 build/distributions/unienable.zip --title "UniEnable v2.0.1"
+   --notes-file ...` with release notes rewritten to describe what's actually in this build: the
+   preference-boundary fix (headlined, with an explicit "this tag was moved" note explaining why),
+   the past-time recommend fix, the relative date-selector consistency work, `recur`'s improved
+   conflict messages, the documentation repairs, and the known `chooseBestSlot` technical debt.
+
+**Known consequence, worth knowing if this ever comes up again:** anyone who fetched the tag
+`v2.0.1` or downloaded its release asset before this retag has a stale reference - `git fetch
+--tags --force` (or a fresh clone) is needed to see the moved tag; there is no way to make an
+already-downloaded asset self-update. This is the same trade-off Section 2's `v1.0`/`v1.0.1`
+history already made once before under the same "don't keep two tags pointing at variously-fixed
+states of identical code" reasoning - not a new precedent.
+
 ## 0c. Preference-boundary fix verification (2026-08-06, Claude Code) — read this first, push blocked
 
 **`origin/main` has diverged and this commit was NOT pushed as of this note** - see the last

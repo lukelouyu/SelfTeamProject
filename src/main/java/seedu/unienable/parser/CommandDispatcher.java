@@ -110,7 +110,7 @@ public class CommandDispatcher {
         case "view":
             return activityCommandParser.parseView(activityManager, args);
         case "find":
-            return activityCommandParser.parseFind(activityManager, args);
+            return activityCommandParser.parseFind(activityManager, now, args);
         case "edit":
             return activityCommandParser.parseEdit(activityManager, topicManager, now, args);
         case "delete":

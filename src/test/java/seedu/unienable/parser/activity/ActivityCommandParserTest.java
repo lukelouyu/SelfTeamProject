@@ -80,7 +80,7 @@ class ActivityCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parseFind(manager, "k/Lecture").execute();
+        CommandResult result = parser.parseFind(manager, NOW, "k/Lecture").execute();
 
         assertTrue(result.getFeedback().contains("Lecture"));
     }

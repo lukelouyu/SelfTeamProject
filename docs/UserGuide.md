@@ -279,15 +279,23 @@ ____________________________________________________________
 ### 6.5 Find Activities: `find`
 
 ```text
-find [k/KEYWORD ...] [c/CATEGORY] [topic/TOPIC] [date/DATE] [order/input|time|chronological]
+find [today|tomorrow|this week|next week] [k/KEYWORD ...] [c/CATEGORY] [topic/TOPIC] [date/DATE]
+     [order/input|time|chronological]
 ```
 
-At least one keyword or filter is required. Matching is case-insensitive and partial (`assign`
-matches `assignment`); keywords search description, topic, and note. `k/` accepts exactly one or
-two words (e.g. `k/lecture` or `k/finish assignment`, both combined with AND); three or more
-words is rejected rather than silently searched. Leading, trailing, and repeated whitespace
-within `k/` don't count toward the word limit. Multiple keywords and filters all combine with
-AND. Header wording is `"Found N activity/activities:"`.
+At least one keyword, filter, or relative-date phrase is required. Matching is case-insensitive
+and partial (`assign` matches `assignment`); keywords search description, topic, and note. `k/`
+accepts exactly one or two words (e.g. `k/lecture` or `k/finish assignment`, both combined with
+AND); three or more words is rejected rather than silently searched. Leading, trailing, and
+repeated whitespace within `k/` don't count toward the word limit. Multiple keywords and filters
+all combine with AND. Header wording is `"Found N activity/activities:"`.
+
+An optional relative-date phrase - `today`, `tomorrow`, `this week`, or `next week` - may appear at
+the very start of the text, before any markers, exactly like `list` (Section 6.4): the same
+definitions apply (`this week`/`next week` are Monday-Sunday, and `next week` is the week
+immediately following `this week`), and it cannot be combined with `date/` or with another
+relative-date phrase. Unlike `date/`, a relative-date phrase by itself already counts as a filter,
+so `find today` alone (with no keyword) is accepted the same way `find date/2026-08-20` alone is.
 
 ### 6.6 View/Set the Default Ordering: `order`
 

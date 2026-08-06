@@ -5,12 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.exception.InvalidCommandException;
+import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
@@ -20,6 +22,8 @@ import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
 
 class FindCommandParserTest {
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 17, 10, 0);
+
     private final FindCommandParser parser = new FindCommandParser();
 
     @Test
@@ -30,7 +34,7 @@ class FindCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parse(manager, "k/assignment").execute();
+        CommandResult result = parser.parse(manager, NOW, "k/assignment").execute();
 
         assertTrue(result.getFeedback().contains("Finish assignment 1"));
     }
@@ -41,7 +45,7 @@ class FindCommandParserTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(InvalidCommandException.class,
-                () -> parser.parse(manager, "ignored/yes c/ACADEMIC"));
+                () -> parser.parse(manager, NOW, "ignored/yes c/ACADEMIC"));
     }
 
     @Test
@@ -55,7 +59,7 @@ class FindCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parse(manager, "k/finish assignment").execute();
+        CommandResult result = parser.parse(manager, NOW, "k/finish assignment").execute();
 
         String feedback = result.getFeedback();
         assertTrue(feedback.contains("Finish assignment 1"));
@@ -70,7 +74,7 @@ class FindCommandParserTest {
         ActivityManager manager = new ActivityManager();
 
         InvalidCommandException exception = assertThrows(InvalidCommandException.class,
-                () -> parser.parse(manager, "k/Edited exact extra"));
+                () -> parser.parse(manager, NOW, "k/Edited exact extra"));
         assertEquals("keyword must contain one or two words.", exception.getMessage());
     }
 
@@ -78,7 +82,7 @@ class FindCommandParserTest {
     public void parseFind_fourWordKeyword_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
 
-        assertThrows(InvalidCommandException.class, () -> parser.parse(manager, "k/one two three four"));
+        assertThrows(InvalidCommandException.class, () -> parser.parse(manager, NOW, "k/one two three four"));
     }
 
     @Test
@@ -88,7 +92,7 @@ class FindCommandParserTest {
         ActivityManager manager = new ActivityManager();
 
         assertThrows(InvalidCommandException.class,
-                () -> parser.parse(manager, "k/one two three c/ACADEMIC order/time"));
+                () -> parser.parse(manager, NOW, "k/one two three c/ACADEMIC order/time"));
     }
 
     @Test
@@ -99,7 +103,7 @@ class FindCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parse(manager, "k/  Flexible   study  ").execute();
+        CommandResult result = parser.parse(manager, NOW, "k/  Flexible   study  ").execute();
 
         assertTrue(result.getFeedback().contains("Flexible study session"));
     }
@@ -111,7 +115,7 @@ class FindCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parse(manager, "k/Class").execute();
+        CommandResult result = parser.parse(manager, NOW, "k/Class").execute();
 
         assertTrue(result.getFeedback().contains("Class"));
     }
@@ -124,7 +128,7 @@ class FindCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
 
-        CommandResult result = parser.parse(manager, "c/ACADEMIC topic/CG3207").execute();
+        CommandResult result = parser.parse(manager, NOW, "c/ACADEMIC topic/CG3207").execute();
 
         assertTrue(result.getFeedback().contains("CG3207 lecture"));
     }
@@ -137,7 +141,7 @@ class FindCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
 
-        CommandResult result = parser.parse(manager, "topic/CG3207").execute();
+        CommandResult result = parser.parse(manager, NOW, "topic/CG3207").execute();
 
         assertTrue(result.getFeedback().contains("CG3207 lecture"));
     }
@@ -147,7 +151,7 @@ class FindCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parse(manager, ""));
+        assertThrows(MissingInputException.class, () -> parser.parse(manager, NOW, ""));
     }
 
     @Test
@@ -158,7 +162,7 @@ class FindCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parse(manager, "topic/   "));
+        assertThrows(MissingInputException.class, () -> parser.parse(manager, NOW, "topic/   "));
     }
 
     @Test
@@ -169,7 +173,7 @@ class FindCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parse(manager, "c/ACADEMIC topic/   ").execute();
+        CommandResult result = parser.parse(manager, NOW, "c/ACADEMIC topic/   ").execute();
 
         assertTrue(result.getFeedback().contains("No-topic lecture"));
     }
@@ -179,7 +183,7 @@ class FindCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parse(manager, "   "));
+        assertThrows(MissingInputException.class, () -> parser.parse(manager, NOW, "   "));
     }
 
     @Test
@@ -190,7 +194,7 @@ class FindCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parse(manager, "order/time"));
+        assertThrows(MissingInputException.class, () -> parser.parse(manager, NOW, "order/time"));
     }
 
     @Test
@@ -204,7 +208,7 @@ class FindCommandParserTest {
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parse(manager, "k/   "));
+        assertThrows(MissingInputException.class, () -> parser.parse(manager, NOW, "k/   "));
     }
 
     @Test
@@ -215,9 +219,140 @@ class FindCommandParserTest {
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parse(manager, "c/ACADEMIC k/   ").execute();
+        CommandResult result = parser.parse(manager, NOW, "c/ACADEMIC k/   ").execute();
 
         assertTrue(result.getFeedback().contains("No-topic lecture"));
+    }
+
+    @Test
+    public void parseFind_today_matchesOnlyTodaysActivities() throws Exception {
+        LocalDate today = NOW.toLocalDate();
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Today lecture", ActivityCategory.ACADEMIC,
+                today, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Tomorrow lecture", ActivityCategory.ACADEMIC,
+                today.plusDays(1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parse(manager, NOW, "today").execute().getFeedback();
+
+        assertTrue(feedback.contains("Today lecture"));
+        assertTrue(!feedback.contains("Tomorrow lecture"));
+    }
+
+    @Test
+    public void parseFind_todayIsCaseInsensitiveAndSatisfiesFilterRequirementAlone() throws Exception {
+        LocalDate today = NOW.toLocalDate();
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Today lecture", ActivityCategory.ACADEMIC,
+                today, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parse(manager, NOW, "TODAY").execute().getFeedback();
+
+        assertTrue(feedback.contains("Today lecture"));
+    }
+
+    @Test
+    public void parseFind_tomorrow_matchesOnlyTomorrowsActivities() throws Exception {
+        LocalDate today = NOW.toLocalDate();
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Today lecture", ActivityCategory.ACADEMIC,
+                today, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Tomorrow lecture", ActivityCategory.ACADEMIC,
+                today.plusDays(1), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parse(manager, NOW, "tomorrow").execute().getFeedback();
+
+        assertTrue(feedback.contains("Tomorrow lecture"));
+        assertTrue(!feedback.contains("Today lecture"));
+    }
+
+    @Test
+    public void parseFind_thisWeek_matchesActivityInsideCurrentMondayToSundayOnly() throws Exception {
+        // NOW is Monday 2026-08-17; the current week runs 2026-08-17 to 2026-08-23.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "This week lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 21), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Next week lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 24), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parse(manager, NOW, "this week").execute().getFeedback();
+
+        assertTrue(feedback.contains("This week lecture"));
+        assertTrue(!feedback.contains("Next week lecture"));
+    }
+
+    @Test
+    public void parseFind_nextWeek_matchesActivityInFollowingMondayToSundayOnly() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "This week lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 21), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Next week lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 24), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parse(manager, NOW, "next week").execute().getFeedback();
+
+        assertTrue(feedback.contains("Next week lecture"));
+        assertTrue(!feedback.contains("This week lecture"));
+    }
+
+    @Test
+    public void parseFind_relativeDatePhraseCombinedWithMarkerFilters_appliesBoth() throws Exception {
+        LocalDate today = NOW.toLocalDate();
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Today CCA session", ActivityCategory.CCA,
+                today, LocalTime.of(9, 0), LocalTime.of(10, 0), EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Today academic lecture", ActivityCategory.ACADEMIC,
+                today, LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parse(manager, NOW, "today c/ACADEMIC").execute().getFeedback();
+
+        assertTrue(feedback.contains("Today academic lecture"));
+        assertTrue(!feedback.contains("Today CCA session"));
+    }
+
+    @Test
+    public void parseFind_relativeDatePhraseCombinedWithDateMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, NOW, "today date/2026-08-20"));
+        assertEquals("date/ cannot be combined with today, tomorrow, this week, or next week.",
+                exception.getMessage());
+    }
+
+    @Test
+    public void parseFind_thisWithoutWeek_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parse(manager, NOW, "this k/lecture"));
+    }
+
+    @Test
+    public void parseFind_nextWithoutWeek_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parse(manager, NOW, "next k/lecture"));
+    }
+
+    @Test
+    public void parseFind_relativeDateWordAsSearchKeywordStillWorks() throws Exception {
+        // "today" is only treated as a relative-date phrase when it leads the whole argument
+        // text; as a k/ value it must remain an ordinary search keyword.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Plan for today", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/today").execute().getFeedback();
+
+        assertTrue(feedback.contains("Plan for today"));
     }
 
 }

@@ -153,21 +153,27 @@ public class ActivityCommandParser {
     }
 
     /**
-     * Parses a find command's argument text into a FindCommand. At least one keyword or filter is
-     * required; find has no view/ option and always uses concise formatting.
+     * Parses a find command's argument text into a FindCommand. At least one keyword, filter, or
+     * relative-date phrase is required; find has no view/ option and always uses concise
+     * formatting.
      *
      * @param activityManager the manager the resulting command will read from
+     * @param now the current date and time, used to resolve "today"/"tomorrow"/"this week"/
+     *     "next week"
      * @param args the text after the "find" command word
      * @return the parsed FindCommand
-     * @throws MissingInputException if neither a keyword nor a filter is supplied
+     * @throws MissingInputException if neither a keyword, a filter, nor a relative-date phrase is
+     *     supplied
      * @throws InvalidActivityException if the category is invalid
-     * @throws InvalidCommandException if order is invalid, or k/ contains more than two words
+     * @throws InvalidCommandException if order is invalid, k/ contains more than two words, a
+     *     relative-date phrase is unrecognised or combined with date/, or unrecognised text
+     *     follows a relative-date phrase
      * @throws InvalidDateTimeException if the date is invalid
      */
-    public FindCommand parseFind(ActivityManager activityManager, String args)
+    public FindCommand parseFind(ActivityManager activityManager, LocalDateTime now, String args)
             throws MissingInputException, InvalidActivityException, InvalidCommandException,
             InvalidDateTimeException {
-        return findCommandParser.parse(activityManager, args);
+        return findCommandParser.parse(activityManager, now, args);
     }
 
     /**

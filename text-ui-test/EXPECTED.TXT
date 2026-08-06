@@ -231,10 +231,14 @@ Format: preference view
         preference set start/HH:mm [end/HH:mm] [buffer/MINUTES] [tomato/on|off]
         preference reset
 
-Stores one global profile for future planning features. Fields supplied to
-preference set may appear in any order; omitted fields retain their current
-values. start must be before end, buffer must be from 0 to 1440 minutes,
-and tomato controls advisory Tomato/Pomodoro suggestions only.
+Stores one global profile that the recommend command reads (see guide
+recommend). Fields supplied to preference set may appear in any order;
+omitted fields retain their current values. start must be before end,
+buffer must be from 0 to 1440 minutes, and tomato controls advisory
+Tomato/Pomodoro suggestions only.
+
+start/end are a hard boundary on recommend's scheduling window, not just
+a preference it tries to honour - see guide recommend for the exact rule.
 
 Defaults: start 08:00, end 20:00, buffer 15 minutes, tomato off.
 
@@ -244,8 +248,9 @@ Examples:
   preference set tomato/off
   preference reset
 
-Changes and reset require y/n confirmation. These settings are advisory
-planning inputs for recommend. Tomato only affects advisory study
+Changes and reset require y/n confirmation. These settings are the
+planning inputs for recommend: start/end and buffer are enforced as hard
+scheduling constraints, and Tomato only affects advisory study
 suggestions, not slot generation or activity timing.
 ____________________________________________________________
 ____________________________________________________________
@@ -270,9 +275,12 @@ confirms and saves it once, and recommend cancel discards it with no
 change.
 
 The recommender uses fixed activities, flexible windows, and your
-global planning preferences. Minimum buffer is enforced; Tomato only
-adds advisory study suggestions when enabled. Activities keep their
-stable IDs and original flexible windows.
+global planning preferences. Preferred daily start/end is a hard
+boundary - a placement is never proposed outside it, even partly, and
+an activity with no compliant slot inside it is left unscheduled.
+Minimum buffer is enforced; Tomato only adds advisory study
+suggestions when enabled. Activities keep their stable IDs and
+original flexible windows.
 
 No proposed start is ever before the current time. A today window that
 has already fully elapsed is left unscheduled rather than backdated; a
@@ -702,9 +710,12 @@ confirms and saves it once, and recommend cancel discards it with no
 change.
 
 The recommender uses fixed activities, flexible windows, and your
-global planning preferences. Minimum buffer is enforced; Tomato only
-adds advisory study suggestions when enabled. Activities keep their
-stable IDs and original flexible windows.
+global planning preferences. Preferred daily start/end is a hard
+boundary - a placement is never proposed outside it, even partly, and
+an activity with no compliant slot inside it is left unscheduled.
+Minimum buffer is enforced; Tomato only adds advisory study
+suggestions when enabled. Activities keep their stable IDs and
+original flexible windows.
 
 No proposed start is ever before the current time. A today window that
 has already fully elapsed is left unscheduled rather than backdated; a

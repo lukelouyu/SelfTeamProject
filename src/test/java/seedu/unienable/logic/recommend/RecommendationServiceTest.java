@@ -260,4 +260,113 @@ class RecommendationServiceTest {
 
         assertFalse(RecommendationService.hasElapsedPlacement(proposal, MONDAY.atTime(10, 0)));
     }
+
+    // ---- Preferred daily start/end as a hard boundary (regression for the past-time-review defect) ----
+
+    @Test
+    public void recommendDate_windowStartsBeforePreferredStart_placementClampedToPreferredStart() throws Exception {
+        // Activity window 06:30-09:30, duration 45, preferred 07:30-21:00: 07:30 is reachable and
+        // compliant, so it must be chosen over the non-compliant 06:30 the activity's own window
+        // alone would otherwise allow.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Jogging", 6, 30, 9, 30, 45)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(7, 30), LocalTime.of(21, 0), 0, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertEquals(1, proposal.getPlacements().size());
+        assertEquals(LocalTime.of(7, 30), proposal.getPlacements().get(0).startTime());
+    }
+
+    @Test
+    public void recommendDate_windowEntirelyAfterPreferredEnd_leavesActivityUnscheduled() throws Exception {
+        // Activity window 21:15-22:30, duration 45, preferred end 21:00: no compliant slot exists
+        // at all, so the activity must be reported unscheduled rather than placed past 21:00.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Late admin", 21, 15, 22, 30, 45)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(7, 30), LocalTime.of(21, 0), 0, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertTrue(proposal.getPlacements().isEmpty());
+        assertEquals(List.of(3), proposal.getUnscheduledActivityIds());
+    }
+
+    @Test
+    public void recommendDate_narrowerPreferredWindow_placementClampedToPreferredStart() throws Exception {
+        // Same shape with a different, narrower profile (09:30-18:30): the activity's own window
+        // (08:00-12:00) starts before preferred start, so the earliest compliant start is 09:30.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Deep work", 8, 0, 12, 0, 90)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(9, 30), LocalTime.of(18, 30), 0, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertEquals(1, proposal.getPlacements().size());
+        assertEquals(LocalTime.of(9, 30), proposal.getPlacements().get(0).startTime());
+    }
+
+    @Test
+    public void recommendDate_narrowerPreferredWindow_windowAfterPreferredEndLeavesUnscheduled() throws Exception {
+        // Profile 09:30-18:30; activity window 18:00-21:00, duration 60: only 18:00-18:30 of the
+        // activity's own window is inside the preferred range, too short for a 60-minute duration.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Evening wrap-up", 18, 0, 21, 0, 60)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(9, 30), LocalTime.of(18, 30), 0, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertTrue(proposal.getPlacements().isEmpty());
+        assertEquals(List.of(3), proposal.getUnscheduledActivityIds());
+    }
+
+    @Test
+    public void recommendDate_todayNowLaterThanPreferredStart_clampsToNowNotPreferredStart() throws Exception {
+        // Preferred start is 07:30, but now is already 08:15 on the activity's own date: now must
+        // win over the preferred start, since scheduling before now is never allowed regardless of
+        // preference (the two lower bounds combine as max(activityEarliest, preferredStart, now)).
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Jogging", 6, 30, 12, 0, 30)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(7, 30), LocalTime.of(21, 0), 0, TomatoSuggestion.OFF), MONDAY,
+                MONDAY.atTime(8, 15));
+
+        assertEquals(1, proposal.getPlacements().size());
+        assertEquals(LocalTime.of(8, 15), proposal.getPlacements().get(0).startTime());
+    }
+
+    @Test
+    public void recommendDate_preferredWindowNarrowerThanDuration_leavesUnscheduledWithoutCrashing() throws Exception {
+        // Preferred range is only 10 minutes (00:00-00:10); activity's own window (06:00-22:00,
+        // duration 60) would ordinarily leave plenty of room, but the intersection is far too
+        // narrow for a 60-minute duration. This must not wrap LocalTime arithmetic into a bogus
+        // "valid" range - it must cleanly report the activity as unscheduled.
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Long block", 6, 0, 22, 0, 60)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(0, 0), LocalTime.of(0, 10), 0, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertTrue(proposal.getPlacements().isEmpty());
+        assertEquals(List.of(3), proposal.getUnscheduledActivityIds());
+    }
+
+    @Test
+    public void recommendDate_windowFullyInsidePreferredRange_isUnaffectedByPreference() throws Exception {
+        ActivityManager manager = managerWith(List.of(
+                flexible(3, "Study block", 10, 0, 11, 0, 30)));
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager,
+                PreferenceProfile.of(LocalTime.of(7, 30), LocalTime.of(21, 0), 0, TomatoSuggestion.OFF), MONDAY,
+                MIDNIGHT);
+
+        assertEquals(1, proposal.getPlacements().size());
+        assertEquals(LocalTime.of(10, 0), proposal.getPlacements().get(0).startTime());
+    }
 }

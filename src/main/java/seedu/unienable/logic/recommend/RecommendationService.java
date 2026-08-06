@@ -165,7 +165,7 @@ public final class RecommendationService {
             PreferenceProfile preferences, LocalDateTime now) {
         CandidateSelection best = null;
         for (FlexibleActivity activity : remaining) {
-            List<LocalTime> validSlots = validSlots(activity, commitments, preferences.getMinimumBufferMinutes(), now);
+            List<LocalTime> validSlots = validSlots(activity, commitments, preferences, now);
             if (validSlots.isEmpty()) {
                 continue;
             }
@@ -178,17 +178,30 @@ public final class RecommendationService {
         return best;
     }
 
-    private static List<LocalTime> validSlots(FlexibleActivity activity, List<Commitment> commitments, int buffer,
-            LocalDateTime now) {
+    /**
+     * Enumerates every start minute that fits inside the intersection of activity's own window
+     * and preferences' preferred daily start/end - the preferred range is a hard boundary on the
+     * searchable range, not merely a tie-break preference, so a candidate placed entirely outside
+     * it is never proposed when a compliant slot exists. If the intersection is empty (or too
+     * narrow for activity's duration to fit inside it at all), returns an empty list rather than
+     * risking a wrapped-past-midnight {@code LocalTime} range.
+     */
+    private static List<LocalTime> validSlots(FlexibleActivity activity, List<Commitment> commitments,
+            PreferenceProfile preferences, LocalDateTime now) {
         List<LocalTime> valid = new ArrayList<>();
-        LocalTime latestStart = activity.getLatestEnd().minusMinutes(activity.getDurationMinutes());
-        LocalTime earliestStart = effectiveEarliestStart(activity, now);
+        LocalTime earliestStart = effectiveEarliestStart(activity, preferences, now);
         if (earliestStart == null) {
             return valid;
         }
+        LocalTime effectiveEnd = effectiveLatestEnd(activity, preferences);
+        int durationMinutes = activity.getDurationMinutes();
+        if (Duration.between(earliestStart, effectiveEnd).toMinutes() < durationMinutes) {
+            return valid;
+        }
+        LocalTime latestStart = effectiveEnd.minusMinutes(durationMinutes);
         for (LocalTime candidate = earliestStart; !candidate.isAfter(latestStart);
                 candidate = candidate.plusMinutes(1)) {
-            if (fits(activity, candidate, commitments, buffer)) {
+            if (fits(activity, candidate, commitments, preferences.getMinimumBufferMinutes())) {
                 valid.add(candidate);
             }
         }
@@ -196,27 +209,43 @@ public final class RecommendationService {
     }
 
     /**
-     * Returns the earliest candidate start time for activity, no earlier than its own declared
-     * window and never before now - so a today window that has already fully or partly elapsed by
-     * now is never proposed in the past. A date strictly before now's date has no valid start at
-     * all (returns null); a date equal to now's date is clipped to now, rounded up to the next
-     * whole minute if now carries seconds; a future date is unrestricted.
+     * Returns the earliest candidate start time for activity: no earlier than the later of its
+     * own declared window and preferences' preferred daily start, and never before now - so a
+     * today window that has already fully or partly elapsed by now is never proposed in the past.
+     * A date strictly before now's date has no valid start at all (returns null); a date equal to
+     * now's date is clipped to now, rounded up to the next whole minute if now carries seconds; a
+     * future date is unrestricted by now (though still restricted by the preferred start).
      *
      * @param activity the flexible activity being placed
+     * @param preferences the profile whose preferred daily start bounds the search
      * @param now the current date and time
      * @return the earliest allowed start time, or null if the entire date has already elapsed
      */
-    private static LocalTime effectiveEarliestStart(FlexibleActivity activity, LocalDateTime now) {
+    private static LocalTime effectiveEarliestStart(FlexibleActivity activity, PreferenceProfile preferences,
+            LocalDateTime now) {
         LocalDateTime notBefore = ceilingToWholeMinute(now);
         LocalDate activityDate = activity.getDate();
         if (activityDate.isBefore(notBefore.toLocalDate())) {
             return null;
         }
-        LocalTime earliest = activity.getEarliestStart();
+        LocalTime earliest = laterOf(activity.getEarliestStart(), preferences.getPreferredStart());
         if (activityDate.isEqual(notBefore.toLocalDate()) && notBefore.toLocalTime().isAfter(earliest)) {
             return notBefore.toLocalTime();
         }
         return earliest;
+    }
+
+    /** Returns the earlier of activity's own declared window end and preferences' preferred daily end. */
+    private static LocalTime effectiveLatestEnd(FlexibleActivity activity, PreferenceProfile preferences) {
+        return earlierOf(activity.getLatestEnd(), preferences.getPreferredEnd());
+    }
+
+    private static LocalTime laterOf(LocalTime first, LocalTime second) {
+        return first.isAfter(second) ? first : second;
+    }
+
+    private static LocalTime earlierOf(LocalTime first, LocalTime second) {
+        return first.isBefore(second) ? first : second;
     }
 
     private static LocalDateTime ceilingToWholeMinute(LocalDateTime now) {
@@ -327,6 +356,13 @@ public final class RecommendationService {
         return best == Long.MAX_VALUE / 4 ? Long.MAX_VALUE / 8 : best;
     }
 
+    /**
+     * Always 0 now that {@link #validSlots} hard-clamps the searchable range to the preferred
+     * start/end - every slot reaching this method already satisfies both conditions below. Kept
+     * (rather than removed) as a documented, harmless tie-break no-op: if a future change ever
+     * lets a slot outside the preferred range reach scoring again, this stops being dead weight
+     * without anyone having to remember to re-add it.
+     */
     private static long preferredRangePenalty(LocalTime start, LocalTime end, PreferenceProfile preferences) {
         long penalty = 0;
         if (start.isBefore(preferences.getPreferredStart())) {

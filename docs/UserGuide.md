@@ -74,7 +74,14 @@ accessibility information, or medical advice.
   not be earlier than today (`date has passed. Please enter a date from TODAY onwards.`). This
   only applies to a date you are actively supplying through `add`/`edit` — `list`/`find`'s
   `date/` filter and previously-saved activities may still refer to a genuinely past date.
-- Times use 24-hour `HH:mm`, e.g. `09:30` or `17:45`.
+- Times use 24-hour `HH:mm`, e.g. `09:30` or `17:45`. When the resolved date is today, an
+  activity's start time (`add`'s `from/`/`earliest/`, or `edit`'s `from/`/`earliest/` when
+  actively supplied) must be strictly after the current time
+  (`activity start time has passed. Please enter a start time after HH:mm.`) - a time equal to now
+  is rejected, not just one already fully past. This is a separate, time-level check from the
+  date-level rule above: a date of today is allowed, but a start time on today that has already
+  arrived or passed is not. It only applies to a start time you are actively supplying - previously
+  saved activities may still have one now in the past.
 - Durations use whole minutes.
 - Energy demand and sensory load use whole numbers from `1` (very low) to `5` (very high).
 - Top-level categories are `ACADEMIC`, `CCA`, `WORK_INTERNSHIP`, and `OTHERS`.
@@ -955,6 +962,10 @@ Defaults:
 - minimum buffer: `15` minutes; and
 - advisory Tomato/Pomodoro suggestions: `OFF`.
 
+`recommend` (Section 12) treats preferred daily start/end as a hard boundary on where it will
+place a flexible activity, not merely a preference it tries to honour when convenient - see
+Section 12.6 for the exact rule. Minimum buffer and Tomato remain as described below.
+
 View the active profile without changing or saving anything:
 
 ```text
@@ -1102,6 +1113,12 @@ Clears the current in-memory proposal without changing any activity and without 
 
 ### 12.6 Recommendation Rules and Limits
 
+- **Preferred daily start/end from Section 11 is a hard scheduling boundary, not a soft nudge.** A
+  proposed placement's start and end are always within `[preferred start, preferred end]`, in
+  addition to being within the activity's own earliest/latest window. If the intersection of the
+  two is empty, or too narrow for the activity's duration to fit inside it at all, the activity is
+  left unscheduled - it is never proposed partly or fully outside your preferred hours, even when
+  its own window would otherwise allow an earlier or later start.
 - Minimum buffer from Section 11 is enforced around neighbouring scheduled commitments.
 - A flexible activity that already has an adopted placement is treated as scheduled and is not
   proposed again.

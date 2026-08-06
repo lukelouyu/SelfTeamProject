@@ -522,12 +522,31 @@ preview timetable and dashboard built from copied activities, never from in-plac
 `RecommendationService` treats every fixed activity and every already-adopted flexible activity as
 an existing commitment. Eligible work is restricted to incomplete, not-yet-adopted flexible
 activities whose date lies inside the target day/week period. For each eligible activity, every
-valid start minute inside its original window is enumerated subject to the configured minimum
-buffer on both sides of neighbouring commitments **and clamped to never be before `now`**: on
-today's date, the earliest candidate start is `max(activity.earliestStart, now rounded up to the
-next whole minute)`; on a date strictly before `now`'s date, the activity has no valid slots at all
-(it surfaces as unscheduled, never as a past-dated placement); on a future date, the window is
-unrestricted. This closed a regression where a today-dated flexible activity's window that had
+valid start minute is enumerated inside the **intersection** of the activity's own
+earliest/latest window and the preference profile's preferred daily start/end
+(`RecommendationService.effectiveEarliestStart`/`effectiveLatestEnd`), subject to the configured
+minimum buffer on both sides of neighbouring commitments **and clamped to never be before `now`**:
+on today's date, the earliest candidate start is `max(activity.earliestStart,
+preferences.preferredStart, now rounded up to the next whole minute)`; on a date strictly before
+`now`'s date, the activity has no valid slots at all (it surfaces as unscheduled, never as a
+past-dated placement); on a future date, the window is unrestricted by `now` (though still bounded
+by the preferred range). If the intersection is empty, or narrower than the activity's own
+duration, the activity is left unscheduled rather than risking a wrapped-past-midnight `LocalTime`
+range from a naive `latestEnd.minusMinutes(duration)` on an unvalidated interval.
+
+Preferred start/end used to be scored only as a low-priority tie-break penalty
+(`preferredRangePenalty`), which a PE-style review correctly flagged as ineffective: a flexible
+activity's window could still be proposed well outside preferred hours whenever an in-range slot
+existed, because nothing ever excluded the out-of-range candidate from `validSlots` in the first
+place. Making the preferred range a hard pre-filter (this section's first paragraph) fixes that;
+`preferredRangePenalty` itself is now always `0` for every slot that reaches scoring (documented at
+its call site) - kept rather than removed, as a no-op safety net in case a future change ever lets
+an out-of-range slot reach scoring again. `RecommendationServiceTest`'s
+`recommendDate_windowStartsBeforePreferredStart...`, `..._windowEntirelyAfterPreferredEnd...`,
+`..._narrowerPreferredWindow...`, `..._todayNowLaterThanPreferredStart...`, and
+`..._preferredWindowNarrowerThanDuration...` cases cover this directly.
+
+Separately, this closed a regression where a today-dated flexible activity's window that had
 already fully or partly elapsed by the time `recommend` ran could still be proposed at its original,
 already-past earliest time - see `RecommendationServiceTest`'s `recommendDate_wholeWindowElapsed...`
 and `..._partiallyElapsedWindow...` cases, and `PE_REGRESSION_DEBUG_PLAN.md`'s "Critical recommender
@@ -544,13 +563,20 @@ confirmation prompt, never as a partial or silently-backdated adoption. "Stale" 
 `now.isAfter(placementDate.atTime(placementStart))`; a placement whose start is exactly `now` is
 still adoptable.
 
-For one activity's candidate slots, the current implementation's ordering is deterministic and
-intentionally simple: earlier start times win first; if two candidates share the same start, the
-service prefers the one preserving more post-buffer slack around neighbouring commitments, then
-greater distance from other high-energy activities, then greater distance from other high-sensory
-activities, and finally a lower penalty for extending outside the preferred daily start/end range.
-Tomato never changes slot selection; it only controls whether certain study-like placements print
-an advisory suggestion line in the preview.
+For one activity's candidate slots, the current implementation's ordering is deterministic:
+`chooseBestSlot`'s comparison (`SlotScore.betterThan`) checks the two candidates' clock times
+first, and only falls through to the buffer-slack/energy-spread/sensory-spread/preference-penalty
+score fields when the two times are identical. Since `validSlots` enumerates one activity's own
+candidates as strictly increasing, distinct one-minute steps, no two of that activity's own
+candidates ever share a start time - so in practice this always resolves to "the earliest valid
+slot wins," and the four score fields are live only when comparing the *already-chosen* best slots
+of two *different* activities in `chooseNextActivity` (`CandidateSelection.betterThan`), which can
+coincidentally share a clock time. This is a known, pre-existing limitation of the scoring design,
+not something introduced by the preferred-start/end fix above - flagged here rather than silently
+reworked, since fixing it (e.g. making `chooseBestSlot` genuinely rank by score instead of
+time-first) is a separate, larger behavioural change with its own trade-offs to decide explicitly,
+not a byproduct of a targeted bug fix. Tomato never changes slot selection; it only controls
+whether certain study-like placements print an advisory suggestion line in the preview.
 
 <p align="center"><img src="diagrams/sequence/RecommendationSequence.png" width="760" alt="Recommendation sequence diagram"></p>
 

@@ -5,6 +5,124 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0e. Whole-day recommender rewrite, command aliases, and boundary-enforcement guard (2026-08-06, Claude Code) — read this first, not yet committed
+
+**Not committed as of this note.** Everything below is verified in the working tree on top of
+`93c545a` (Section 0d's merge commit `2897709` plus one later commit) but has not been committed or
+pushed - a session doing further work here should commit deliberately rather than assuming this is
+already on `origin/main`.
+
+**1. Greedy recommender defect (confirmed, fixed).** A PE-style review reproduced Section 0c's
+flagged `chooseBestSlot` concern as an *observable* defect, not just theoretical: `chooseNextActivity`
+picked one activity at a time (fewest-valid-slots-first, each placed at its own earliest slot), so a
+short activity could claim a slot that was the only way a longer activity later the same day could
+fit - `recommend` reported activities unscheduled even when a valid whole-day schedule containing
+them existed. Two concrete review examples reproduced this (three activities on one day; four
+activities under a restrictive 60-minute-buffer profile).
+
+**Fix:** `RecommendationService` now groups each period's eligible flexible activities by date and
+solves each date independently. For up to 8 remaining activities on a date it exhaustively tries
+every ordering (`permute`, 8! = 40320 worst case) and places each ordering's activities at their own
+earliest feasible slot given what's already placed earlier in that ordering (`placeInOrder`/
+`earliestValidSlot`) - provably at least as good as any other placement of that ordering, so trying
+every ordering explores every combination of which activities end up schedulable together. Beyond 8,
+`heuristicOrderings` substitutes four fixed orderings (tightest window, longest duration, earliest
+window, stable ID) to keep the search bounded. Candidate `DaySchedule`s are ranked by
+`DaySchedule.betterThan`: most activities scheduled, then most total duration, then lowest total
+window slack among scheduled activities, then earliest aggregate placement, then lowest sorted
+activity-ID list as the final deterministic tie-break. This entirely replaces
+`chooseNextActivity`/`chooseBestSlot` and the buffer-slack/energy-spread/sensory-spread/
+preference-penalty scoring fields that Section 0d's release notes called out as known technical
+debt - they are gone, not just documented as dead, since the one-activity-at-a-time design they
+existed for no longer exists.
+
+**Tests added:** `RecommendationServiceTest`'s `recommendDate_threeActivitiesFitTogether...`,
+`..._restrictiveProfileFourActivitiesFitTogether...`, and
+`..._restrictiveProfileTwoActivitiesFitTogether...` reproduce the review's two examples plus a third
+(Thursday) scenario directly and assert every activity in them is now scheduled.
+
+**2. `dashboard`/`timetable`/`recommend` marker inconsistency (confirmed, fixed).** The same review
+flagged that `timetable day/DATE` and `dashboard date/DATE` used different, non-interchangeable
+markers, and that the natural `dashboard day/DATE` guess was rejected - "documented behaviour" but
+still the kind of inconsistency that causes user errors. `dashboard` now also accepts `day/`,
+`timetable` now also accepts `date/`, and `recommend` now also accepts `day/` (it already had
+`date/`); every command resolves either marker identically. `DashboardCommandParser`,
+`TimetableCommandParser`, and `RecommendCommandParser` were updated, plus their parser tests
+(including `timetable`'s existing `...resolvesSameAsDayMarker` equivalence-assertion pattern,
+extended to the new alias) and `guide dashboard`/`guide timetable`/`guide recommend` text.
+
+**3. Preferences don't retroactively move adopted placements (confirmed usability gap, minimum fix
+applied - not the full `recommend replan` feature the review sketched).** The review's "at minimum"
+fallback ask was applied: `preference set` and `preference reset`'s confirmation prompt now states
+that activities already adopted from a recommendation keep their existing scheduled times and that
+the change only affects future `recommend` proposals. A full replan/unadopt feature was
+**deliberately not built** - there is no product-exposed way today to revert a single flexible
+activity's adopted placement back to "pending," and inventing one was out of scope for this pass.
+
+**4. Boundary-enforcement re-investigation (explicitly requested by the user; found NOT reproducible
+on this code, defense-in-depth guard added anyway per explicit instruction).** After the above
+landed, the user separately asked to re-verify Section 0c's preferred-start/end fix end-to-end,
+supplying a specific repro (`preference set start/07:30 end/21:00 buffer/30`, one flexible activity
+windowed `06:00-09:00`, another `20:30-23:00`, both 60 minutes) and claiming placements still landed
+outside the preferred range. **This was investigated before writing any fix**, per this file's own
+standing "trust but verify" discipline: a fresh `shadowJar` was built and the exact repro run
+end-to-end through the real CLI. Result matched the *expected*, non-buggy behaviour exactly - the
+early activity clamped to `07:30`, the late one was left unscheduled (only 30 preferred-range
+minutes available against its 60-minute duration). Reading the code confirmed why: `recommend
+date/...`, `recommend this week`, and `recommend next week` all funnel through the single
+`earliestValidSlot` search-bound computation from Section 0c's fix, and neither `recommend view` nor
+`recommend adopt` ever recompute or override a placement's time - there is structurally only one
+place a candidate time is ever produced. **No live defect was found.** The user was told this
+directly, with the repro transcript as evidence, and asked how to proceed; they chose to add the
+requested defense-in-depth guard anyway rather than stop.
+
+**Guard added (belt-and-suspenders, not a bug fix):** `RecommendationService.withinPreferredRange`
+is the single boundary predicate. `build()` re-checks every `ScheduledItem` against it immediately
+before adding a `RecommendedPlacement` to a proposal (discarding to unscheduled on failure, though
+this is unreachable in normal operation since `earliestValidSlot`'s search bounds already guarantee
+it). Separately, and with genuine new value (not just redundant defense): `recommend adopt` now also
+rejects a proposal via the new `RecommendationService.hasOutOfPreferredRangePlacement(proposal,
+preferenceManager.getProfile())` if `preference set`/`preference reset` ran *after* the proposal was
+generated and the new preferred range no longer contains one or more of its placements - this is a
+real gap the stale-time check alone didn't cover, since a preference change doesn't advance `now`.
+
+**Tests added:** `RecommendationServiceTest`'s
+`recommendDate_earlyWindowClampsToPreferredStart_lateWindowLeftUnscheduled` (the exact repro),
+`recommendThisWeek_everyPlacementStaysWithinPreferredRange`,
+`recommendNextWeek_everyPlacementStaysWithinPreferredRange`,
+`recommendDate_todayClampAndPreferredEndBothApply`, and three `hasOutOfPreferredRangePlacement_*`
+cases; `RecommendCommandParserTest`'s
+`parse_adopt_rejects/acceptsProposalThatNoLongerFitsPreferredRangeAfterPreferenceChange`.
+
+**Docs:** `DeveloperGuide.md` §16 rewritten for the whole-day search (replacing the stale
+`chooseBestSlot`/known-technical-debt description) and given a new "Boundary-enforcement pipeline"
+subsection naming all four stages (generation/selection/final guard/adoption). `UserGuide.md`
+§9/§10/§12.2 document the marker aliases; §11 documents the adopted-placements note; §12.4/§12.6 add
+the preference-change adoption rejection and a concrete boundary example. `guide preference`/`guide
+recommend` updated to match. `RecommendationClassDiagram.puml`/`RecommendationSequence.puml` sources
+updated (new method, new dependency edges, new alt-block in the adopt flow) - **their `.png` renders
+were not regenerated, since no PlantUML renderer is available in this environment; whoever next has
+the toolchain should re-render both before this is considered fully closed.**
+
+**Result:** every recommendation output (any period, any command) is now guaranteed within the
+preferred range at three independent points, and adoption specifically re-validates against
+whatever the profile is *at adopt time*, not the one active when the proposal was generated.
+
+**Limitations:**
+- The `.puml` diagram sources are updated but their `.png` renders are not (see above).
+- No `recommend replan`/`unadopt` feature exists; Section 0e.3's gap is documented, not resolved.
+- The CG2028 missing-fixed-session data issue the same review flagged was **not** investigated or
+  fixed - it was confirmed to be an artifact of the reviewer's own interactive test session (no
+  checked-in fixture reproduces it: `text-ui-test/data/activities.txt` and `data/activities.txt`
+  have no CG2028 entries, and `text-ui-test/batches/v2/batch-01-sem1-setup.txt` already has the
+  correct two-part CG2028 entry), not a repo defect.
+- Full validation run for this section: `./gradlew clean test` all green; `checkstyleMain`/
+  `checkstyleTest` clean; `javadoc` unchanged at 100 pre-existing warnings (none in touched files);
+  `bash text-ui-test/runtest.sh` → `Test passed!` after regenerating `EXPECTED.TXT` from a fresh
+  `ACTUAL.TXT` (CRLF preserved via `unix2dos`) to reflect the new guide text and the
+  preference-confirmation note. `shadowJar`/`releaseZip` were not separately re-verified after the
+  guard/doc changes in this same pass - do that before tagging any release from this tree.
+
 ## 0d. Divergence resolved, pushed, and v2.0.1 retagged (2026-08-06, Claude Code) — read this first
 
 **Supersedes Section 0c's "push blocked" status below - the divergence it describes is resolved

@@ -78,6 +78,16 @@ class TimetableServiceTest {
     }
 
     @Test
+    public void resolveNextWeek_isOneWeekAfterResolveThisWeek() {
+        TimetablePeriod thisWeek = TimetableService.resolveThisWeek(LocalDateTime.of(2026, 8, 23, 23, 59));
+        TimetablePeriod nextWeek = TimetableService.resolveNextWeek(LocalDateTime.of(2026, 8, 23, 23, 59));
+
+        assertEquals(MONDAY.plusDays(7), nextWeek.getStartDate());
+        assertEquals(thisWeek.getEndDate().plusDays(1), nextWeek.getStartDate());
+        assertEquals("Next week", nextWeek.getLabel());
+    }
+
+    @Test
     public void build_empty_returnsEmptyView() {
         TimetableView view = TimetableService.build(List.of(), TimetableService.resolveWeek(MONDAY));
 

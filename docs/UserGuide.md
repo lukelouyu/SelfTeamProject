@@ -108,10 +108,10 @@ accessibility information, or medical advice.
 | Accessibility | `facility validate` / `connection validate` | v1.0 |
 | Accessibility | `connection list/view/find ...` | v1.0 |
 | Accessibility | `route from/FACILITY to/FACILITY` | v2.0 |
-| Dashboard | `dashboard today\|tomorrow\|date/YYYY-MM-DD\|this week [detail]` | v2.0 |
-| Timetable | `timetable day/...` / `week/...` / `this week` | v2.0 |
+| Dashboard | `dashboard today\|tomorrow\|date/YYYY-MM-DD\|this week\|next week [detail]` | v2.0 |
+| Timetable | `timetable today\|tomorrow\|day/...\|week/...\|this week\|next week` | v2.0 |
 | Preferences | `preference view` / `set ...` / `reset` | v2.0 |
-| Recommendation | `recommend` / `this week` / `date/...` / `view` / `adopt` / `cancel` | v2.0 |
+| Recommendation | `recommend` / `this week` / `next week` / `today` / `tomorrow` / `date/...` / `view` / `adopt` / `cancel` | v2.0 |
 
 ## 6. Activity Commands
 
@@ -831,6 +831,7 @@ dashboard today [detail]
 dashboard tomorrow [detail]
 dashboard date/YYYY-MM-DD [detail]
 dashboard this week [detail]
+dashboard next week [detail]
 ```
 
 Shows how much is planned for a period, how much room is left, how energy/sensory-demanding it
@@ -839,9 +840,10 @@ entered. Read-only: it never adds, edits, or deletes an activity, never writes a
 never shows a confirmation prompt.
 
 `this week` means Monday through Sunday of the current week â€” the same definition `list this
-week` already uses, not a rolling seven-day window. `date/YYYY-MM-DD` accepts only that exact
-marker form (not a bare date); an invalid or non-existent date is rejected the same way `add`/`edit`
-already reject one. `detail` is a single optional trailing keyword.
+week` already uses, not a rolling seven-day window; `next week` is the Monday-Sunday week
+immediately following it. `date/YYYY-MM-DD` accepts only that exact marker form (not a bare date);
+an invalid or non-existent date is rejected the same way `add`/`edit` already reject one. `detail`
+is a single optional trailing keyword.
 
 Default output example:
 
@@ -888,14 +890,20 @@ them â€” self-reported planning data only, never a medical or performance j
 ## 10. Read-only Timetable: `timetable`
 
 ```text
+timetable today [detail]
+timetable tomorrow [detail]
 timetable day/YYYY-MM-DD [detail]
 timetable week/YYYY-MM-DD [compact|detail]
 timetable this week [compact|detail]
+timetable next week [compact|detail]
 ```
 
-Timetable is a read-only view over existing activities. A day request shows one calendar date.
-`week/DATE` accepts any valid date and shows the Monday-Sunday week containing it; `this week`
-uses the current Monday-Sunday week. Dates use strict `yyyy-MM-dd` format.
+Timetable is a read-only view over existing activities. A day request shows one calendar date;
+`today`/`tomorrow` are shorthand for `day/` with the current/next calendar date, exactly like
+`dashboard today`/`dashboard tomorrow`. `week/DATE` accepts any valid date and shows the
+Monday-Sunday week containing it; `this week` uses the current Monday-Sunday week, and `next week`
+is the Monday-Sunday week immediately following it - the same `this week`/`next week` boundaries
+`dashboard` and `list` use. Dates use strict `yyyy-MM-dd` format.
 
 Fixed activities appear under their day in chronological order:
 
@@ -1005,10 +1013,14 @@ and does not persist any recommendation until you explicitly adopt it.
 ```text
 recommend
 recommend this week
+recommend next week
 ```
 
-Both forms are equivalent. They generate one preview for the Monday-Sunday week containing today.
-Only incomplete, not-yet-adopted flexible activities inside that week are considered.
+`recommend` and `recommend this week` are equivalent: both generate one preview for the
+Monday-Sunday week containing today. `recommend next week` generates a preview for the following
+Monday-Sunday week instead - the same `this week`/`next week` boundary `dashboard` and `list`
+already use. Only incomplete, not-yet-adopted flexible activities inside the selected week are
+considered.
 
 The output includes:
 
@@ -1023,10 +1035,13 @@ but does not save any file and does not mutate your activities yet.
 ### 12.2 Generate a One-Day Recommendation
 
 ```text
+recommend today
+recommend tomorrow
 recommend date/YYYY-MM-DD
 ```
 
-Example:
+`today` and `tomorrow` are shorthand for `date/` with the current/next calendar date - exactly
+like `dashboard today`/`dashboard tomorrow`. Example:
 
 ```text
 recommend date/2026-08-15
@@ -1315,10 +1330,14 @@ dashboard today [detail]
 dashboard tomorrow [detail]
 dashboard date/YYYY-MM-DD [detail]
 dashboard this week [detail]
+dashboard next week [detail]
 
+timetable today [detail]
+timetable tomorrow [detail]
 timetable day/YYYY-MM-DD [detail]
 timetable week/YYYY-MM-DD [compact|detail]
 timetable this week [compact|detail]
+timetable next week [compact|detail]
 
 preference view
 preference set start/HH:mm [end/HH:mm] [buffer/MINUTES] [tomato/on|off]
@@ -1326,6 +1345,9 @@ preference reset
 
 recommend
 recommend this week
+recommend next week
+recommend today
+recommend tomorrow
 recommend date/YYYY-MM-DD
 recommend view
 recommend adopt

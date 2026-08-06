@@ -21,21 +21,39 @@ public class RecommendGenerateCommand extends Command {
     private final RecommendationManager recommendationManager;
     private final LocalDateTime now;
     private final LocalDate date;
+    private final boolean nextWeek;
 
+    /** Creates a command for a this-week (date null) or one-day (date supplied) proposal. */
     public RecommendGenerateCommand(ActivityManager activityManager, PreferenceManager preferenceManager,
             RecommendationManager recommendationManager, LocalDateTime now, LocalDate date) {
+        this(activityManager, preferenceManager, recommendationManager, now, date, false);
+    }
+
+    /**
+     * Creates a command for a this-week, next-week, or one-day proposal. date takes priority over
+     * nextWeek if both are somehow supplied; nextWeek is only consulted when date is null.
+     */
+    public RecommendGenerateCommand(ActivityManager activityManager, PreferenceManager preferenceManager,
+            RecommendationManager recommendationManager, LocalDateTime now, LocalDate date, boolean nextWeek) {
         this.activityManager = activityManager;
         this.preferenceManager = preferenceManager;
         this.recommendationManager = recommendationManager;
         this.now = now;
         this.date = date;
+        this.nextWeek = nextWeek;
     }
 
     @Override
     public CommandResult execute() {
-        RecommendationProposal proposal = date == null
-                ? RecommendationService.recommendThisWeek(activityManager, preferenceManager.getProfile(), now)
-                : RecommendationService.recommendDate(activityManager, preferenceManager.getProfile(), date, now);
+        RecommendationProposal proposal;
+        if (date != null) {
+            proposal = RecommendationService.recommendDate(activityManager, preferenceManager.getProfile(),
+                    date, now);
+        } else if (nextWeek) {
+            proposal = RecommendationService.recommendNextWeek(activityManager, preferenceManager.getProfile(), now);
+        } else {
+            proposal = RecommendationService.recommendThisWeek(activityManager, preferenceManager.getProfile(), now);
+        }
         recommendationManager.setProposal(proposal);
         List<Activity> previewActivities = RecommendationService.applyPreview(activityManager.getAll(), proposal);
         return new CommandResult(RecommendationFormatter.formatPreview(proposal, previewActivities));

@@ -131,6 +131,27 @@ class RecommendationServiceTest {
     }
 
     @Test
+    public void recommendNextWeek_considersOnlyNextWeeksActivitiesAndIsNeverClampedByNow() throws Exception {
+        LocalDate nextWeekMonday = MONDAY.plusDays(7);
+        FlexibleActivity thisWeek = new FlexibleActivity(3, "This week block", ActivityCategory.ACADEMIC, MONDAY,
+                LocalTime.of(10, 0), LocalTime.of(12, 0), 60, EnergyRating.of(4), SensoryRating.of(3), null, null);
+        FlexibleActivity nextWeek = new FlexibleActivity(4, "Next week block", ActivityCategory.ACADEMIC,
+                nextWeekMonday, LocalTime.of(9, 0), LocalTime.of(11, 0), 60, EnergyRating.of(4),
+                SensoryRating.of(3), null, null);
+        ActivityManager manager = managerWith(List.of(thisWeek, nextWeek));
+
+        RecommendationProposal proposal = RecommendationService.recommendNextWeek(manager,
+                PreferenceProfile.of(LocalTime.of(8, 0), LocalTime.of(20, 0), 0, TomatoSuggestion.OFF),
+                MONDAY.atTime(23, 59));
+
+        assertEquals("Next week", proposal.getTimetablePeriod().getLabel());
+        assertEquals(1, proposal.getPlacements().size());
+        assertEquals(4, proposal.getPlacements().get(0).activityId());
+        assertEquals(LocalTime.of(9, 0), proposal.getPlacements().get(0).startTime());
+        assertTrue(proposal.getUnscheduledActivityIds().isEmpty());
+    }
+
+    @Test
     public void recommendDate_wholeWindowElapsedByNow_leavesActivityUnscheduled() throws Exception {
         // Window 09:00-11:00, duration 60 -> latest possible start is 10:00. "now" is 12:00,
         // which is after every candidate start, so the activity must remain unscheduled and

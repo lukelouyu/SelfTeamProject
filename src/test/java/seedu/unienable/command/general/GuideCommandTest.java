@@ -168,6 +168,9 @@ class GuideCommandTest {
         assertTrue(feedback.startsWith("Recommended timetable"));
         assertTrue(!feedback.contains("Coming soon"));
         assertTrue(feedback.contains("recommend this week"));
+        assertTrue(feedback.contains("recommend next week"));
+        assertTrue(feedback.contains("recommend today"));
+        assertTrue(feedback.contains("recommend tomorrow"));
         assertTrue(feedback.contains("recommend date/YYYY-MM-DD"));
         assertTrue(feedback.contains("recommend view"));
         assertTrue(feedback.contains("recommend adopt"));
@@ -464,7 +467,9 @@ class GuideCommandTest {
         assertTrue(!feedback.contains("Coming soon"));
         assertTrue(feedback.contains("dashboard today"));
         assertTrue(feedback.contains("dashboard this week detail"));
-        assertTrue(feedback.contains("Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week [detail]"));
+        assertTrue(feedback.contains("dashboard next week"));
+        assertTrue(feedback.contains(
+                "Format: dashboard today|tomorrow|date/YYYY-MM-DD|this week|next week [detail]"));
     }
 
     @Test
@@ -478,9 +483,11 @@ class GuideCommandTest {
 
         assertTrue(feedback.startsWith("Text timetable"));
         assertTrue(!feedback.contains("Coming soon"));
+        assertTrue(feedback.contains("timetable today|tomorrow [detail]"));
         assertTrue(feedback.contains("timetable day/YYYY-MM-DD [detail]"));
         assertTrue(feedback.contains("timetable week/YYYY-MM-DD [compact|detail]"));
         assertTrue(feedback.contains("timetable this week [compact|detail]"));
+        assertTrue(feedback.contains("timetable next week [compact|detail]"));
         assertTrue(feedback.contains("read-only"));
     }
 

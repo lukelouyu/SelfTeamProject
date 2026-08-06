@@ -9,12 +9,16 @@ import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.RelativeDateResolver;
 import seedu.unienable.logic.timetable.TimetableService;
 import seedu.unienable.model.timetable.TimetableMode;
 import seedu.unienable.model.timetable.TimetablePeriod;
 import seedu.unienable.parser.common.DateTimeParser;
 
-/** Parses one-shot day and week timetable requests. */
+/**
+ * Parses one-shot day and week timetable requests: {@code today}, {@code tomorrow},
+ * {@code this week}, {@code next week}, {@code day/YYYY-MM-DD}, or {@code week/YYYY-MM-DD}.
+ */
 public class TimetableCommandParser {
     private static final String DAY_MARKER = "day/";
     private static final String WEEK_MARKER = "week/";
@@ -23,7 +27,8 @@ public class TimetableCommandParser {
      * Parses the text after {@code timetable}.
      *
      * @param activityManager manager the resulting command will read
-     * @param now injected current time used only for {@code this week}
+     * @param now injected current time, used to resolve {@code today}/{@code tomorrow}/
+     *     {@code this week}/{@code next week}
      * @param args text after the command word
      * @return parsed timetable command
      * @throws MissingInputException if a selector or marker value is absent
@@ -35,18 +40,33 @@ public class TimetableCommandParser {
         String trimmed = args.trim();
         if (trimmed.isEmpty()) {
             throw new MissingInputException(
-                    "timetable requires day/YYYY-MM-DD, week/YYYY-MM-DD, or this week.");
+                    "timetable requires day/YYYY-MM-DD, week/YYYY-MM-DD, today, tomorrow, this week, "
+                            + "or next week.");
         }
         String[] words = trimmed.split("\\s+");
         TimetablePeriod period;
         int consumedWords;
-        if ("this".equalsIgnoreCase(words[0])) {
+        if ("today".equalsIgnoreCase(words[0])) {
+            period = TimetableService.resolveDay(RelativeDateResolver.today(now));
+            consumedWords = 1;
+        } else if ("tomorrow".equalsIgnoreCase(words[0])) {
+            period = TimetableService.resolveDay(RelativeDateResolver.tomorrow(now));
+            consumedWords = 1;
+        } else if ("this".equalsIgnoreCase(words[0])) {
             if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
                 throw new InvalidCommandException("Unknown timetable option \"this"
                         + (words.length > 1 ? " " + words[1] : "")
                         + "\"; only \"this week\" is supported.");
             }
             period = TimetableService.resolveThisWeek(now);
+            consumedWords = 2;
+        } else if ("next".equalsIgnoreCase(words[0])) {
+            if (words.length < 2 || !"week".equalsIgnoreCase(words[1])) {
+                throw new InvalidCommandException("Unknown timetable option \"next"
+                        + (words.length > 1 ? " " + words[1] : "")
+                        + "\"; only \"next week\" is supported.");
+            }
+            period = TimetableService.resolveNextWeek(now);
             consumedWords = 2;
         } else if (startsWith(words[0], DAY_MARKER)) {
             period = TimetableService.resolveDay(parseDateValue(words[0], DAY_MARKER));

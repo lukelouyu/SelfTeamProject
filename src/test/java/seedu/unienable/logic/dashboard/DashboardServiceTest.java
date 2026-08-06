@@ -95,6 +95,17 @@ class DashboardServiceTest {
     }
 
     @Test
+    public void resolveNextWeek_isExactlyOneWeekAfterResolveThisWeek() {
+        LocalDateTime wednesday = LocalDateTime.of(2026, 8, 19, 9, 0);
+
+        DashboardPeriod nextWeek = DashboardService.resolveNextWeek(wednesday);
+
+        assertEquals("Next week", nextWeek.getLabel());
+        assertEquals(LocalDateTime.of(2026, 8, 24, 0, 0), nextWeek.getStart());
+        assertEquals(LocalDateTime.of(2026, 8, 31, 0, 0), nextWeek.getEnd());
+    }
+
+    @Test
     public void getCapacityMinutes_dayAndWeekPeriods_returnExpectedMinutes() {
         DashboardPeriod day = DashboardService.resolveToday(LocalDateTime.of(2026, 8, 17, 0, 0));
         DashboardPeriod week = DashboardService.resolveThisWeek(LocalDateTime.of(2026, 8, 17, 0, 0));

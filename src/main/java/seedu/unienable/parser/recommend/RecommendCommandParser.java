@@ -12,6 +12,7 @@ import seedu.unienable.exception.InvalidCommandException;
 import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.RelativeDateResolver;
 import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.logic.recommend.RecommendationManager;
 import seedu.unienable.logic.recommend.RecommendationService;
@@ -30,6 +31,18 @@ public class RecommendCommandParser {
         }
         if ("this week".equalsIgnoreCase(trimmed)) {
             return new RecommendGenerateCommand(activityManager, preferenceManager, recommendationManager, now, null);
+        }
+        if ("next week".equalsIgnoreCase(trimmed)) {
+            return new RecommendGenerateCommand(activityManager, preferenceManager, recommendationManager, now,
+                    null, true);
+        }
+        if ("today".equalsIgnoreCase(trimmed)) {
+            return new RecommendGenerateCommand(activityManager, preferenceManager, recommendationManager, now,
+                    RelativeDateResolver.today(now));
+        }
+        if ("tomorrow".equalsIgnoreCase(trimmed)) {
+            return new RecommendGenerateCommand(activityManager, preferenceManager, recommendationManager, now,
+                    RelativeDateResolver.tomorrow(now));
         }
         if ("view".equalsIgnoreCase(trimmed)) {
             return new RecommendViewCommand(activityManager, recommendationManager);

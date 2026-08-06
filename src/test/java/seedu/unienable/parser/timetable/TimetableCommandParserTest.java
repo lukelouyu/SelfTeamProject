@@ -3,6 +3,7 @@ package seedu.unienable.parser.timetable;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDateTime;
 
@@ -52,6 +53,9 @@ class TimetableCommandParserTest {
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "WEEK/2026-08-19 COMPACT"));
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "This Week Detail"));
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "DAY/2026-08-19 DETAIL"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "TODAY DETAIL"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "Tomorrow"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "Next Week Detail"));
     }
 
     @Test
@@ -82,13 +86,62 @@ class TimetableCommandParserTest {
     @Test
     public void parse_unknownSelector_throwsInvalidCommandException() {
         assertThrows(InvalidCommandException.class,
-                () -> parser.parse(activityManager, NOW, "today"));
+                () -> parser.parse(activityManager, NOW, "yesterday"));
+    }
+
+    @Test
+    public void parse_todayEveryMode_succeeds() {
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "today"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "today detail"));
+    }
+
+    @Test
+    public void parse_tomorrowEveryMode_succeeds() {
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "tomorrow"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "tomorrow detail"));
+    }
+
+    @Test
+    public void parse_today_resolvesToTodaysDateSameAsDayMarker() throws Exception {
+        String viaMarker = parser.parse(activityManager, NOW, "day/2026-08-19").execute().getFeedback();
+        String viaKeyword = parser.parse(activityManager, NOW, "today").execute().getFeedback();
+
+        assertEquals(viaMarker, viaKeyword);
+        assertTrue(viaKeyword.contains("Period: 2026-08-19"));
+    }
+
+    @Test
+    public void parse_tomorrow_resolvesToTomorrowsDateSameAsDayMarker() throws Exception {
+        String viaMarker = parser.parse(activityManager, NOW, "day/2026-08-20").execute().getFeedback();
+        String viaKeyword = parser.parse(activityManager, NOW, "tomorrow").execute().getFeedback();
+
+        assertEquals(viaMarker, viaKeyword);
+        assertTrue(viaKeyword.contains("Period: 2026-08-20"));
+    }
+
+    @Test
+    public void parse_nextWeekEveryMode_succeeds() {
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "next week"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "next week compact"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "next week detail"));
+    }
+
+    @Test
+    public void parse_nextWithoutWeek_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(activityManager, NOW, "next"));
     }
 
     @Test
     public void parse_thisWithoutWeek_throwsInvalidCommandException() {
         assertThrows(InvalidCommandException.class,
                 () -> parser.parse(activityManager, NOW, "this"));
+    }
+
+    @Test
+    public void parse_todayCompact_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(activityManager, NOW, "today compact"));
     }
 
     @Test
@@ -113,8 +166,8 @@ class TimetableCommandParserTest {
 
     @Test
     public void parse_rejectionsNeverTouchManager() {
-        String[] rejected = { "", "week/", "day/", "today", "this", "day/2026-08-19 compact",
-            "week/2026-08-19 wide", "this week compact detail" };
+        String[] rejected = { "", "week/", "day/", "yesterday", "this", "next", "today compact",
+            "day/2026-08-19 compact", "week/2026-08-19 wide", "this week compact detail" };
         for (String input : rejected) {
             try {
                 parser.parse(activityManager, NOW, input);

@@ -64,6 +64,27 @@ class DashboardCommandParserTest {
     }
 
     @Test
+    public void parse_nextWeek_succeeds() {
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "next week"));
+    }
+
+    @Test
+    public void parse_nextWeekDetail_succeeds() {
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "next week detail"));
+    }
+
+    @Test
+    public void parse_nextWithoutWeek_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> parser.parse(activityManager, NOW, "next"));
+    }
+
+    @Test
+    public void parse_nextWeekExtraTrailingText_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(activityManager, NOW, "next week extra"));
+    }
+
+    @Test
     public void parse_bareDashboard_throwsMissingInputException() {
         assertThrows(MissingInputException.class, () -> parser.parse(activityManager, NOW, ""));
     }
@@ -118,13 +139,14 @@ class DashboardCommandParserTest {
     public void parse_caseInsensitiveSelectorAndDetailKeyword_succeeds() {
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "TODAY DETAIL"));
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "This Week Detail"));
+        assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "Next Week Detail"));
         assertDoesNotThrow(() -> parser.parse(activityManager, NOW, "DATE/2026-08-20"));
     }
 
     @Test
     public void parse_everyRejectCase_neverTouchesActivityManager() {
         String[] rejectedInputs = { "", "date/", "date/2026-02-30", "2026-08-15", "week", "unknown",
-            "today detail detail", "tomorrow extra", "date/2026-08-15 unexpected" };
+            "today detail detail", "tomorrow extra", "date/2026-08-15 unexpected", "next", "next week extra" };
         for (String input : rejectedInputs) {
             try {
                 parser.parse(activityManager, NOW, input);

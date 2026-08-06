@@ -39,6 +39,20 @@ public final class RecommendationService {
     }
 
     /**
+     * Builds a weekly proposal for the Monday-Sunday week immediately following
+     * {@link #recommendThisWeek}'s week. Every candidate date in this proposal is necessarily
+     * after now's date, so the not-before-now clamp in {@link #effectiveEarliestStart} never
+     * restricts anything here - it is still passed through for the same reason every other
+     * builder receives it, rather than special-cased away.
+     */
+    public static RecommendationProposal recommendNextWeek(ActivityManager activityManager,
+            PreferenceProfile preferences, LocalDateTime now) {
+        TimetablePeriod timetablePeriod = TimetableService.resolveNextWeek(now);
+        return build(activityManager, preferences, timetablePeriod,
+                DashboardService.resolveNextWeek(now), now);
+    }
+
+    /**
      * Builds a one-day proposal for the specified date.
      *
      * @param now the current date and time, threaded down from the application's single

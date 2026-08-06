@@ -49,9 +49,35 @@ class RecommendCommandParserTest {
         assertInstanceOf(RecommendGenerateCommand.class,
                 parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "this week"));
         assertInstanceOf(RecommendGenerateCommand.class,
+                parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "next week"));
+        assertInstanceOf(RecommendGenerateCommand.class,
+                parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "today"));
+        assertInstanceOf(RecommendGenerateCommand.class,
+                parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "tomorrow"));
+        assertInstanceOf(RecommendGenerateCommand.class,
                 parser.parse(activityManager, preferenceManager, recommendationManager, NOW, "date/2099-01-01"));
         assertEquals(0, activityManager.size());
         assertTrue(recommendationManager.getProposal().isEmpty());
+    }
+
+    @Test
+    public void parse_todayAndTomorrow_areCaseInsensitiveAndEquivalentToExplicitDate() throws Exception {
+        RecommendGenerateCommand viaToday = (RecommendGenerateCommand) parser.parse(activityManager,
+                preferenceManager, recommendationManager, NOW, "TODAY");
+        RecommendGenerateCommand viaDate = (RecommendGenerateCommand) parser.parse(activityManager,
+                preferenceManager, recommendationManager, NOW, "date/2026-08-17");
+
+        assertEquals(viaDate.execute().getFeedback(), viaToday.execute().getFeedback());
+    }
+
+    @Test
+    public void parse_nextWeek_isCaseInsensitiveAndProducesTheFollowingWeeksPeriod() throws Exception {
+        RecommendGenerateCommand command = (RecommendGenerateCommand) parser.parse(activityManager,
+                preferenceManager, recommendationManager, NOW, "Next Week");
+
+        command.execute();
+        assertEquals("Next week",
+                recommendationManager.getProposal().orElseThrow().getTimetablePeriod().getLabel());
     }
 
     @Test

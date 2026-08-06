@@ -75,6 +75,78 @@ real code and docs (not trusting the report's prose) was most of this session's 
   across every diagram, not just `RecommendationSequence`) — see Section 4 below for the exact
   commands, and re-run them before trusting a release-readiness claim beyond what's recorded here.
 
+## 0b. Final independent verification and push (2026-08-06, Claude Code)
+
+A second pass, in the same session, independently re-ran every gate above from scratch (not
+reusing the earlier summary) before pushing. Every command below was actually executed against
+commit `1d4144b` (the tip of the 11 commits described in Section 0a, i.e. `ac056ad..1d4144b`), not
+assumed from memory.
+
+**Final verification status**
+- Date/time: 2026-08-06, local (`MPST`)
+- Branch: `main`
+- Pre-push tip commit verified: `1d4144b` (this note's own commit lands on top of it as the 12th
+  commit, and is what actually gets pushed together with the 11 below it)
+- Compared against `origin/main` = `07cf8a7` (re-fetched immediately before verifying; unchanged
+  from the original baseline - no remote drift, no rebase needed)
+- 11 local commits ahead of `origin/main` at verification time (`ac056ad`..`1d4144b`)
+- Java `17.0.18`, Gradle `7.6.2` (both re-confirmed via `java -version`/`./gradlew --version`)
+- `git diff --stat origin/main...HEAD`: 39 files changed, 1760 insertions(+), 295 deletions(-) -
+  inspected file-by-file; no IDE files, logs, archives, credentials, or unrelated changes present
+- `git diff --check origin/main...HEAD`: clean (no whitespace errors)
+- `./gradlew clean test`: **1192 passed, 0 failed** (fresh run, `grep -c PASSED`/`FAILED` on the
+  raw output, not the earlier session's cached number)
+- `./gradlew checkstyleMain checkstyleTest`: clean, both tasks
+- `./gradlew javadoc`: **100 warnings, 0 errors** - matches the long-standing pre-existing baseline
+  this file has cited every session since `804ce09` (Section 2); zero new warnings introduced
+- `./gradlew shadowJar releaseZip`: both succeed; `build/distributions/unienable.zip` contains
+  exactly `unienable.jar` and `data/academic-calendar.txt` (verified with `unzip -l`, 3 entries
+  including the `data/` directory marker)
+- `bash text-ui-test/runtest.sh`: **`Test passed!`** against the real built JAR
+- Working tree: clean before this HANDOVER edit (`git status` showed "nothing to commit" both
+  before and after every read-only verification step above)
+
+**Clean-extraction smoke test** (fresh temp directory outside the repo, extracted from the
+just-built `unienable.zip`, real system clock at the time was `2026-08-06 13:53`):
+1. Application starts - welcome banner shown.
+2. `add` a Friday `2026-08-14` `ACADEMIC` lecture, then `recur 1 week 1 to 13` - previewed
+   `Weeks: 1, 2, ..., 13`, confirmed with `y`, **11 new activities created in one command**.
+3. Recurrence dates jump `2026-09-18` (Week 6) -> `2026-10-02` (Week 7), confirming the recess
+   gap is skipped correctly by calendar lookup, not generated into.
+4. `find next week c/ACADEMIC` - accepted, correctly returned the Week-1-in-next-week occurrence.
+5. `dashboard next week` - accepted, `Period: 2026-08-10 to 2026-08-16`.
+6. `timetable tomorrow` - accepted, `Period: 2026-08-07` (real tomorrow).
+7. `timetable next week` - accepted, `Period: Next week`, showing the Friday occurrence correctly.
+8. `recommend today` does not propose elapsed slots - **verified live, not just by unit test**: a
+   flexible activity with an already-elapsed `00:00-00:10` window (injected via a direct
+   `activities.txt` row, restarted - `add` itself correctly still refuses to create an
+   already-past-window activity, confirming that guard is intact) came back
+   `Unscheduled activity IDs: [14]`, while a second activity with a genuinely future `23:00-23:59`
+   window on the same day was proposed at `23:00 -> 23:30` in the same run - proving the clamp
+   rejects only the truly elapsed one, not the whole day.
+9. `recommend next week` - accepted, `Period: Next week`.
+10. Restarted the JAR after `bye`; `list` showed all 14 activities (12 recurred/source + 2
+    flexible), including the manually-injected elapsed-window row, loaded with zero warnings -
+    persistence confirmed.
+
+**Documentation and diagram verification**
+- Markdown links: the one cross-file anchor in the whole doc set
+  (`README.md` -> `docs/UserGuide.md#15-data-storage`) resolves against `docs/UserGuide.md`'s
+  actual `## 15. Data Storage` heading. Zero broken links found.
+- PlantUML/PNG pairing: 21 `.puml`, 21 `.png` - matched 1:1.
+- `RecommendationSequence.png` re-rendered fresh from the committed `.puml` via the local
+  `plantuml.jar` and diffed byte-for-byte identical to the committed PNG - not stale.
+- Zero mojibake sequences (`â€`/`â”` families) in `UserGuide.md`, `DeveloperGuide.md`, `README.md`,
+  `AboutUs.md`, `lukelouyu.md`, or this file.
+- No document claims recurrence previously required split ranges - the one relevant sentence
+  (User Guide Section 6.12) correctly says a single range "does **not** need to be split," never
+  that it used to.
+- No stale test-count or v1.0-only claims remain in `AboutUs.md`/`lukelouyu.md`/`README.md`.
+
+**Decision:** every gate passed. Proceeding to push per Step 9 of this verification's own
+instructions - see the commit immediately following this one, and `git log`/`git status` after
+that push for the final proof this section cannot self-report in advance.
+
 ## 0. Handoff to Codex (2026-08-02) — start here
 
 The user is moving the rest of v2.0 development from Claude to **Codex**. This section is a

@@ -5,6 +5,103 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0c. Preference-boundary fix verification (2026-08-06, Claude Code) — read this first, push blocked
+
+**`origin/main` has diverged and this commit was NOT pushed as of this note** - see the last
+paragraph before starting any push. Everything else below (the fix, tests, docs) is verified and
+committed locally.
+
+**Approved fix verified:** commit `a378643` ("fix: enforce preferred daily start/end as a hard
+boundary in recommend") was independently re-inspected end-to-end, not just re-summarized -
+`git show --stat`/`--check`, `git diff origin/main...HEAD --check` (both clean), and a fresh read
+of the actual `RecommendationService.java` content confirmed it touches only
+`RecommendationService.java` (production fix), `RecommendationServiceTest.java` (109 lines, purely
+additive - 0 lines removed, no `@Test`/`@Disabled` touched), `GuideCommand.java` (guide text),
+`docs/UserGuide.md`/`docs/DeveloperGuide.md` (docs), and `text-ui-test/EXPECTED.TXT` (fixture
+sync). `chooseBestSlot` and `SlotScore.betterThan` are byte-for-byte untouched by this commit,
+confirmed via `git diff b07e577 a378643 -- RecommendationService.java | grep chooseBestSlot` (no
+output) - the "do not redesign chooseBestSlot in this batch" instruction was already honoured
+before this instruction even arrived, since it was never touched in the first place.
+
+**Root cause (re-confirmed by reading, not re-derived from memory):** `preferredRangePenalty` was
+only ever consulted inside `SlotScore.betterThan` as the *lowest*-priority tie-break field, and
+that method's very first check (`if (!candidate.equals(current)) { return candidate.isBefore(current); }`)
+compares the two candidates' clock times and returns immediately whenever they differ - which they
+always do for one activity's own `validSlots` (strictly increasing, distinct one-minute steps). So
+the preferred-range penalty could only ever matter when comparing two candidates with the *exact
+same* start time, which never happens within one activity's own slot list. `validSlots()`/`fits()`
+never excluded an out-of-range candidate either. Net effect: preferred start/end had no real
+scheduling effect at all, confirmed by the PE-style review's exact reproduction (jogging placed at
+06:30 when preferred start was 07:30 and 07:30 itself was reachable).
+
+**Fix:** `validSlots()` now searches only `effectiveEarliestStart(activity, preferences, now)` to
+`effectiveLatestEnd(activity, preferences)` - the intersection of the activity's own window and
+`preferences.getPreferredStart()`/`getPreferredEnd()`, with `now` composing on top as a further
+lower bound on today's date (`max(activity.earliestStart, preferences.preferredStart, now rounded
+up to the next whole minute)`). A `Duration.between(earliestStart, effectiveEnd).toMinutes() <
+durationMinutes` guard runs before any `LocalTime.minusMinutes()` arithmetic, so a too-narrow (or
+inverted) intersection returns an empty slot list - the activity surfaces as unscheduled - instead
+of risking a wrapped-past-midnight range. The original `FlexibleActivity`'s stored window is never
+mutated; only `RecommendedPlacement`/preview copies carry a start time (unchanged from the
+pre-existing `copyOf`/`applyPreview` design).
+
+**7 new regression tests + 2 edge cases**, all in `RecommendationServiceTest`, matching the
+review's exact scenarios: `recommendDate_windowStartsBeforePreferredStart_placementClampedToPreferredStart`,
+`..._windowEntirelyAfterPreferredEnd_leavesActivityUnscheduled`,
+`..._narrowerPreferredWindow_placementClampedToPreferredStart`,
+`..._narrowerPreferredWindow_windowAfterPreferredEndLeavesUnscheduled`,
+`..._todayNowLaterThanPreferredStart_clampsToNowNotPreferredStart`,
+`..._preferredWindowNarrowerThanDuration_leavesUnscheduledWithoutCrashing`, and
+`..._windowFullyInsidePreferredRange_isUnaffectedByPreference`.
+
+**Full validation, run fresh this pass, not reused:**
+- `./gradlew clean test`: **1199 passed, 0 failed** (1192 + 7 new; matches exactly)
+- `checkstyleMain`/`checkstyleTest`: clean (one `LineLengthCheck` violation from an over-long test
+  method name was found and fixed - `recommendDate_preferredWindowNarrowerThanDuration_leavesUnscheduledWithoutCrashing`
+  - before this pass, confirming the gate was actually exercised, not rubber-stamped)
+- `javadoc`: **100 warnings, 0 errors** - unchanged baseline
+- `shadowJar`/`releaseZip`: both succeed; `unienable.zip` contains exactly `unienable.jar` +
+  `data/academic-calendar.txt` (verified with `unzip -l`)
+- `bash text-ui-test/runtest.sh`: **`Test passed!`**
+- **Clean-extraction smoke test against the real built JAR**, real system clock `2026-08-06
+  16:45`-`16:48`: all 8 scenarios (A-H) from the review, reproduced live, not just asserted by
+  JUnit - A: 06:30-09:30/45min window, preferred 07:30-21:00 -> placed `07:30-08:15`. B:
+  21:15-22:30/45min, preferred 07:30-21:00 -> unscheduled. C: 08:00-12:00/90min, preferred
+  09:30-18:30 -> placed `09:30-11:00`. D: 18:00-21:00/60min, preferred 09:30-18:30 -> unscheduled.
+  E (today, via direct `activities.txt` injection since `add` itself still correctly refuses an
+  already-past same-day window): preferred start 07:30, activity earliest 06:00, run at real time
+  `16:47:37` -> placed `16:48` (now correctly wins over both other lower bounds). F: 10-minute
+  preferred range (`00:00-00:10`) against a 60-minute-duration activity -> unscheduled, zero
+  exceptions in output. G: Tomato OFF vs ON on the same activity -> identical `09:00-10:00`
+  placement both times, only the advisory suggestion line differs. H: buffer `20`, fixed activity
+  ending `10:00`, flexible window starting `10:00` -> placed `10:20-10:50`, confirming buffer
+  enforcement is unchanged.
+
+**Documentation verified consistent** (User Guide §4/§11/§12.6, built-in `guide preference`/
+`guide recommend` text, Developer Guide §16) - all state that preferred daily start/end is a hard
+scheduling boundary (not advisory), the effective window is the intersection of the activity's own
+window and the preferred range, today additionally applies the current-time clamp, an activity is
+left unscheduled when the intersection can't fit its duration, a same-day `add`/`edit` start time
+must be strictly after now (User Guide §4, previously undocumented), and Tomato remains advisory
+only. Developer Guide §16 explicitly records `chooseBestSlot`'s earliest-wins behaviour and the
+resulting unreachable buffer/energy/sensory scoring fields as **known technical debt / future
+recommender work** - not redesigned in this pass, per instruction.
+
+**Working tree:** clean before and after this HANDOVER.md edit.
+
+**Push status: BLOCKED, not attempted.** `git fetch origin` before starting this verification
+showed `origin/main` had moved from `b07e577` (this repo's own last-pushed commit) to `9dca6a9`
+("Update AboutUs.md to remove solo project note", same GitHub account, pushed directly outside
+this session, unrelated file). `git merge-base --is-ancestor b07e577 9dca6a9` confirms `9dca6a9` is
+a normal descendant of `b07e577` (not a rewritten/forced history), but it is **not** an ancestor of
+local `HEAD` (`a378643`, built on top of the same `b07e577`) - the two commits are siblings, so a
+plain `git push origin main` would be rejected as non-fast-forward. Resolving this needs a merge
+commit (safe, no file overlap with `a378643` - `9dca6a9` only touches `docs/AboutUs.md`) or a
+rebase (never do this without being asked). Per this session's explicit instruction to stop and
+report rather than resolve divergence unilaterally, **no merge/rebase/push was attempted.** The
+next action needs the user's explicit choice: merge (creates one merge commit, no conflicts
+expected) or something else they prefer.
+
 ## 0a. Bug-fix, date-selector, and doc-repair pass (2026-08-06, Claude Code) — read this first
 
 A new session (Claude Code, not Codex — the handoff below never actually happened, or wasn't

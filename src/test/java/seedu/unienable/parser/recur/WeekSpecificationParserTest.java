@@ -31,6 +31,22 @@ class WeekSpecificationParserTest {
     }
 
     @Test
+    public void parse_rangeWithEqualStartAndEnd_returnsThatSingleWeek() throws Exception {
+        assertEquals(List.of(5), parser.parse("5 to 5"));
+    }
+
+    @Test
+    public void parse_nonIntegerRangeEndpoint_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> parser.parse("A to 13"));
+        assertThrows(InvalidCommandException.class, () -> parser.parse("1 to B"));
+    }
+
+    @Test
+    public void parse_zeroStartOfRange_throwsInvalidCommandException() {
+        assertThrows(InvalidCommandException.class, () -> parser.parse("0 to 13"));
+    }
+
+    @Test
     public void parse_blank_throwsMissingInputException() {
         assertThrows(MissingInputException.class, () -> parser.parse("  "));
     }

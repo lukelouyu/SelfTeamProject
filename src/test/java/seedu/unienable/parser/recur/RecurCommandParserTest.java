@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,37 @@ class RecurCommandParserTest {
                 "1 week 1 to 6; 7 to 13");
 
         assertEquals(11, command.getPlan().getOccurrencesToCreate().size());
+    }
+
+    @Test
+    public void parse_singleRangeAcrossRecess_matchesSplitRangeInOneCommand() throws Exception {
+        // "1 to 13" is one inclusive range spanning the Week 6/Week 7 recess gap in the fixture
+        // calendar (Week 6 ends 2026-09-18, Week 7 starts 2026-09-28). It must not need to be
+        // split into "1 to 6; 7 to 13" to cover the full semester in one recur command.
+        RecurCommand splitRange = new RecurCommandParser(calendarFile).parse(manager,
+                "1 week 1 to 6; 7 to 13");
+        RecurCommand singleRange = new RecurCommandParser(calendarFile).parse(manager,
+                "1 week 1 to 13");
+
+        assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13),
+                splitRange.getPlan().getRequestedWeeks());
+        assertEquals(splitRange.getPlan().getRequestedWeeks(), singleRange.getPlan().getRequestedWeeks());
+        assertEquals(splitRange.getPlan().getOccurrencesToCreate().size(),
+                singleRange.getPlan().getOccurrencesToCreate().size());
+        assertEquals(11, singleRange.getPlan().getOccurrencesToCreate().size());
+    }
+
+    @Test
+    public void parse_singleWeekRangePlusSourceWeek_generatesExactlyOneOccurrence() throws Exception {
+        // "5 to 5" is a range whose start equals its end - it must be accepted and resolve to
+        // exactly the one week, generating exactly one new occurrence (the fixture source
+        // activity is in Week 1, which the spec must also include and which is always skipped as
+        // the source itself, not counted as a new occurrence).
+        RecurCommand command = new RecurCommandParser(calendarFile).parse(manager, "1 week 1;5 to 5");
+
+        assertEquals(List.of(1, 5), command.getPlan().getRequestedWeeks());
+        assertEquals(1, command.getPlan().getOccurrencesToCreate().size());
+        assertEquals(5, command.getPlan().getOccurrencesToCreate().get(0).getWeekNumber());
     }
 
     @Test

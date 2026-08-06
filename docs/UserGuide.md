@@ -504,13 +504,25 @@ recur TASK_ID week WEEK_SPEC
 ```
 
 `WEEK_SPEC` is one or more week numbers or inclusive ranges, separated by semicolons â€” for
-example `1 to 6; 7 to 13` or `3;7;9;11`. Week numbers, whitespace around `;`/`to`, and the word
-`to` itself are all case-insensitive and flexible; zero/negative numbers, a reversed range (e.g.
-`5 to 3`), blank items, commas, hyphens, duplicate or overlapping weeks, and trailing text are all
-rejected. There is no fixed maximum week number in the application itself â€” every week you list is
-checked against `data/academic-calendar.txt` (see Section 14), so what's valid depends entirely on
-what that file defines for the target activity's academic year and semester. The specification
-must include the instructional week containing the source activity; omitting it is rejected.
+example `1 to 13`, `1 to 6; 7 to 13`, or `3;7;9;11`. Both endpoints of a range are inclusive, and a
+range whose start equals its end (e.g. `5 to 5`) is accepted and resolves to that one week. Week
+numbers, whitespace around `;`/`to`, and the word `to` itself are all case-insensitive and
+flexible; zero/negative numbers, a reversed range (e.g. `5 to 3`), blank items, commas, hyphens,
+duplicate or overlapping weeks, and trailing text are all rejected. There is no fixed maximum week
+number in the application itself â€” every week you list is checked against
+`data/academic-calendar.txt` (see Section 14), so what's valid depends entirely on what that file
+defines for the target activity's academic year and semester. The specification must include the
+instructional week containing the source activity; omitting it is rejected.
+
+A single range spanning a recess or other non-instructional gap does **not** need to be split into
+separate `recur` commands: `1 to 13` covers a full semester in one command exactly like
+`1 to 6; 7 to 13` does, because each requested week number is looked up independently in
+`data/academic-calendar.txt` rather than assumed to be exactly seven days after the previous one -
+a gap between, say, Week 6 and Week 7 in the calendar file is simply not generated, with no special
+syntax needed to skip it. Whichever form you use, the whole command is all-or-nothing: every
+candidate date is resolved and checked for conflicts before anything is created, and if any one
+candidate fails, the error names its teaching week and calendar date, and no activities are added
+at all - not even the ones for weeks that would have succeeded.
 
 Only a `FIXED` activity in the `ACADEMIC` category is eligible, and only if its description
 contains one of these whole-word, case-insensitive session terms: `lecture`/`lec`,

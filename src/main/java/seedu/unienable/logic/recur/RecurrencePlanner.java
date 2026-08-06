@@ -66,7 +66,12 @@ public class RecurrencePlanner {
             }
 
             FixedActivity candidate = copyForDate(source, targetDate, nextId + toCreate.size());
-            activityManager.checkNoConflicts(candidate, -1);
+            try {
+                activityManager.checkNoConflicts(candidate, -1);
+            } catch (DuplicateActivityException e) {
+                throw new DuplicateActivityException(
+                        "Week " + weekNumber + " (" + targetDate + "): " + e.getMessage());
+            }
             toCreate.add(new PlannedOccurrence(weekNumber, candidate));
         }
 

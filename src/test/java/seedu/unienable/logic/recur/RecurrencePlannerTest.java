@@ -89,10 +89,37 @@ class RecurrencePlannerTest {
                 ActivityCategory.ACADEMIC, LocalDate.of(2026, 8, 21), LocalTime.of(17, 0),
                 LocalTime.of(19, 0), EnergyRating.of(2), SensoryRating.of(2), null, null));
 
-        assertThrows(DuplicateActivityException.class, () -> planner.plan(source,
-                List.of(1, 2, 3), RecurrenceTestData.calendar(), manager));
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> planner.plan(source, List.of(1, 2, 3), RecurrenceTestData.calendar(), manager));
+
+        // Atomicity: the whole plan is rejected before any mutation - not just the one conflicting
+        // week - and the message identifies exactly which teaching week and calendar date failed.
+        assertTrue(exception.getMessage().contains("Week 2"));
+        assertTrue(exception.getMessage().contains("2026-08-21"));
         assertEquals(2, manager.size());
         assertEquals(3, manager.getNextId());
+    }
+
+    @Test
+    public void plan_conflictInFinalRequestedWeek_stillRejectsWholePlanWithNoPartialAdditions()
+            throws Exception {
+        ActivityManager manager = new ActivityManager();
+        FixedActivity source = RecurrenceTestData.cs2113Lecture(manager.getNextId());
+        manager.add(source);
+        // Week 13 target date for the CS2113 Friday lecture is 2026-11-13.
+        manager.add(new FixedActivity(manager.getNextId(), "Blocking event",
+                ActivityCategory.ACADEMIC, LocalDate.of(2026, 11, 13), LocalTime.of(16, 30),
+                LocalTime.of(17, 0), EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> planner.plan(source, List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13),
+                        RecurrenceTestData.calendar(), manager));
+
+        assertTrue(exception.getMessage().contains("Week 13"));
+        assertTrue(exception.getMessage().contains("2026-11-13"));
+        // Every earlier week (1-12) would have succeeded in isolation, proving this is a
+        // last-candidate failure, not a first-candidate one - and still nothing was added.
+        assertEquals(2, manager.size());
     }
 
     @Test

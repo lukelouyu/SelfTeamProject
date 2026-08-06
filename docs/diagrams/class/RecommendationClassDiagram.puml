@@ -56,6 +56,8 @@ class RecommendationService <<static>> {
       date : LocalDate) : RecommendationProposal
   + {static} applyPreview(activities : List<Activity>,
       proposal : RecommendationProposal) : List<Activity>
+  + {static} hasOutOfPreferredRangePlacement(proposal : RecommendationProposal,
+      preferences : PreferenceProfile) : boolean
 }
 
 class RecommendationFormatter <<static>> {
@@ -87,6 +89,8 @@ RecommendCommandParser ..> RecommendViewCommand : creates
 RecommendCommandParser ..> RecommendCancelCommand : creates
 RecommendCommandParser ..> RecommendAdoptCommand : creates
 RecommendCommandParser ..> RecommendationManager : reads active proposal
+RecommendCommandParser ..> PreferenceManager : reads current profile
+RecommendCommandParser ..> RecommendationService : hasElapsedPlacement(),\nhasOutOfPreferredRangePlacement()
 
 RecommendGenerateCommand --> RecommendationService : build preview
 RecommendGenerateCommand --> RecommendationManager : store proposal
@@ -128,6 +132,13 @@ note bottom of RecommendationService
   activities, preference data, and the
   target period, then returns one preview
   proposal without mutating stored state.
+  Preferred start/end is a hard constraint
+  enforced at generation (slot search never
+  offers an out-of-range candidate), at
+  proposal construction (final guard before
+  a placement is added), and again at adopt
+  time against the *current* profile via
+  hasOutOfPreferredRangePlacement().
 end note
 
 @enduml

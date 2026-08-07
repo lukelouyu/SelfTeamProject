@@ -6,9 +6,16 @@ repository_dir="$(cd -- "$script_dir/.." && pwd)"
 
 "$repository_dir/gradlew" --no-daemon -p "$repository_dir" clean shadowJar
 
-mapfile -t jar_paths < <(find "$repository_dir/build/libs" -maxdepth 1 -type f -name '*.jar' -print)
-if [[ ${#jar_paths[@]} -ne 1 ]]; then
-    echo "Expected exactly one JAR in build/libs, found ${#jar_paths[@]}."
+jar_path=""
+jar_count=0
+for candidate in "$repository_dir"/build/libs/*.jar; do
+    if [[ -f "$candidate" ]]; then
+        jar_path="$candidate"
+        jar_count=$((jar_count + 1))
+    fi
+done
+if [[ $jar_count -ne 1 ]]; then
+    echo "Expected exactly one JAR in build/libs, found $jar_count."
     exit 1
 fi
 
@@ -24,7 +31,7 @@ rm -rf -- "$script_dir/data"
 mkdir -- "$script_dir/data"
 cp -- "$script_dir/academic-calendar-test.txt" "$script_dir/data/academic-calendar.txt"
 
-java -jar "${jar_paths[0]}" < "$script_dir/input.txt" > "$script_dir/ACTUAL.TXT"
+java -jar "$jar_path" < "$script_dir/input.txt" > "$script_dir/ACTUAL.TXT"
 
 cp -- "$script_dir/EXPECTED.TXT" "$script_dir/EXPECTED-UNIX.TXT"
 dos2unix "$script_dir/EXPECTED-UNIX.TXT" "$script_dir/ACTUAL.TXT"

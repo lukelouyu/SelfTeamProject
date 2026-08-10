@@ -1,10 +1,15 @@
 # UniEnable Codebase Audit Report
 
-**Audit date:** 2026-08-10
-**Scope:** Full verification and remediation pass over eight findings from a prior audit, covering
-correctness (P1-P3), documentation drift (P3), and maintainability (P4).
-**Change range:** `a84146d..6952cda` (see [Final Git State](#9-validation-results) for the exact
-range this report covers)
+**Audit date:** 2026-08-10, second pass 2026-08-10/11
+**Scope:** Full verification and remediation pass over eight findings from a prior audit (Sections
+1-11), covering correctness (P1-P3), documentation drift (P3), and maintainability (P4); plus a
+second-pass re-audit of the resulting v2.1 release that found and fixed three further correctness
+defects and one diagram-accuracy issue (Section 12 onward, which supersedes Section 11's verdict).
+**Change range:** first pass `a84146d..6952cda`; second pass `6952cda..dc62a95` (see
+[Final Git State](#9-validation-results) for the exact range this report covers)
+
+**Read Section 12 first if you only have time for one section** - it re-verifies every first-pass
+finding against the actual v2.1 snapshot and documents everything found and fixed since.
 
 ---
 
@@ -894,6 +899,24 @@ their `.puml` sources before committing.
 No environmental limitations were encountered; every listed pipeline command executed to
 completion successfully.
 
+**Second pass (post-v2.1, Findings 9-12):**
+
+| Command | Result |
+|---|---|
+| `./gradlew clean test checkstyleMain checkstyleTest javadoc verifyReleaseZip` | **PASS** - 1261 tests, 0 failures, 0 errors, 0 skipped; Checkstyle and Javadoc clean; release ZIP built and its extracted-distribution smoke test passed |
+| `text-ui-test/runtest.sh` (Git Bash) | **PASS** - "Test passed!", no fixture changes needed (none of the three fixes change any scripted command's normal-path output) |
+| Manual release smoke test (via rebuilt JAR), Finding 9 | **PASS** - seeded `activities.txt` with an activity at `id 2147483647`; `mark`, `list`, `delete`, and `reset all` (menu shown and executed) all completed with no `[Error]`, exactly reproducing and then confirming the fix for the reported end-to-end scenario |
+| Manual release smoke test (via rebuilt JAR), Finding 9 (edit, non-stale path) | **PASS** - confirms the new post-confirmation hook does not interfere with an ordinary, non-stale edit |
+| Manual release smoke test (via rebuilt JAR), Finding 10 | **PASS** - seeded a source activity at `id 2147483646` plus the existing `text-ui-test` synthetic academic calendar fixture; `recur 2147483646 week 3;7;9;11` produced `[Error] Invalid input: not enough activity IDs remain to create this many recurring sessions.` instead of the prior generic internal-error message |
+
+Finding 11's exact reproduction scenario (a placement/edit elapsing *during* the confirmation
+wait) is inherently a real-time race that the CLI's injectable-time seam is not exposed to
+manually reproduce through the packaged JAR alone; it is instead covered deterministically by
+`ApplicationRunnerTest`'s two new end-to-end tests, which simulate the wait via a
+`Supplier<LocalDateTime>` that advances between the command's dispatch-time check and its
+post-confirmation `validateBeforeExecution` call - both were confirmed to fail without the fix and
+pass with it. No environmental limitations were encountered in this second pass either.
+
 ---
 
 ## 10. Remaining Issues
@@ -915,7 +938,15 @@ completion successfully.
 
 ---
 
-## 11. Final Release Recommendation
+## 11. Final Release Recommendation (superseded - see Section 12)
+
+The original text of this section, written after the first audit pass and before v2.1 was tagged,
+said `READY`. An independent re-audit of the resulting v2.1 snapshot found three further real
+defects - see Section 12 below, which supersedes this section's verdict. The final, current
+recommendation is at the end of Section 12.
+
+<details>
+<summary>Original Section 11 text (superseded)</summary>
 
 ```text
 READY
@@ -931,3 +962,441 @@ deferred (Finding 8) is a maintainability improvement with no behavioural risk e
 Guide, Developer Guide, and every affected diagram are synchronized with the final source. The
 full validation pipeline (tests, Checkstyle, Javadoc, shadowJar, build, text-UI regression, and a
 manual release smoke test) passes cleanly, and the working tree is clean.
+
+</details>
+
+---
+
+## 12. Second-Pass Re-Audit (post-v2.1): ID-Exhaustion Transaction Bug, Recur Capacity Error, Post-Confirmation Staleness
+
+After v2.1 was tagged and released, an independent re-audit of that exact snapshot re-verified
+every Section 4 finding's current status (table below) and additionally found three new/remaining
+correctness problems - two reproduced end-to-end through the real CLI flow - plus one diagram
+accuracy issue in the newly-split adoption diagram. Per this report's own "verify before changing"
+rule, each was independently re-derived from current source before any fix was written.
+
+### Section 4 findings re-verified against the v2.1 snapshot
+
+| Finding | Status at v2.1 | Assessment |
+|---|---|---|
+| Dijkstra `int` overflow / OOM | Confirmed fixed | `long` cumulative distance + reconstruction cycle guard, correct |
+| Runtime persistence failure rollback | Confirmed fixed | `RuntimeException` follows the same rollback path as `StorageException` |
+| Duplicate Add/Edit prefixes | Confirmed fixed | Duplicate markers rejected via `FieldParser.rejectDuplicateMarkers` |
+| Date-dependent E2E tests | Confirmed fixed | Fixed/injected `TEST_NOW` seam in `UniEnableTest` |
+| Activity ID overflow | **New regression found** | Overflow itself prevented, but the resulting `idSpaceExhausted` state introduced a new transaction bug - see Finding 9 |
+| Stale recommender DG | Confirmed fixed | Old algorithm described historically, not as current behaviour |
+| Date/time duplication | Confirmed deliberately deferred | Reason already documented (Finding 7) |
+| Large-class refactoring | Confirmed reasonably deferred | Correct to avoid unnecessary churn (Finding 8) |
+| Recommendation sequence diagram split | Confirmed done, with one accuracy issue | Split correctly done; adoption diagram's loop didn't match source - see Finding 12 |
+
+### Finding 9 - ID exhaustion disabled every unrelated mutating command
+
+```text
+Priority: P2/P3 correctness regression
+Classification: Confirmed
+Verification status: Reproduced end-to-end through the real CLI (a data file seeded with an
+    activity at id Integer.MAX_VALUE, then "mark <that id>" and "reset all")
+Affected components: app.CommandTransactionExecutor, logic.ActivityManager,
+    command.general.ResetCommand
+Impact: Once the activity-ID space was exhausted, every mutating command - mark, unmark, delete,
+    edit, reset all, topic mutations, preference mutations, everything - failed with a generic
+    "[Error] An unexpected internal error occurred" before its own execute() even started, because
+    every mutating command's pre-execution snapshot unconditionally called the now-throwing
+    getNextId(). Reset all, the one command that should be able to recover from this state, could
+    not run either.
+```
+
+#### Description
+
+The Finding 5 fix (Section 4) correctly made `ActivityManager.getNextId()` throw
+`IllegalStateException` once the ID space is exhausted, so a caller that actually wants to
+allocate a new ID fails predictably instead of reusing or wrapping one. What that fix did not
+account for: `CommandTransactionExecutor.Snapshot`'s field initializer,
+`private final int nextId = activityManager.getNextId();`, ran for *every* mutating command's
+pre-execution snapshot, not only ones that allocate a new activity ID - so exhaustion transitively
+blocked every mutating command in the application. `ResetCommand.hasAnythingToReset()` had the
+same problem via its own `activityManager.getNextId() != 1` check, called both from
+`hasStateChange()` (via `CommandTransactionExecutor.execute()`) and from `getMenuPrompt()` (via
+`CommandConfirmationHandler`, before the transaction executor is even reached) - meaning the reset
+menu itself could not be shown, not merely its execution.
+
+#### Root Cause
+
+Two call sites used the throwing `getNextId()` for a purpose that must never throw: taking an
+exact pre-command snapshot for possible later restoration, and checking "has any ID ever been
+allocated" for a menu-visibility decision. Neither actually needed to *allocate* a new ID.
+
+#### Reproduction / Evidence
+
+Seeded `activities.txt` with `FIXED|2147483647|Old task|OTHERS|2099-01-01|09:00|10:00|1|1|
+INCOMPLETE||`, then ran `mark 2147483647` - failed with the generic internal-error message before
+this fix, with the activity still shown as incomplete by a following `list`. A second scenario -
+`delete 2147483647` then `reset all` - showed the reset menu could not be offered at all once the
+manager held zero activities but the ID space was still marked exhausted, since
+`hasAnythingToReset()`'s own `getNextId()` call threw first.
+
+#### Expected Behaviour
+
+An exhausted ID space blocks only what genuinely needs a new ID (`add`, `recur`'s batch
+allocation); every other mutating command, including `reset all`, continues to work normally.
+
+#### Actual Behaviour (pre-fix)
+
+Every mutating command's snapshot capture failed, regardless of whether it needed a new ID.
+
+#### Original Suggested Fix
+
+Represent ID allocation as explicit snapshot state (e.g. a small record carrying `nextId` and
+`exhausted`), captured and restored through non-throwing methods dedicated to that purpose;
+`CommandTransactionExecutor` must not call the public throwing `getNextId()` merely to take a
+snapshot. Fix `ResetCommand.hasAnythingToReset()` similarly.
+
+#### Final Implementation
+
+Exactly as suggested. `ActivityManager` gained a nested `public record IdAllocationState(int
+nextId, boolean idSpaceExhausted)`, a non-throwing `snapshotIdAllocation()` returning one, and a
+non-throwing `hasAllocatedAnyId()` (`idSpaceExhausted || nextId != 1`) for `ResetCommand`.
+`restoreState(...)` now takes an `IdAllocationState` and restores the exhaustion flag from it
+instead of unconditionally clearing it to `false` (a second, related bug the same re-audit
+flagged: a snapshot taken while genuinely exhausted used to silently un-exhaust the manager on
+rollback - now fixed by the same change, since `IdAllocationState` carries both fields together).
+`CommandTransactionExecutor.Snapshot` now captures via `snapshotIdAllocation()`.
+`ResetCommand.hasAnythingToReset()` now calls `hasAllocatedAnyId()`. A third, narrower call site -
+`ResetCommand`'s post-reset success message, which called `getNextId()` purely to report the
+value - was also given a non-throwing `tryGetNextId(): OptionalInt`, so a retained class-schedule
+activity that happens to hold the exhausted `Integer.MAX_VALUE` id cannot turn a successful reset
+into a rolled-back "unexpected internal error" either.
+
+#### Why This Implementation Was Chosen
+
+No deviation from the suggestion. The record-based `IdAllocationState` keeps the two fields
+(`nextId`, `idSpaceExhausted`) atomically bound together through capture/restore, which is exactly
+what prevents the related `restoreState` bug from recurring - a caller cannot accidentally restore
+one field without the other.
+
+#### Regression Tests
+
+- `ActivityManagerTest`: `hasAllocatedAnyId_freshManager_returnsFalse`,
+  `hasAllocatedAnyId_afterOneAdd_returnsTrue`,
+  `hasAllocatedAnyId_afterIdSpaceExhausted_returnsTrueWithoutThrowing`,
+  `tryGetNextId_freshManager_returnsPresentOne`,
+  `tryGetNextId_afterIdSpaceExhausted_returnsEmptyWithoutThrowing`,
+  `snapshotIdAllocation_capturesExhaustedStateWithoutThrowing`,
+  `restoreState_exhaustedSnapshot_restoresExhaustionFlagNotJustNextId`.
+- `ApplicationRunnerTest`: `mark_afterIdSpaceExhausted_stillSucceeds`,
+  `deleteThenResetAll_afterIdSpaceExhaustedAndNoActivitiesRemain_stillOffersMenu` - both reproduce
+  the exact end-to-end scenarios found during re-verification.
+
+#### Commit
+
+`2aee025 fix: rollback snapshots no longer blocked by exhausted ID space`
+
+---
+
+### Finding 10 - Recurrence ID-capacity exhaustion surfaced as a generic internal error
+
+```text
+Priority: P3
+Classification: Confirmed
+Verification status: Reproduced (constructed a source activity at Integer.MAX_VALUE - 1 and
+    requested enough weeks to overflow; confirmed the raw ArithmeticException propagated to the
+    application boundary's generic catch-all)
+Affected components: logic.recur.RecurrencePlanner
+Impact: An anticipated capacity limit (not enough activity IDs remain for a requested batch of
+    recurring sessions) was reported as "[Error] An unexpected internal error occurred" instead of
+    a clean validation message, because Math.addExact's checked-but-unchecked-exception-type
+    ArithmeticException was never translated into a domain exception.
+```
+
+#### Description
+
+The Finding 5 fix (Section 4) correctly replaced `RecurrencePlanner`'s raw `int` addition with
+`Math.addExact`, closing the silent-wraparound gap - but `Math.addExact` throws
+`ArithmeticException`, which is not a `UniEnableException` subtype, so it was never caught and
+reported as a domain-level validation failure the way every other early-rejection condition in
+`plan()` already is (all of them throw `InvalidActivityException`).
+
+#### Root Cause
+
+`Math.addExact` is the right *arithmetic* choice (checked, fails predictably) but the wrong
+*exception type* for a condition that is an anticipated, user-facing capacity limit rather than an
+unexpected programming error.
+
+#### Reproduction / Evidence
+
+`RecurrencePlannerTest.plan_nextIdNearIntegerMaxValue_...` (pre-existing from the first audit
+pass, then updated by this fix) constructs a source activity at `Integer.MAX_VALUE - 1` and
+requests 13 weeks; before this fix, `assertThrows(ArithmeticException.class, ...)` passed - proving
+the raw exception type reached the caller, which `ApplicationRunner`'s outer `catch
+(RuntimeException e)` would report generically.
+
+#### Expected Behaviour
+
+`recur`'s response to an ID-capacity limit reads like every other `recur` validation failure:
+`[Error] Invalid input: ...`, naming the actual problem.
+
+#### Actual Behaviour (pre-fix)
+
+`[Error] An unexpected internal error occurred. Enter guide for help.`
+
+#### Original Suggested Fix
+
+Preflight capacity using `long` arithmetic (e.g. `long lastRequiredId = (long) nextId +
+numberToCreate - 1;`) and reject cleanly with an existing domain exception if it exceeds
+`Integer.MAX_VALUE`, instead of relying on `Math.addExact`'s raw `ArithmeticException`.
+
+#### Final Implementation
+
+Replaced `Math.addExact(nextId, toCreate.size())` with an explicit `long candidateId = (long)
+nextId + toCreate.size();` followed by `if (candidateId > Integer.MAX_VALUE) { throw new
+InvalidActivityException("not enough activity IDs remain to create this many recurring
+sessions."); }` - computed per-candidate inside the existing loop (matching the method's existing
+per-candidate ID computation), using the same `InvalidActivityException` type every other
+early-rejection branch in this method already throws.
+
+#### Why This Implementation Was Chosen
+
+`InvalidActivityException` (not a new exception type) keeps this consistent with every other
+condition `plan()` already rejects the same way, and required no change to the method's declared
+`throws` clause, which already includes it. The check is computed once per iteration rather than
+as a single upfront preflight over the full `requestedWeeks` count, because the final `toCreate`
+size cannot be known in advance (some requested weeks are legitimately skipped for no-class days
+or already-existing occurrences) - preflighting against the requested-weeks count instead would
+reject some legitimate, mostly-skipped batches unnecessarily.
+
+#### Regression Tests
+
+`RecurrencePlannerTest.plan_nextIdNearIntegerMaxValue_throwsInvalidActivityExceptionInsteadOfWrappingCandidateId`
+(renamed and updated from the prior `..._throwsArithmeticException...` test) now asserts
+`InvalidActivityException` and its message instead of the raw `ArithmeticException`.
+
+#### Commit
+
+`2a64f1d fix: recur reports ID-capacity exhaustion as a domain error`
+
+---
+
+### Finding 11 - Time-sensitive validation went stale during the confirmation wait
+
+```text
+Priority: P2
+Classification: Confirmed
+Verification status: Reproduced end-to-end through the real CLI, for both recommend adopt and
+    edit, using a deterministic injected clock that advances between a command's dispatch and its
+    post-confirmation execution (no real elapsed wall-clock time needed to reproduce it
+    deterministically in a test)
+Affected components: app.ApplicationRunner, command.recommend.RecommendAdoptCommand,
+    command.activity.crud.EditCommand, parser.activity.EditCommandParser
+Impact: now was sampled exactly once per command, at dispatch time - before a Confirmable
+    command's y/n prompt was even shown. A user can take a real amount of time to answer that
+    prompt; if a time-sensitive check's basis (a proposed recommendation start time, or an edit's
+    newly-requested start time) elapsed during that wait, the stale value was still silently
+    accepted, not just displayed with stale preview text.
+```
+
+#### Description
+
+Two independent call sites shared the same root cause. `RecommendCommandParser` checked
+`RecommendationService.hasElapsedPlacement(proposal, now)` once, at parse time, before
+`RecommendAdoptCommand`'s confirmation prompt was shown - `RecommendAdoptCommand.execute()` itself
+never re-checked staleness. `EditCommandParser` checked
+`DateTimeParser.requireNotPastIfToday(start, date, now)` once, also at parse time, before
+`EditCommand`'s confirmation prompt was shown - `EditCommand.execute()` never re-checked the
+newly-requested start time either. Both gaps exist only for `Confirmable` commands (the only ones
+with a genuine wait between `now` being sampled and execution actually happening); `add` is not
+`Confirmable` and has no such gap.
+
+#### Root Cause
+
+`now` was threaded through the parse pipeline and baked into already-validated field values or
+pre-computed booleans, with no mechanism for any command to ask "has time moved on since I was
+built?" immediately before it is allowed to mutate anything.
+
+#### Reproduction / Evidence
+
+Reproduced deterministically in `ApplicationRunnerTest` using a `Supplier<LocalDateTime>` that
+returns an early time for the first N calls (covering the command's own dispatch-time check) then
+a later time forever after (covering the moment right after confirmation) - no real elapsed time
+needed, since the injected supplier itself simulates the wait. For `recommend adopt`: a flexible
+activity with a 12:00-12:05 window, `now` = 10:00 at generation and at `recommend adopt`'s own
+dispatch (not yet stale, passes the original check), then `now` = 12:01 for the moment right after
+the user answers "y" - before this fix, adoption still proceeded and the activity was marked
+adopted at 12:00, a time already 1 minute in the past by the moment it was actually committed. For
+`edit`: `edit 1 from/12:01 to/12:30` with `now` = 10:00 at dispatch (not yet stale), then `now` =
+12:02 right after "y" - before this fix, the edit still saved a start time that had, by the moment
+of saving, already passed.
+
+#### Expected Behaviour
+
+A confirmation answered too late is rejected with a clear, specific error instead of silently
+executing against a value that was only valid a moment earlier.
+
+#### Actual Behaviour (pre-fix)
+
+Both commands proceeded normally; the persisted result silently carried an already-past time.
+
+#### Original Suggested Fix
+
+Add a lightweight pre-execution validation hook, e.g. a `PreExecutionValidatable` interface with
+`validateBeforeExecution(LocalDateTime now)`, called by `ApplicationRunner` with a freshly-sampled
+`now` after confirmation and immediately before transaction execution.
+`RecommendAdoptCommand` rechecks elapsed placements; `EditCommand` rechecks only the relevant time
+constraint if the edit actually supplied a date/start field.
+
+#### Final Implementation
+
+Exactly as suggested, with the exact interface shape proposed. `RecommendAdoptCommand` and
+`EditCommand` both now implement `Confirmable, PreExecutionValidatable`.
+`RecommendAdoptCommand.validateBeforeExecution` re-runs `RecommendationService.hasElapsedPlacement`
+against the fresh `now`, throwing the identical `InvalidCommandException` message
+`RecommendCommandParser` already uses for the dispatch-time check. `EditCommand` gained a
+constructor-supplied `boolean requiresFreshStartTimeCheck`, computed once by
+`EditCommandParser` using the exact same condition `buildFixed`/`buildFlexible` already use
+internally (`fields.containsKey("date/")` or the type-appropriate start-time marker) - so an edit
+that never touches timing is never re-checked, only one that actively supplies a new date/start
+value. `ApplicationRunner.processCommand` calls the hook via `instanceof PreExecutionValidatable
+validatable` immediately after `confirmationHandler.confirmIfNeeded` returns true and immediately
+before `transactionExecutor.execute(command)`.
+
+#### Why This Implementation Was Chosen
+
+The interface-based, opt-in design was chosen over the alternative of adding a `now` parameter to
+`Command.execute()` itself, which would have touched every command class's signature for a
+property only two commands need. `EditCommand` re-deriving "does this edit touch timing" by
+comparing old vs. new activity values (rather than being told explicitly) was considered and
+rejected: it would change semantics for the edge case of a user re-supplying the *same* date/start
+value that was already there, which the original parser condition (`fields.containsKey(...)`,
+based on textual presence, not value change) does not treat specially - passing the already-
+computed boolean through preserves that exact original semantics instead of subtly redefining it.
+
+#### Regression Tests
+
+- `ApplicationRunnerTest.recommendAdopt_placementElapsesDuringConfirmationWait_rejectsInsteadOfAdopting`
+- `ApplicationRunnerTest.edit_startTimeElapsesDuringConfirmationWait_rejectsInsteadOfSaving`
+- `EditCommandTest`'s existing suite updated for the new constructor parameter (no new assertions
+  needed there - the parameter defaults to `false`, i.e. no re-check, in every existing test case,
+  since none of them are about timing).
+
+#### Commit
+
+`cd87438 fix: re-validate time-sensitive commands after confirmation, not just at dispatch`
+
+---
+
+### Finding 12 - Adoption sequence diagram's loop did not match the two-phase source
+
+```text
+Priority: Documentation accuracy
+Classification: Confirmed
+Verification status: Confirmed by inspection (RecommendAdoptCommand.java's actual two-loop
+    structure compared directly against the .puml)
+Affected components: docs/diagrams/sequence/RecommendationAdoptionSequence.puml/.png
+Impact: Documentation-only. The diagram showed one interleaved "validate one placement, mutate
+    that placement, validate the next" loop; RecommendAdoptCommand actually validates every
+    placement first, then mutates every placement second - a reader relying on the diagram alone
+    would believe a bad third placement could leave the first two already mutated, which is
+    exactly the partial-mutation risk the real two-phase design prevents.
+```
+
+#### Description
+
+The split performed in the prior session (Section 0g of `HANDOVER.md`) correctly separated
+generation/view/cancel from adoption into two diagrams, but the adoption diagram's `loop each
+proposed placement` block combined `getById` + validation + `setAdoptedStartTime` in one iteration
+per placement, when `RecommendAdoptCommand.execute()` actually runs two separate loops: one that
+validates every placement and collects `AdoptionTarget`s, and a second, later one that only then
+applies `setAdoptedStartTime` to every collected target.
+
+#### Root Cause
+
+The diagram was drawn from a reasonable but incorrect assumption about the loop shape, without
+cross-checking `RecommendAdoptCommand.java`'s exact two-loop structure line by line.
+
+#### Expected / Actual Behaviour
+
+N/A - source behaviour was always correct (and already correctly described in DG prose, per
+Section 7 of this report); only the diagram was wrong.
+
+#### Original Suggested Fix
+
+```text
+loop validate every proposed placement
+    getById()
+    validate type/date/window
+    append AdoptionTarget
+end
+loop apply validated targets
+    setAdoptedStartTime()
+end
+```
+
+Also reconsider the snapshot note, since the actual snapshot is owned by
+`CommandTransactionExecutor`, not directly by `ApplicationRunner` - either label the flow as
+simplified or show the executor.
+
+#### Final Implementation
+
+Exactly as suggested for the loop split. For the snapshot note: labelled it explicitly as
+simplified, pointing to the dedicated `MutationRollbackSequence` diagram for the full
+`CommandTransactionExecutor`-based flow, rather than adding that participant here - re-introducing
+it would reproduce the complexity the original generation/adoption split was meant to reduce.
+While already updating this diagram, also added the new `validateBeforeExecution(now)` step (from
+Finding 11) between confirmation and the snapshot, with its own stale-during-confirmation-wait
+branch, since that step did not exist yet when the diagram was first split.
+
+#### Why This Implementation Was Chosen
+
+The "simplified, labelled" approach was chosen over drawing `CommandTransactionExecutor` into this
+diagram because the whole point of the earlier split was a smaller, single-purpose diagram per
+concern; a reader who needs the full transactional detail already has a diagram built exactly for
+that.
+
+#### Regression Tests
+
+Not applicable (diagram-only). Re-rendered via the same `plantuml.jar` toolchain and visually
+verified against the `.puml` source before committing.
+
+#### Commit
+
+`dc62a95 docs: fix adoption diagram's two-phase accuracy and add re-validation step`
+
+---
+
+### Second-pass test coverage summary
+
+| Test class | New tests | Finding protected |
+|---|---|---|
+| `ActivityManagerTest` | 7 | Finding 9 |
+| `ApplicationRunnerTest` | 4 | Findings 9, 11 |
+| `RecurrencePlannerTest` | 0 new (1 updated in place) | Finding 10 |
+| `EditCommandTest` | 0 new (8 updated for new constructor param) | Finding 11 |
+
+Total: 1250 tests after the first audit pass -> 1261 tests after this second pass.
+
+### Second-pass remaining issues (P4, not addressed)
+
+- **`AccessibilityDisclaimer` package placement.** `command.accessibility.common
+  .AccessibilityDisclaimer` is presentation text, referenced by `ui.accessibility.RouteFormatter`
+  - a `ui` class reaching back into a `command` package. Moving it into `ui.accessibility` (or
+  another neutral presentation package) would remove that reverse dependency. Not addressed in
+  this pass; flagged as P4 cleanup, not a correctness issue.
+- **`ValidationReportFormatter` package placement.** Sits under command-related code despite being
+  a formatter. Same category as above - P4, not addressed.
+
+## 13. Final Release Recommendation (current)
+
+```text
+READY
+```
+
+All eight findings from the first audit pass remain correctly resolved (Section 4, re-verified
+against the v2.1 snapshot in the table at the top of Section 12). All three new findings from this
+second pass (Findings 9-11) are fixed, each with regression tests that reproduce the exact
+end-to-end scenario and fail without the fix, verified via a full test-suite re-run (1261 tests, 0
+failures) after each change. The one diagram-accuracy issue (Finding 12) is corrected and
+re-verified against source. Two low-priority P4 package-placement observations remain
+intentionally unaddressed, consistent with this report's standing "correctness first" priority
+order. User Guide, Developer Guide, and every affected diagram are synchronized with the final
+source as of this second pass. See Section 9 for this pass's validation pipeline results (updated
+after this section was written) and the top-level session summary for the final git/tag/release
+state.

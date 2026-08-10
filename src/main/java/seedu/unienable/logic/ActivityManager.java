@@ -21,28 +21,40 @@ public class ActivityManager {
     private final List<Activity> activities = new ArrayList<>();
     private final ActivityConflictChecker conflictChecker = new ActivityConflictChecker();
     private int nextId = 1;
+    // Once every int ID up to and including Integer.MAX_VALUE has been consumed, no further int
+    // can represent "the next ID" at all - nextId itself is left at Integer.MAX_VALUE (its last
+    // valid value, never re-incremented) and this flag is the only source of truth for whether it
+    // is still available to hand out.
+    private boolean idSpaceExhausted;
     private ActivityOrder defaultOrder = ActivityOrder.CHRONOLOGICAL;
 
-    /** Returns the ID the next added activity will receive. */
+    /**
+     * Returns the ID the next added activity will receive.
+     *
+     * @throws IllegalStateException if every int ID has already been consumed
+     */
     public int getNextId() {
+        requireIdSpaceAvailable();
         return nextId;
     }
 
     /**
      * Replaces every stored activity with the given previously-saved activities, without
      * re-validating duplicates or overlaps, and syncs the next-ID counter past the highest loaded
-     * ID. Used to restore trusted data at startup; ordinary mutation should go through add()
-     * instead, which does validate.
+     * ID (or marks the ID space exhausted if the highest loaded ID is {@code Integer.MAX_VALUE}).
+     * Used to restore trusted data at startup; ordinary mutation should go through add() instead,
+     * which does validate.
      *
      * @param loadedActivities the activities loaded from storage
      */
     public void loadAll(List<Activity> loadedActivities) {
         activities.clear();
         activities.addAll(loadedActivities);
-        nextId = 1;
+        long candidateNextId = 1;
         for (Activity activity : activities) {
-            nextId = Math.max(nextId, activity.getId() + 1);
+            candidateNextId = Math.max(candidateNextId, (long) activity.getId() + 1);
         }
+        applyNextId(candidateNextId);
     }
 
     /**
@@ -56,9 +68,9 @@ public class ActivityManager {
      * @throws IllegalArgumentException if the supplied next ID would collide with a snapshot ID
      */
     public void restoreState(List<Activity> snapshot, int snapshotNextId, ActivityOrder snapshotOrder) {
-        int minimumNextId = 1;
+        long minimumNextId = 1;
         for (Activity activity : snapshot) {
-            minimumNextId = Math.max(minimumNextId, activity.getId() + 1);
+            minimumNextId = Math.max(minimumNextId, (long) activity.getId() + 1);
         }
         if (snapshotNextId < minimumNextId) {
             throw new IllegalArgumentException("snapshot next ID would collide with an activity");
@@ -66,6 +78,7 @@ public class ActivityManager {
         activities.clear();
         activities.addAll(snapshot);
         nextId = snapshotNextId;
+        idSpaceExhausted = false;
         defaultOrder = snapshotOrder;
     }
 
@@ -76,15 +89,17 @@ public class ActivityManager {
      * @throws DuplicateActivityException if it exactly duplicates an existing activity, or (for a
      *     FixedActivity) overlaps another fixed activity on the same date
      * @throws IllegalArgumentException if the activity does not carry the current next ID
+     * @throws IllegalStateException if every int ID has already been consumed
      */
     public void add(Activity activity) throws DuplicateActivityException {
-        if (activity.getId() != nextId) {
-            throw new IllegalArgumentException("expected activity ID " + nextId
+        int expectedId = getNextId();
+        if (activity.getId() != expectedId) {
+            throw new IllegalArgumentException("expected activity ID " + expectedId
                     + " but received " + activity.getId());
         }
         conflictChecker.checkNoConflicts(activity, -1, activities);
         activities.add(activity);
-        nextId++;
+        advanceNextId();
     }
 
     /**
@@ -99,12 +114,20 @@ public class ActivityManager {
      * @throws DuplicateActivityException if any candidate exactly duplicates, or (for a
      *     FixedActivity) overlaps, existing or same-batch data
      * @throws IllegalArgumentException if a candidate's ID is not the expected consecutive value
+     * @throws IllegalStateException if every int ID has already been consumed, or the batch would
+     *     need an ID beyond {@code Integer.MAX_VALUE}
      */
     public void addAllAtomically(List<? extends Activity> candidates) throws DuplicateActivityException {
+        int startId = getNextId();
+        long finalNextId = (long) startId + candidates.size();
+        if (finalNextId > ((long) Integer.MAX_VALUE) + 1L) {
+            throw new IllegalStateException("Activity ID space cannot fit " + candidates.size()
+                    + " more activities: only " + (Integer.MAX_VALUE - (long) startId + 1) + " ID(s) remain.");
+        }
         List<Activity> validated = new ArrayList<>(activities);
         for (int index = 0; index < candidates.size(); index++) {
             Activity candidate = candidates.get(index);
-            int expectedId = nextId + index;
+            int expectedId = startId + index;
             if (candidate.getId() != expectedId) {
                 throw new IllegalArgumentException("expected activity ID " + expectedId
                         + " but received " + candidate.getId());
@@ -113,7 +136,39 @@ public class ActivityManager {
             validated.add(candidate);
         }
         activities.addAll(candidates);
-        nextId += candidates.size();
+        applyNextId(finalNextId);
+    }
+
+    private void requireIdSpaceAvailable() {
+        if (idSpaceExhausted) {
+            throw new IllegalStateException("Activity ID space is exhausted: no further activity IDs are "
+                    + "available.");
+        }
+    }
+
+    private void advanceNextId() {
+        if (nextId == Integer.MAX_VALUE) {
+            idSpaceExhausted = true;
+        } else {
+            nextId++;
+        }
+    }
+
+    /**
+     * Sets nextId/idSpaceExhausted from a freshly computed candidate next-ID value that may
+     * itself already be one past {@code Integer.MAX_VALUE}.
+     *
+     * @param candidateNextId the next ID to hand out, or {@code Integer.MAX_VALUE + 1} if the ID
+     *     space is exhausted
+     */
+    private void applyNextId(long candidateNextId) {
+        if (candidateNextId > Integer.MAX_VALUE) {
+            idSpaceExhausted = true;
+            nextId = Integer.MAX_VALUE;
+        } else {
+            idSpaceExhausted = false;
+            nextId = (int) candidateNextId;
+        }
     }
 
     /**
@@ -512,6 +567,7 @@ public class ActivityManager {
     public void resetAll() {
         activities.clear();
         nextId = 1;
+        idSpaceExhausted = false;
         defaultOrder = ActivityOrder.CHRONOLOGICAL;
     }
 }

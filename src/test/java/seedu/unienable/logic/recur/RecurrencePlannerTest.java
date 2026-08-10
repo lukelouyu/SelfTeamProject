@@ -148,6 +148,21 @@ class RecurrencePlannerTest {
     }
 
     @Test
+    public void plan_nextIdNearIntegerMaxValue_throwsArithmeticExceptionInsteadOfWrappingCandidateId()
+            throws Exception {
+        // plan() computes each candidate's ID as nextId + toCreate.size(); with nextId already at
+        // Integer.MAX_VALUE, the second occurrence's ID would silently wrap into a negative,
+        // already-invalid candidate ID instead of failing predictably.
+        ActivityManager manager = new ActivityManager();
+        FixedActivity source = RecurrenceTestData.cs2113Lecture(Integer.MAX_VALUE - 1);
+        manager.loadAll(List.of(source));
+        assertEquals(Integer.MAX_VALUE, manager.getNextId());
+
+        assertThrows(ArithmeticException.class, () -> planner.plan(source,
+                List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), RecurrenceTestData.calendar(), manager));
+    }
+
+    @Test
     public void plan_completedSource_copiesFieldsButNewOccurrenceIsIncomplete() throws Exception {
         ActivityManager manager = new ActivityManager();
         FixedActivity source = RecurrenceTestData.cs2113Lecture(manager.getNextId());

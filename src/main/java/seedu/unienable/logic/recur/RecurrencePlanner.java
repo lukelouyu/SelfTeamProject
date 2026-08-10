@@ -65,7 +65,12 @@ public class RecurrencePlanner {
                 continue;
             }
 
-            FixedActivity candidate = copyForDate(source, targetDate, nextId + toCreate.size());
+            // Checked arithmetic: nextId comes from ActivityManager.getNextId(), which already
+            // guarantees it is a valid available ID, but the batch offset added here could still
+            // overflow int range in the (astronomically unlikely) case where nextId is already
+            // close to Integer.MAX_VALUE - fail predictably instead of silently wrapping into a
+            // bogus candidate ID.
+            FixedActivity candidate = copyForDate(source, targetDate, Math.addExact(nextId, toCreate.size()));
             try {
                 activityManager.checkNoConflicts(candidate, -1);
             } catch (DuplicateActivityException e) {

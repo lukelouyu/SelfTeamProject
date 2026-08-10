@@ -788,6 +788,89 @@ class ActivityManagerTest {
     }
 
     @Test
+    public void loadAll_highestLoadedIdIsIntegerMaxValue_marksIdSpaceExhausted() throws Exception {
+        // A loaded id of Integer.MAX_VALUE means there is no valid int left to represent "the
+        // next id" - Math.max(1, id + 1) used to silently overflow to Integer.MIN_VALUE and then
+        // reset nextId back down to 1, masking the fact that the ID was ever taken at all.
+        ActivityManager manager = new ActivityManager();
+
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE)));
+
+        assertEquals(1, manager.size());
+        IllegalStateException exception = assertThrows(IllegalStateException.class, manager::getNextId);
+        assertTrue(exception.getMessage().contains("exhausted"));
+    }
+
+    @Test
+    public void add_consumesFinalValidId_thenExhaustsIdSpace() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE - 1)));
+        assertEquals(Integer.MAX_VALUE, manager.getNextId());
+
+        manager.add(newFixedActivity(Integer.MAX_VALUE, "Last possible activity",
+                LocalTime.of(12, 0), LocalTime.of(13, 0)));
+
+        assertEquals(2, manager.size());
+        assertThrows(IllegalStateException.class, manager::getNextId);
+    }
+
+    @Test
+    public void add_afterIdSpaceExhausted_throwsIllegalStateExceptionWithoutMutating() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE)));
+        FixedActivity rejected = newFixedActivity(1, "Should never be added",
+                LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+        assertThrows(IllegalStateException.class, () -> manager.add(rejected));
+
+        assertEquals(1, manager.size(), "an exhausted ID space must reject the add without mutating state");
+    }
+
+    @Test
+    public void addAllAtomically_batchWouldExceedIntegerMaxValue_throwsIllegalStateExceptionWithoutMutating()
+            throws Exception {
+        // Only one ID (Integer.MAX_VALUE itself) remains available; a 2-activity batch cannot fit
+        // and must be rejected atomically before either candidate is validated or added.
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE - 1)));
+        FixedActivity first = newFixedActivity(Integer.MAX_VALUE, "First", LocalTime.of(9, 0), LocalTime.of(10, 0));
+        FixedActivity second = newFixedActivity(1, "Second", LocalTime.of(11, 0), LocalTime.of(12, 0));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> manager.addAllAtomically(List.of(first, second)));
+
+        assertTrue(exception.getMessage().contains("Activity ID space cannot fit"));
+        assertEquals(1, manager.size(), "the batch must be rejected atomically, not partially applied");
+        assertEquals(Integer.MAX_VALUE, manager.getNextId(), "the single remaining ID must still be available");
+    }
+
+    @Test
+    public void addAllAtomically_batchExactlyFillsToIntegerMaxValue_commitsAndThenExhausts() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE - 2)));
+        FixedActivity first = newFixedActivity(
+                Integer.MAX_VALUE - 1, "First", LocalTime.of(12, 0), LocalTime.of(13, 0));
+        FixedActivity second = newFixedActivity(Integer.MAX_VALUE, "Second", LocalTime.of(14, 0), LocalTime.of(15, 0));
+
+        manager.addAllAtomically(List.of(first, second));
+
+        assertEquals(3, manager.size());
+        assertThrows(IllegalStateException.class, manager::getNextId);
+    }
+
+    @Test
+    public void resetAll_afterIdSpaceExhausted_clearsExhaustionAndRestartsAtOne() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE)));
+
+        manager.resetAll();
+
+        assertEquals(1, manager.getNextId());
+        manager.add(newFixedActivity(manager.getNextId(), "After reset", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+        assertEquals(1, manager.getById(1).getId());
+    }
+
+    @Test
     public void resetAll_clearsActivitiesResetsNextIdAndDefaultOrder() throws Exception {
         ActivityManager manager = new ActivityManager();
         manager.add(newFixedActivity(manager.getNextId(), "First", LocalTime.of(9, 0), LocalTime.of(10, 0)));

@@ -614,7 +614,11 @@ current source at all" and was removed by the whole-day-optimization rewrite alo
 of `SlotScore`, consistent with the adjacent paragraph. The already-accurate whole-day-optimization
 narrative, boundary-enforcement pipeline description, and `RecommendationClassDiagram`/
 `RecommendationSequence` diagrams were left untouched, since they were independently confirmed
-accurate against current source and diagram cross-references.
+accurate against current source and diagram cross-references. (`RecommendationSequence.puml`/
+`.png` were later split into `RecommendationGenerationSequence`/`RecommendationAdoptionSequence`
+in a separate follow-up diagramming pass, requested and completed after this audit - see
+`HANDOVER.md` §0g; that split was a readability improvement, not a correctness fix, and does not
+change this finding's verification.)
 
 #### Why This Implementation Was Chosen
 

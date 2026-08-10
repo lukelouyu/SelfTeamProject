@@ -1,0 +1,97 @@
+@startuml
+title Validating and Adopting a Recommendation
+
+skinparam shadowing false
+hide footbox
+autonumber
+
+actor User
+participant ApplicationRunner as Runner
+participant CommandDispatcher as Dispatcher
+participant RecommendCommandParser as Parser
+participant RecommendationService as Service
+participant RecommendationManager as ProposalStore
+participant RecommendAdoptCommand as Adopt
+participant RecommendationFormatter as Formatter
+participant ActivityManager as Manager
+participant Storage
+participant Ui
+
+== Adopt proposal ==
+
+User -> Runner : recommend adopt
+Runner -> Dispatcher : dispatch(input, now)
+Dispatcher -> Parser : parse(...)
+Parser -> ProposalStore : getProposal()
+ProposalStore --> Parser : active proposal
+Parser -> Service : hasElapsedPlacement(proposal, now)
+
+alt proposal is stale (now is after a proposed start)
+  Service --> Parser : true
+  Parser --> Dispatcher : InvalidCommandException("stale - regenerate")
+  Dispatcher --> Runner : exception
+  Runner -> Ui : showFramed("[Error] Invalid input: ...")
+  Ui --> User : stale-proposal error shown
+else proposal is still valid
+  Service --> Parser : false
+  Parser -> Service : hasOutOfPreferredRangePlacement(proposal,\npreferenceManager.getProfile())
+  note over Parser
+    Final boundary guard: every placement's
+    start/end must still satisfy the *current*
+    preferred daily start/end, even if
+    preferences changed since generation.
+  end note
+
+  alt a placement no longer fits the current preferred range
+    Service --> Parser : true
+    Parser --> Dispatcher : InvalidCommandException("preferences changed - regenerate")
+    Dispatcher --> Runner : exception
+    Runner -> Ui : showFramed("[Error] Invalid input: ...")
+    Ui --> User : boundary-mismatch error shown
+  else every placement still fits
+    Service --> Parser : false
+    Parser --> Dispatcher : RecommendAdoptCommand
+    Dispatcher --> Runner : command
+    Runner -> Adopt : getConfirmation()
+    Adopt --> Runner : ask("Proceed with adoption? (y/n)")
+    Runner -> Ui : showFramed(prompt)
+    Ui --> User : prompt shown
+    User --> Runner : y
+
+    note over Runner
+      recommend adopt is mutating, so the
+      runner snapshots activities/topics/
+      order/preferences before execute().
+    end note
+
+    Runner -> Adopt : execute()
+    loop each proposed placement
+      Adopt -> Manager : getById(activityId)
+      Manager --> Adopt : FlexibleActivity
+      Adopt -> Adopt : setAdoptedStartTime(startTime)
+    end
+    Adopt -> Formatter : formatAdoptSuccess(proposal)
+    Formatter --> Adopt : success text
+    Adopt --> Runner : CommandResult
+    Runner -> Storage : saveAll(...)
+
+    alt save succeeds
+      Storage --> Runner : success
+      Runner -> ProposalStore : clear()
+      Runner -> Ui : showFramed(success)
+      Ui --> User : adoption saved
+    else save fails
+      Storage --> Runner : StorageException
+      Runner -> Runner : restore snapshot
+      note over Runner
+        The proposal remains available because
+        adoption was rolled back and no success
+        feedback is shown.
+      end note
+      Runner -> Ui : showFramed("[Error] Storage error: ...")
+      Ui --> User : save failure shown
+    end
+  end
+end
+
+@enduml

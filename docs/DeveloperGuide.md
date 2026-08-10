@@ -557,6 +557,13 @@ period, then returns one immutable proposal containing ordered `RecommendedPlace
 unscheduled flexible activity IDs. `RecommendationFormatter` renders that proposal together with a
 preview timetable and dashboard built from copied activities, never from in-place mutation.
 
+**Generating, viewing, and cancelling a proposal.** `recommend`/`recommend view`/`recommend
+cancel` all deal only with the in-memory `RecommendationManager` proposal store - none of them
+snapshot, save, or otherwise touch persisted activity state. `RecommendAdoptCommand` and `Storage`
+never appear in this part of the flow at all.
+
+<p align="center"><img src="diagrams/sequence/RecommendationGenerationSequence.png" width="760" alt="Recommendation generation sequence diagram"></p>
+
 `RecommendationService` treats every fixed activity and every already-adopted flexible activity as
 an existing commitment. Eligible work is restricted to incomplete, not-yet-adopted flexible
 activities whose date lies inside the target day/week period. For each eligible activity, every
@@ -674,7 +681,12 @@ still adoptable. Immediately after this check, the parser also rejects adoption 
 `RecommendationService.hasOutOfPreferredRangePlacement(proposal, preferenceManager.getProfile())` is
 true - see the boundary-enforcement pipeline above.
 
-<p align="center"><img src="diagrams/sequence/RecommendationSequence.png" width="760" alt="Recommendation sequence diagram"></p>
+**Validating and adopting a proposal.** Unlike generate/view/cancel above, `recommend adopt` is
+the one recommend command that validates, confirms, mutates, persists, and can roll back - the
+stale-proposal and boundary-guard checks above run first, then adoption itself proceeds as a
+normal `CommandTransactionExecutor`-managed mutating command.
+
+<p align="center"><img src="diagrams/sequence/RecommendationAdoptionSequence.png" width="760" alt="Recommendation adoption sequence diagram"></p>
 
 Adoption is handled as a normal mutating command through `ApplicationRunner`. After the user
 confirms `recommend adopt`, the runner snapshots activities/topics/order/preferences. The command

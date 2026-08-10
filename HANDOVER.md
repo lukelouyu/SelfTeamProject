@@ -5,6 +5,31 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0g. Split RecommendationSequence into generation/adoption diagrams (2026-08-10, Claude Code) — committed and pushed
+
+Follow-up to Section 0f below, same day: the user (reviewing 0f's work) asked for
+`RecommendationSequence.puml` to be split, pointing out it combined two conceptually different
+workflows in one 80+ interaction diagram - the read-only proposal lifecycle (generate/view/cancel)
+and the state-changing adoption transaction (validate/confirm/mutate/persist/rollback) - and gave a
+precise spec: split at the existing `== Adopt proposal ==` marker, drop `Storage`/
+`RecommendAdoptCommand` from the generation diagram's participants (neither is ever touched by that
+half), restart `autonumber` at 1 in each, and title them "Generating and Managing a Recommendation
+Proposal" / "Validating and Adopting a Recommendation".
+
+Implemented exactly as specified: `RecommendationSequence.puml` renamed/split into
+`RecommendationGenerationSequence.puml` (generate/view/cancel, 44 numbered steps) and
+`RecommendationAdoptionSequence.puml` (the full adopt flow — both `alt` guards, confirmation
+prompt, placement `loop`, save/rollback `alt`, 42 numbered steps), both regenerated to `.png` via
+the same `/tmp/plantuml.jar` toolchain used throughout 0f and visually verified to render
+correctly before committing. `DeveloperGuide.md` §16 updated: the old single diagram embed is now
+two embeds, each preceded by a short bold lead-in sentence (matching this section's existing
+prose style of bold-lead-in subsections like "**Whole-day optimization.**" rather than introducing
+new `###` subheadings, which aren't this section's convention) explaining what that half of the
+flow does and doesn't touch. `CODEBASE_AUDIT_REPORT.md`'s Finding 6 discussion (which had said the
+`RecommendationSequence` diagram was "left untouched" during 0f) got a parenthetical noting the
+later split, so the report doesn't dangle a reference to a file that no longer exists. Commit
+`699080e`.
+
 ## 0f. Full codebase audit remediation pass: overflow, rollback, parser, ID, and doc-drift fixes (2026-08-10, Claude Code) — read this first, committed and pushed
 
 Starting point: `a84146d` (already includes 0e's recommender rewrite, already committed and

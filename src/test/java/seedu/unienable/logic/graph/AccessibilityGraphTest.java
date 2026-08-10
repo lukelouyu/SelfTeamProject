@@ -9,7 +9,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -120,6 +122,56 @@ class AccessibilityGraphTest {
 
         assertEquals(List.of("CLB", "AS6", "AS1", "AS2", "AS3"), path.getFacilityNames());
         assertEquals(325, path.getTotalDistanceInMetres());
+    }
+
+    @Test
+    public void getShortestPath_cumulativeDistanceExceedsIntegerMaxValue_choosesTrueShortestPath()
+            throws Exception {
+        // Two-hop path A-B-C sums to 2_400_000_000, which overflows a plain 32-bit int
+        // (wraps to a large negative number), while the direct A-C edge is a smaller,
+        // still-valid single distance of 2_000_000_000. A correct long-based accumulator must
+        // still prefer the direct edge; a buggy int accumulator would wrongly prefer the
+        // "cheaper-looking" overflowed two-hop path instead.
+        FacilityManager facilityManager = new FacilityManager(
+                List.of(facility("A"), facility("B"), facility("C")));
+        ConnectionManager connectionManager = new ConnectionManager(List.of(
+                connection(1, "A", "B", 1_200_000_000),
+                connection(2, "B", "C", 1_200_000_000),
+                connection(3, "A", "C", 2_000_000_000)));
+        AccessibilityGraph graph = new AccessibilityGraph(facilityManager, connectionManager);
+
+        GraphPath path = graph.getShortestPath("A", "C");
+
+        assertEquals(List.of("A", "C"), path.getFacilityNames());
+        assertEquals(2_000_000_000L, path.getTotalDistanceInMetres());
+    }
+
+    @Test
+    public void getShortestPath_multiHopAboveIntegerMaxValue_reportsExactUnwrappedTotal() throws Exception {
+        // A-B-C-D, each hop 1_000_000_000, total 3_000_000_000 - comfortably above
+        // Integer.MAX_VALUE (2_147_483_647) with no shorter alternative available.
+        FacilityManager facilityManager = new FacilityManager(
+                List.of(facility("A"), facility("B"), facility("C"), facility("D")));
+        ConnectionManager connectionManager = new ConnectionManager(List.of(
+                connection(1, "A", "B", 1_000_000_000),
+                connection(2, "B", "C", 1_000_000_000),
+                connection(3, "C", "D", 1_000_000_000)));
+        AccessibilityGraph graph = new AccessibilityGraph(facilityManager, connectionManager);
+
+        GraphPath path = graph.getShortestPath("A", "D");
+
+        assertEquals(List.of("A", "B", "C", "D"), path.getFacilityNames());
+        assertEquals(3_000_000_000L, path.getTotalDistanceInMetres());
+    }
+
+    @Test
+    public void reconstructPath_cyclicPredecessorMap_throwsInsteadOfLoopingIndefinitely() throws Exception {
+        AccessibilityGraph graph = syntheticGraph();
+        Map<String, String> cyclicPrevious = new HashMap<>();
+        cyclicPrevious.put("a", "b");
+        cyclicPrevious.put("b", "a");
+
+        assertThrows(IllegalStateException.class, () -> graph.reconstructPath("a", cyclicPrevious));
     }
 
     @Test

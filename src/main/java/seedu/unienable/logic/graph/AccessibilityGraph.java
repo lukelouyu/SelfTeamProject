@@ -94,13 +94,13 @@ public final class AccessibilityGraph {
         String fromKey = requireKnownFacility(from);
         String toKey = requireKnownFacility(to);
 
-        Map<String, Integer> bestDistance = new HashMap<>();
+        Map<String, Long> bestDistance = new HashMap<>();
         Map<String, String> previous = new HashMap<>();
         Set<String> settled = new HashSet<>();
         PriorityQueue<QueueEntry> queue = new PriorityQueue<>();
 
-        bestDistance.put(fromKey, 0);
-        queue.add(new QueueEntry(fromKey, 0));
+        bestDistance.put(fromKey, 0L);
+        queue.add(new QueueEntry(fromKey, 0L));
 
         while (!queue.isEmpty()) {
             QueueEntry current = queue.poll();
@@ -111,8 +111,11 @@ public final class AccessibilityGraph {
                 break;
             }
             for (Edge edge : adjacency.get(current.key)) {
-                int candidate = current.distanceInMetres + edge.distanceInMetres;
-                Integer known = bestDistance.get(edge.toKey);
+                // Individual connection distances stay int (bounded by ConnectionStorage's
+                // load-time validation), but a route may cross many edges, so the running total
+                // is accumulated as long to avoid silently wrapping past Integer.MAX_VALUE.
+                long candidate = current.distanceInMetres + (long) edge.distanceInMetres;
+                Long known = bestDistance.get(edge.toKey);
                 if (known == null || candidate < known) {
                     bestDistance.put(edge.toKey, candidate);
                     previous.put(edge.toKey, current.key);
@@ -121,17 +124,25 @@ public final class AccessibilityGraph {
             }
         }
 
-        Integer totalDistance = bestDistance.get(toKey);
+        Long totalDistance = bestDistance.get(toKey);
         if (totalDistance == null) {
             return null;
         }
         return new GraphPath(reconstructPath(toKey, previous), totalDistance);
     }
 
-    private List<String> reconstructPath(String toKey, Map<String, String> previous) {
+    // Package-private (rather than private) so AccessibilityGraphTest can exercise the cycle
+    // guard directly with a deliberately malformed "previous" map, without needing a corrupted
+    // Dijkstra run to reach it.
+    List<String> reconstructPath(String toKey, Map<String, String> previous) {
         List<String> path = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
         String step = toKey;
         while (step != null) {
+            if (!visited.add(step)) {
+                throw new IllegalStateException(
+                        "Cycle detected while reconstructing route path at facility \"" + step + "\".");
+            }
             path.add(canonicalNames.get(step));
             step = previous.get(step);
         }
@@ -159,23 +170,25 @@ public final class AccessibilityGraph {
     }
 
     /**
-     * One Dijkstra frontier entry: a facility (by lower-cased name) and the distance found when
-     * this entry was created. Distance is fixed at construction, never mutated in place, so the
-     * priority queue's heap invariant stays valid even though a facility may be pushed more than
-     * once with different distances as shorter paths are discovered ("lazy deletion" Dijkstra).
+     * One Dijkstra frontier entry: a facility (by lower-cased name) and the cumulative distance
+     * found when this entry was created. Distance is fixed at construction, never mutated in
+     * place, so the priority queue's heap invariant stays valid even though a facility may be
+     * pushed more than once with different distances as shorter paths are discovered ("lazy
+     * deletion" Dijkstra). Held as {@code long} since a route's cumulative distance can exceed
+     * {@code Integer.MAX_VALUE} even though every individual edge distance is a valid {@code int}.
      */
     private static final class QueueEntry implements Comparable<QueueEntry> {
         private final String key;
-        private final int distanceInMetres;
+        private final long distanceInMetres;
 
-        private QueueEntry(String key, int distanceInMetres) {
+        private QueueEntry(String key, long distanceInMetres) {
             this.key = key;
             this.distanceInMetres = distanceInMetres;
         }
 
         @Override
         public int compareTo(QueueEntry other) {
-            return Integer.compare(distanceInMetres, other.distanceInMetres);
+            return Long.compare(distanceInMetres, other.distanceInMetres);
         }
     }
 }

@@ -33,4 +33,12 @@ class GraphPathTest {
 
         assertEquals(List.of("AS6", "AS8"), path.getFacilityNames());
     }
+
+    @Test
+    public void getTotalDistanceInMetres_valueAboveIntegerMaxValue_preservedExactly() {
+        long aboveIntMax = ((long) Integer.MAX_VALUE) + 1_000L;
+        GraphPath path = new GraphPath(List.of("AS6", "AS8"), aboveIntMax);
+
+        assertEquals(aboveIntMax, path.getTotalDistanceInMetres());
+    }
 }

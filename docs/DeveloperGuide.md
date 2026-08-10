@@ -149,6 +149,15 @@ complete replacement object, validates type-specific requirements and topic memb
 `ActivityManager.checkNoConflicts(replacement, id)` before a confirmation is shown. A doomed edit
 therefore does not ask the user to approve it.
 
+If this edit actively supplies a new `date/` or start-time field, `EditCommand` also implements
+`PreExecutionValidatable`: immediately after the user answers "Save changes? (y/n)" and
+immediately before execution, `ApplicationRunner` calls `validateBeforeExecution(now)` with a
+freshly-sampled `now`, re-running `DateTimeParser.requireNotPastIfToday` against the
+newly-requested start time - since the original check at parse time ran before the confirmation
+prompt was shown, and a real amount of time can pass before the user answers it. An edit that
+never touches timing skips this re-check entirely, since its (unchanged) carried-over start time
+is allowed to already be in the past.
+
 After confirmation, `EditCommand.execute` calls `ActivityManager.replace`. `replace` finds the
 target by permanent ID and repeats the same conflict check immediately before replacing the list
 entry. This defensive execution-time validation protects against state changes between parsing and
@@ -688,13 +697,22 @@ normal `CommandTransactionExecutor`-managed mutating command.
 
 <p align="center"><img src="diagrams/sequence/RecommendationAdoptionSequence.png" width="760" alt="Recommendation adoption sequence diagram"></p>
 
-Adoption is handled as a normal mutating command through `ApplicationRunner`. After the user
-confirms `recommend adopt`, the runner snapshots activities/topics/order/preferences. The command
-first resolves and validates every placement against current activity state, then writes adopted
-start times only after the whole proposal passes. The runner persists the normal four user-state
-files through `Storage.saveAll`. Any execution or save failure restores the full pre-adoption
-snapshot and reports the error instead of showing a false success. On save success, the active
-in-memory proposal is cleared; on failure, it remains available because adoption never committed.
+Adoption is handled as a normal mutating command through `ApplicationRunner`. Because the
+stale-proposal check above only ran once, at dispatch time, before the confirmation prompt was
+even shown, `RecommendAdoptCommand` also implements `PreExecutionValidatable`:
+`ApplicationRunner` calls `validateBeforeExecution(now)` with a freshly-sampled `now` immediately
+after the user answers "y" and immediately before execution, re-running
+`RecommendationService.hasElapsedPlacement` - a placement that elapsed while the user was still
+answering the prompt is rejected here instead of silently being adopted. Only after that fresh
+check passes does `CommandTransactionExecutor` snapshot activities/topics/order/preferences. The
+command first resolves and validates every placement against current activity state (building an
+`AdoptionTarget` per placement), then writes adopted start times only after the whole proposal
+passes - two distinct loops, not one interleaved validate-then-mutate pass, so a bad later
+placement can never leave earlier ones partially adopted. The runner persists the normal four
+user-state files through `Storage.saveAll`. Any execution or save failure restores the full
+pre-adoption snapshot and reports the error instead of showing a false success. On save success,
+the active in-memory proposal is cleared; on failure, it remains available because adoption never
+committed.
 
 Route-aware recommendation remains deliberately out of scope here. Activities still do not carry
 approved facility/location bindings, so recommendation cannot incorporate campus travel time or

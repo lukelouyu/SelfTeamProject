@@ -59,37 +59,68 @@ else proposal is still valid
     User --> Runner : y
 
     note over Runner
-      recommend adopt is mutating, so the
-      runner snapshots activities/topics/
-      order/preferences before execute().
+      A real amount of time can pass while the
+      user is answering the prompt above, so the
+      dispatch-time staleness check is re-run
+      against a freshly-sampled now before
+      anything is allowed to mutate.
     end note
+    Runner -> Adopt : validateBeforeExecution(now)
+    Adopt -> Service : hasElapsedPlacement(proposal, now)
 
-    Runner -> Adopt : execute()
-    loop each proposed placement
-      Adopt -> Manager : getById(activityId)
-      Manager --> Adopt : FlexibleActivity
-      Adopt -> Adopt : setAdoptedStartTime(startTime)
-    end
-    Adopt -> Formatter : formatAdoptSuccess(proposal)
-    Formatter --> Adopt : success text
-    Adopt --> Runner : CommandResult
-    Runner -> Storage : saveAll(...)
+    alt a placement elapsed during the confirmation wait
+      Service --> Adopt : true
+      Adopt --> Runner : InvalidCommandException("stale - regenerate")
+      Runner -> Ui : showFramed("[Error] Invalid input: ...")
+      Ui --> User : stale-proposal error shown
+    else every placement is still on time
+      Service --> Adopt : false
 
-    alt save succeeds
-      Storage --> Runner : success
-      Runner -> ProposalStore : clear()
-      Runner -> Ui : showFramed(success)
-      Ui --> User : adoption saved
-    else save fails
-      Storage --> Runner : StorageException
-      Runner -> Runner : restore snapshot
       note over Runner
-        The proposal remains available because
-        adoption was rolled back and no success
-        feedback is shown.
+        recommend adopt is mutating, so
+        CommandTransactionExecutor snapshots
+        activities/topics/order/preferences
+        before execute() (simplified here -
+        see the Mutation rollback sequence
+        diagram for the full flow).
       end note
-      Runner -> Ui : showFramed("[Error] Storage error: ...")
-      Ui --> User : save failure shown
+
+      Runner -> Adopt : execute()
+      loop validate every proposed placement
+        Adopt -> Manager : getById(activityId)
+        Manager --> Adopt : FlexibleActivity
+        Adopt -> Adopt : validate type/date/window,\nappend AdoptionTarget
+      end
+      loop apply every validated target
+        Adopt -> Adopt : setAdoptedStartTime(startTime)
+      end
+      note over Adopt
+        Two-phase on purpose: every placement is
+        validated before any placement is mutated,
+        so a bad later placement can never leave
+        earlier ones partially adopted.
+      end note
+      Adopt -> Formatter : formatAdoptSuccess(proposal)
+      Formatter --> Adopt : success text
+      Adopt --> Runner : CommandResult
+      Runner -> Storage : saveAll(...)
+
+      alt save succeeds
+        Storage --> Runner : success
+        Runner -> ProposalStore : clear()
+        Runner -> Ui : showFramed(success)
+        Ui --> User : adoption saved
+      else save fails
+        Storage --> Runner : StorageException
+        Runner -> Runner : restore snapshot
+        note over Runner
+          The proposal remains available because
+          adoption was rolled back and no success
+          feedback is shown.
+        end note
+        Runner -> Ui : showFramed("[Error] Storage error: ...")
+        Ui --> User : save failure shown
+      end
     end
   end
 end

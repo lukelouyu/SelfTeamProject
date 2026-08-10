@@ -68,6 +68,10 @@ class ApplicationRunnerTest {
         return new FailAfterStorage(dataDirectory, 0);
     }
 
+    private static RuntimeExceptionAfterStorage alwaysFailingWithRuntimeException(Path dataDirectory) {
+        return new RuntimeExceptionAfterStorage(dataDirectory, 0);
+    }
+
     @Test
     public void mutatingCommandSaveFailure_logsRecordWithThrowable() throws Exception {
         RecordingHandler handler = new RecordingHandler();
@@ -184,6 +188,41 @@ class ApplicationRunnerTest {
         assertTrue(output.contains("[Error] Storage error:"));
         assertTrue(output.contains("No activities found."),
                 "the added activity must not remain in memory after the rollback");
+    }
+
+    @Test
+    public void add_saveFailsWithRuntimeException_rollsBackAndReportsNoFalseSuccess() throws Exception {
+        String input = String.join("\n",
+                "add n/Task c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                "list",
+                "bye") + "\n";
+
+        // An unchecked exception from saveAll() (e.g. an unanticipated bug in the storage layer)
+        // must roll back exactly like a documented StorageException, not just be logged and
+        // reported while the mutation stays applied in memory.
+        String output = run(input, alwaysFailingWithRuntimeException(dataDirectory));
+
+        assertFalse(output.contains("Got it. Activity [1] has been added"),
+                "a failed save must never show add's success message");
+        assertTrue(output.contains("[Error] An unexpected internal error occurred while saving"));
+        assertTrue(output.contains("No activities found."),
+                "the added activity must not remain in memory after the rollback");
+    }
+
+    @Test
+    public void add_saveFailsWithRuntimeExceptionThenRetrySucceeds_doesNotConsumeIdOnFailedAttempt()
+            throws Exception {
+        String addCommand = "add n/Task c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1";
+        String input = String.join("\n", addCommand, addCommand, "list", "bye") + "\n";
+
+        // First add's save throws a RuntimeException and must be rolled back (including the ID
+        // it consumed); the identical second add's save succeeds and must receive ID [1], not [2].
+        String output = run(input, new RuntimeExceptionOnceThenSucceedStorage(dataDirectory));
+
+        assertTrue(output.contains("[Error] An unexpected internal error occurred while saving"));
+        assertTrue(output.contains("Got it. Activity [1] has been added"),
+                "the retry must receive ID [1] - the failed attempt's ID must not have been consumed");
+        assertTrue(output.contains("Here are 1 matching activity:"));
     }
 
     @Test
@@ -580,6 +619,51 @@ class ApplicationRunnerTest {
                 return;
             }
             throw new StorageException("simulated disk failure");
+        }
+    }
+
+    /**
+     * A real, filesystem-backed Storage whose saveAll() succeeds for the first
+     * {@code successesAllowed} calls, then throws an unchecked {@link IllegalStateException} on
+     * every call after that - simulating an unanticipated bug in the storage layer, as opposed to
+     * {@link FailAfterStorage}'s documented checked {@link StorageException} failure mode.
+     */
+    private static final class RuntimeExceptionAfterStorage extends Storage {
+        private int remainingSuccesses;
+
+        private RuntimeExceptionAfterStorage(Path dataDirectory, int successesAllowed) {
+            super(dataDirectory);
+            this.remainingSuccesses = successesAllowed;
+        }
+
+        @Override
+        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order,
+                PreferenceProfile preferences) throws StorageException {
+            if (remainingSuccesses > 0) {
+                remainingSuccesses--;
+                super.saveAll(activities, topics, order, preferences);
+                return;
+            }
+            throw new IllegalStateException("simulated unexpected storage bug");
+        }
+    }
+
+    /** A real, filesystem-backed Storage whose saveAll() throws an unchecked exception once, then succeeds. */
+    private static final class RuntimeExceptionOnceThenSucceedStorage extends Storage {
+        private boolean hasFailedOnce;
+
+        private RuntimeExceptionOnceThenSucceedStorage(Path dataDirectory) {
+            super(dataDirectory);
+        }
+
+        @Override
+        public void saveAll(List<Activity> activities, List<Topic> topics, ActivityOrder order,
+                PreferenceProfile preferences) throws StorageException {
+            if (!hasFailedOnce) {
+                hasFailedOnce = true;
+                throw new IllegalStateException("simulated unexpected storage bug");
+            }
+            super.saveAll(activities, topics, order, preferences);
         }
     }
 

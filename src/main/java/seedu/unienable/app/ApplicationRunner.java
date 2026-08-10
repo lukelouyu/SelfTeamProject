@@ -294,8 +294,12 @@ public class ApplicationRunner {
 
     /**
      * Attempts to persist activities, topics, the saved default activity order, and preferences,
-     * updating the unsaved-changes flag to match the outcome. On failure, shows the storage error
-     * itself so callers only need to react to whether the save succeeded.
+     * updating the unsaved-changes flag to match the outcome. On failure, shows an error and
+     * returns false so the caller can roll the in-memory mutation back to the pre-command
+     * snapshot - both for the documented {@link StorageException} failure mode and for an
+     * unanticipated unchecked failure from the storage layer (e.g. an NPE inside a serializer),
+     * which would otherwise leave memory mutated while disk still reflected the pre-command
+     * state.
      *
      * @return true if the save succeeded; false if it failed (the error has already been shown)
      */
@@ -309,6 +313,11 @@ public class ApplicationRunner {
             hasUnsavedChanges = true;
             LOGGER.log(Level.WARNING, "Storage save failure", e);
             ui.showFramed("[Error] " + e.getErrorCategory() + ": " + e.getMessage());
+            return false;
+        } catch (RuntimeException e) {
+            hasUnsavedChanges = true;
+            LOGGER.log(Level.SEVERE, "Unexpected internal error while saving", e);
+            ui.showFramed("[Error] An unexpected internal error occurred while saving. Enter guide for help.");
             return false;
         }
     }

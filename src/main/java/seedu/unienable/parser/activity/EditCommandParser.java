@@ -64,6 +64,7 @@ class EditCommandParser {
         String fieldsText = parts.length > 1 ? parts[1] : "";
 
         FieldParser.rejectUnrecognisedLeadingText(fieldsText, ActivityCommandParser.ALL_ACTIVITY_MARKERS);
+        FieldParser.rejectDuplicateMarkers(fieldsText, ActivityCommandParser.ALL_ACTIVITY_MARKERS);
         Map<String, String> fields = FieldParser.extractPresentFields(fieldsText,
                 ActivityCommandParser.ALL_ACTIVITY_MARKERS);
         if (fields.isEmpty()) {

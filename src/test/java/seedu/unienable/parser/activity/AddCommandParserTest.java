@@ -207,19 +207,59 @@ class AddCommandParserTest {
     }
 
     @Test
-    public void parseAdd_markerSuppliedTwice_firstOccurrenceValueAbsorbsTheSecond() throws Exception {
-        // Pinning test, not a bug fix: add's fields must appear in the documented order, so
-        // "n/A n/B c/..." is already outside the documented grammar. Because extraction is purely
-        // boundary-based (first "n/" to the next distinct marker), the value is "A n/B" -- the
-        // second "n/" is absorbed as literal text rather than starting a new field or erroring.
+    public void parseAdd_duplicateNameMarker_throwsInvalidCommandException() {
+        // Regression test: "n/A n/B c/..." previously let the first "n/" silently absorb the
+        // second as literal text ("A n/B") instead of being rejected as a repeated field.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, topicManager, TODAY,
+                        "n/A n/B c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"n/\""));
+    }
+
+    @Test
+    public void parseAdd_duplicateCategoryMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, topicManager, TODAY,
+                        "n/Lecture c/ACADEMIC c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                                + "energy/4 sensory/3"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"c/\""));
+    }
+
+    @Test
+    public void parseAdd_duplicateDateMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, topicManager, TODAY,
+                        "n/Lecture c/ACADEMIC date/2026-08-15 date/2026-08-16 type/FIXED from/09:00 to/11:00 "
+                                + "energy/4 sensory/3"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"date/\""));
+    }
+
+    @Test
+    public void parseAdd_descriptionContainsOrdinarySlash_isAcceptedAsPartOfValue() throws Exception {
+        // An undeclared slash-bearing token (here "w/", not one of ALL_ACTIVITY_MARKERS) must
+        // remain safe as ordinary free text and must not be mistaken for a duplicate/declared
+        // marker.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
         AddCommand command = parser.parse(manager, topicManager, TODAY,
-                "n/A n/B c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/4 sensory/3");
+                "n/Meeting w/ friends c/OTHERS date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                        + "energy/4 sensory/3");
 
         command.execute();
 
-        assertEquals("A n/B", manager.getById(1).getDescription());
+        assertEquals("Meeting w/ friends", manager.getById(1).getDescription());
     }
 
     @Test

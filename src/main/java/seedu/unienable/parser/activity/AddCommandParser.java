@@ -46,6 +46,7 @@ class AddCommandParser {
             throws MissingInputException, InvalidActivityException, InvalidDateTimeException,
             InvalidCommandException, InvalidIndexException {
         FieldParser.rejectUnrecognisedLeadingText(args, ActivityCommandParser.ALL_ACTIVITY_MARKERS);
+        FieldParser.rejectDuplicateMarkers(args, ActivityCommandParser.ALL_ACTIVITY_MARKERS);
         String description = requireField(args, "n/", "c/", "description", "category");
         FieldParser.validateNoDelimiter(description, "description");
         ActivityCategory category = FieldParser.parseCategory(requireField(args, "c/", "date/", "category", "date"));

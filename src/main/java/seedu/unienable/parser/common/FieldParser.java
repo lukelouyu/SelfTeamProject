@@ -152,6 +152,32 @@ public class FieldParser {
     }
 
     /**
+     * Rejects a marker that occurs more than once at a field boundary anywhere in the text, e.g.
+     * "n/A n/B" - without this, extraction simply reads from the first occurrence to the next
+     * <em>different</em> marker, so a repeated marker's literal text (including the second "n/")
+     * silently becomes part of the first occurrence's value instead of being reported as an
+     * error. Every marker is checked across the whole text, independent of any single field's own
+     * extraction span, so a duplicate is caught no matter which other markers separate the two
+     * occurrences.
+     *
+     * @param text the full argument text
+     * @param markers every marker this command recognises
+     * @throws InvalidCommandException if any marker occurs more than once
+     */
+    public static void rejectDuplicateMarkers(String text, String... markers) throws InvalidCommandException {
+        for (String marker : markers) {
+            int firstIndex = indexOfMarker(text, marker, 0);
+            if (firstIndex == -1) {
+                continue;
+            }
+            int secondIndex = indexOfMarker(text, marker, firstIndex + marker.length());
+            if (secondIndex != -1) {
+                throw new InvalidCommandException("Duplicate option \"" + marker + "\".");
+            }
+        }
+    }
+
+    /**
      * Extracts every marker (from the given candidates) that is actually present in the text,
      * into a map of marker to its value, using each field's neighbouring present marker (by
      * position) as its end boundary. Supports an arbitrary subset of markers in any order.

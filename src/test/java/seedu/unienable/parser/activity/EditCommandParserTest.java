@@ -250,18 +250,33 @@ class EditCommandParserTest {
     }
 
     @Test
-    public void parseEdit_markerSuppliedTwice_firstOccurrenceValueAbsorbsTheSecond() throws Exception {
-        // Pinning test, not a bug fix: same boundary-based extraction behaviour as add's
-        // equivalent test, exercised through edit's any-order field map instead.
+    public void parseEdit_duplicateNameMarker_throwsInvalidCommandException() throws Exception {
+        // Regression test: "n/X n/Y" previously let the first "n/" silently absorb the second as
+        // literal text ("X n/Y") instead of being rejected as a repeated field.
         ActivityManager manager = new ActivityManager();
         TopicManager topicManager = new TopicManager(manager);
         manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        parser.parse(manager, topicManager, TODAY, "1 n/X n/Y").execute();
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, topicManager, TODAY, "1 n/X n/Y"));
 
-        assertEquals("X n/Y", manager.getById(1).getDescription());
+        assertTrue(exception.getMessage().contains("Duplicate option \"n/\""));
+    }
+
+    @Test
+    public void parseEdit_duplicateDateMarker_throwsInvalidCommandException() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FixedActivity(manager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(11, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, topicManager, TODAY, "1 date/2026-08-16 date/2026-08-17"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"date/\""));
     }
 
     @Test

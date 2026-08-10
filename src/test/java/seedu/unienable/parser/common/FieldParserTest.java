@@ -1,12 +1,16 @@
 package seedu.unienable.parser.common;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+
+import seedu.unienable.exception.InvalidCommandException;
 
 class FieldParserTest {
     // Every marker used by any parser in the app, as of this session. Kept as one flat list
@@ -155,5 +159,26 @@ class FieldParserTest {
     @Test
     public void extractPresentFields_noMarkersPresent_returnsEmptyMap() {
         assertTrue(FieldParser.extractPresentFields("nothing relevant here", "n/", "c/").isEmpty());
+    }
+
+    @Test
+    public void rejectDuplicateMarkers_markerRepeated_throwsInvalidCommandExceptionNamingTheMarker() {
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> FieldParser.rejectDuplicateMarkers("n/A n/B c/ACADEMIC", "n/", "c/"));
+
+        assertEquals("Duplicate option \"n/\".", exception.getMessage());
+    }
+
+    @Test
+    public void rejectDuplicateMarkers_eachMarkerAppearsOnce_doesNotThrow() {
+        assertDoesNotThrow(() -> FieldParser.rejectDuplicateMarkers("n/A c/ACADEMIC date/2026-08-15",
+                "n/", "c/", "date/"));
+    }
+
+    @Test
+    public void rejectDuplicateMarkers_undeclaredSlashBearingText_isIgnored() {
+        // "w/" is not one of the declared markers, so it must never be flagged, no matter how
+        // many times it appears in ordinary free text.
+        assertDoesNotThrow(() -> FieldParser.rejectDuplicateMarkers("n/Meeting w/ friends w/ family", "n/", "c/"));
     }
 }

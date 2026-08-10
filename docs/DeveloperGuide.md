@@ -766,6 +766,13 @@ The automated strategy has four layers:
 - the Gradle `check` lifecycle for JUnit and Checkstyle;
 - the Git Bash text-UI regression for end-to-end command/output compatibility.
 
+`UniEnableTest` drives `UniEnable.run` end to end through a scripted input stream. It always
+supplies the 3-arg overload with a fixed `TEST_NOW` (strictly before every hardcoded activity date
+literal used in the file), never the 2-arg overload that defaults to the real wall clock - the
+same injected-`now` seam used throughout `ApplicationRunner`/`DashboardService`/
+`RecommendationService` testing (Sections 13-16), so the suite's pass/fail never depends on when
+it happens to run.
+
 Conflict tests should cover both activity types, ignored metadata, completed activities,
 duplicate-before-overlap precedence, adjacency, permanent-ID exclusion, and first-overlap order.
 Recurrence tests should cover source-week inclusion, no-class and identical skips, planning

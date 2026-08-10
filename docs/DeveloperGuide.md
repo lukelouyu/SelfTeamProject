@@ -547,13 +547,14 @@ Preferred start/end used to be scored only as a low-priority tie-break penalty
 (`preferredRangePenalty`), which a PE-style review correctly flagged as ineffective: a flexible
 activity's window could still be proposed well outside preferred hours whenever an in-range slot
 existed, because nothing ever excluded the out-of-range candidate from `validSlots` in the first
-place. Making the preferred range a hard pre-filter (this section's first paragraph) fixes that;
-`preferredRangePenalty` itself is now always `0` for every slot that reaches scoring (documented at
-its call site) - kept rather than removed, as a no-op safety net in case a future change ever lets
-an out-of-range slot reach scoring again. `RecommendationServiceTest`'s
+place. Making the preferred range a hard pre-filter (this section's first paragraph) fixed that.
+`preferredRangePenalty` no longer exists in the current source at all: the whole-day-optimization
+rewrite described below (**Whole-day optimization**) later removed it, along with the rest of the
+old per-slot `SlotScore` scoring apparatus it belonged to, once the hard pre-filter had already made
+every such penalty permanently a no-op. `RecommendationServiceTest`'s
 `recommendDate_windowStartsBeforePreferredStart...`, `..._windowEntirelyAfterPreferredEnd...`,
 `..._narrowerPreferredWindow...`, `..._todayNowLaterThanPreferredStart...`, and
-`..._preferredWindowNarrowerThanDuration...` cases cover this directly.
+`..._preferredWindowNarrowerThanDuration...` cases cover the hard pre-filter directly.
 
 Separately, this closed a regression where a today-dated flexible activity's window that had
 already fully or partly elapsed by the time `recommend` ran could still be proposed at its original,

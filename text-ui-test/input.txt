@@ -204,6 +204,7 @@ edit 999 energy/3
 edit 1 bogus/value
 edit 1 energy/99
 edit 1 n/New name n/Another name
+edit 1 n/New name
 y
 edit 1 type/FLEXIBLE earliest/09:00 latest/11:00 dur/60
 y

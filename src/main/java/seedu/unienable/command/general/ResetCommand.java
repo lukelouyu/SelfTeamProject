@@ -2,6 +2,7 @@ package seedu.unienable.command.general;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandEffect;
@@ -99,7 +100,7 @@ public class ResetCommand extends Command implements MenuConfirmable {
         return getActivityCount() > 0
                 || getTopicCount() > 0
                 || activityManager.getDefaultOrder() != ActivityOrder.CHRONOLOGICAL
-                || activityManager.getNextId() != 1
+                || activityManager.hasAllocatedAnyId()
                 || !preferenceManager.isDefault();
     }
 
@@ -161,10 +162,13 @@ public class ResetCommand extends Command implements MenuConfirmable {
         activityManager.setDefaultOrder(ActivityOrder.CHRONOLOGICAL);
         topicManager.retainTopicsUsedBy(retained);
         int deletedCount = originalCount - retained.size();
+        OptionalInt nextId = activityManager.tryGetNextId();
+        String nextIdText = nextId.isPresent() ? "[" + nextId.getAsInt() + "]"
+                : "unavailable - the activity ID space is exhausted";
         return new CommandResult("Reset complete. Kept " + retained.size()
                 + (retained.size() == 1 ? " class-schedule activity" : " class-schedule activities")
                 + " and deleted " + deletedCount
                 + (deletedCount == 1 ? " other activity." : " other activities.")
-                + "\nYour next activity will use ID [" + activityManager.getNextId() + "].");
+                + "\nYour next activity will use ID " + nextIdText + ".");
     }
 }

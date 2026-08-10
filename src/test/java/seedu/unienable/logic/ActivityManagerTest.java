@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import org.junit.jupiter.api.Test;
 
@@ -785,6 +786,67 @@ class ActivityManagerTest {
 
         assertEquals(1, manager.size());
         assertEquals("Second load", manager.getById(1).getDescription());
+    }
+
+    @Test
+    public void hasAllocatedAnyId_freshManager_returnsFalse() {
+        assertFalse(new ActivityManager().hasAllocatedAnyId());
+    }
+
+    @Test
+    public void hasAllocatedAnyId_afterOneAdd_returnsTrue() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(newFixedActivity(manager.getNextId()));
+
+        assertTrue(manager.hasAllocatedAnyId());
+    }
+
+    @Test
+    public void hasAllocatedAnyId_afterIdSpaceExhausted_returnsTrueWithoutThrowing() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE)));
+
+        assertTrue(manager.hasAllocatedAnyId());
+    }
+
+    @Test
+    public void tryGetNextId_freshManager_returnsPresentOne() {
+        assertEquals(OptionalInt.of(1), new ActivityManager().tryGetNextId());
+    }
+
+    @Test
+    public void tryGetNextId_afterIdSpaceExhausted_returnsEmptyWithoutThrowing() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE)));
+
+        assertEquals(OptionalInt.empty(), manager.tryGetNextId());
+    }
+
+    @Test
+    public void snapshotIdAllocation_capturesExhaustedStateWithoutThrowing() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.loadAll(List.of(newFixedActivity(Integer.MAX_VALUE)));
+
+        ActivityManager.IdAllocationState snapshot = manager.snapshotIdAllocation();
+
+        assertTrue(snapshot.idSpaceExhausted());
+    }
+
+    @Test
+    public void restoreState_exhaustedSnapshot_restoresExhaustionFlagNotJustNextId() throws Exception {
+        // Regression test: restoreState() used to unconditionally set idSpaceExhausted = false,
+        // so restoring a snapshot taken while genuinely exhausted would silently un-exhaust the
+        // manager instead of reproducing the exact pre-command state.
+        ActivityManager manager = new ActivityManager();
+        Activity maxIdActivity = newFixedActivity(Integer.MAX_VALUE);
+        manager.loadAll(List.of(maxIdActivity));
+        ActivityManager.IdAllocationState exhaustedSnapshot = manager.snapshotIdAllocation();
+        manager.resetAll();
+        assertFalse(manager.hasAllocatedAnyId(), "test setup: resetAll() must clear exhaustion first");
+
+        manager.restoreState(List.of(maxIdActivity), exhaustedSnapshot, ActivityOrder.CHRONOLOGICAL);
+
+        assertThrows(IllegalStateException.class, manager::getNextId);
     }
 
     @Test

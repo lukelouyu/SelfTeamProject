@@ -586,6 +586,45 @@ class ApplicationRunnerTest {
                 "the existing no-op message must still be shown even though nothing was actually saved");
     }
 
+    @Test
+    public void mark_afterIdSpaceExhausted_stillSucceeds() throws Exception {
+        // Regression test: CommandTransactionExecutor.Snapshot used to capture the pre-command
+        // next-ID via the throwing getNextId(), so once the ID space was exhausted, every
+        // mutating command's snapshot capture failed before execute() even started - including
+        // ones, like mark, that never need to allocate a new ID at all.
+        Files.createDirectories(dataDirectory);
+        Files.writeString(dataDirectory.resolve("activities.txt"),
+                "FIXED|2147483647|Old task|OTHERS|2099-01-01|09:00|10:00|1|1|INCOMPLETE||\n");
+
+        String output = run("mark 2147483647\nlist\nbye\n", new Storage(dataDirectory));
+
+        assertFalse(output.contains("[Error]"), "an unrelated mutating command must not be "
+                + "blocked by an exhausted activity-ID space");
+        assertTrue(output.contains("Nice! Activity [2147483647] is now complete"));
+        assertTrue(output.contains("[2147483647][X]"));
+    }
+
+    @Test
+    public void deleteThenResetAll_afterIdSpaceExhaustedAndNoActivitiesRemain_stillOffersMenu() throws Exception {
+        // Regression test for the same root cause as above, exercised through a second call site:
+        // ResetCommand.hasAnythingToReset() used to call the throwing getNextId() too, so once
+        // exhausted and every activity deleted (activity count back to 0, everything else at
+        // defaults), the reset menu itself could never be shown - the one command that should be
+        // able to recover the application could not run either.
+        Files.createDirectories(dataDirectory);
+        Files.writeString(dataDirectory.resolve("activities.txt"),
+                "FIXED|2147483647|Old task|OTHERS|2099-01-01|09:00|10:00|1|1|INCOMPLETE||\n");
+
+        String output = run("delete 2147483647\ny\nreset all\n1\nbye\n", new Storage(dataDirectory));
+
+        assertFalse(output.contains("[Error]"), "an unrelated mutating command must not be "
+                + "blocked by an exhausted activity-ID space");
+        assertTrue(output.contains("has been deleted"));
+        assertTrue(output.contains("All user data has been reset."),
+                "the reset menu must still be offered and actionable once the ID space is "
+                        + "exhausted, even with zero activities currently stored");
+    }
+
     private static int countOccurrences(String text, String needle) {
         int count = 0;
         int index = 0;

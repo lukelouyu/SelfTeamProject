@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidIndexException;
@@ -39,6 +40,52 @@ public class ActivityManager {
     }
 
     /**
+     * Returns the ID the next added activity would receive, or empty if the ID space is already
+     * exhausted - the same information as {@link #getNextId()}, but for a caller that only wants
+     * to *report* the value (e.g. in a success message) and must not itself throw when there is
+     * none to report.
+     *
+     * @return the next ID, or empty if exhausted
+     */
+    public OptionalInt tryGetNextId() {
+        return idSpaceExhausted ? OptionalInt.empty() : OptionalInt.of(nextId);
+    }
+
+    /**
+     * Returns whether any activity ID has ever been allocated - i.e. whether {@link #getNextId()}
+     * would return anything other than {@code 1}. Unlike {@link #getNextId()}, this never throws,
+     * even once the ID space is exhausted, since exhaustion itself is conclusive proof that IDs
+     * have been allocated. Used by callers that only need to know "has anything ever been given
+     * out" (e.g. to decide whether there is anything to reset), not to allocate a new ID.
+     *
+     * @return true if at least one ID has ever been allocated
+     */
+    public boolean hasAllocatedAnyId() {
+        return idSpaceExhausted || nextId != 1;
+    }
+
+    /**
+     * Captures the exact current next-ID bookkeeping - including whether the ID space is already
+     * exhausted - without throwing, unlike {@link #getNextId()}. Used to take an exact
+     * pre-command snapshot for possible later restoration (see {@link #restoreState}), which must
+     * never itself be blocked by exhaustion the way actually allocating a new ID correctly is.
+     *
+     * @return the current next-ID allocation state
+     */
+    public IdAllocationState snapshotIdAllocation() {
+        return new IdAllocationState(nextId, idSpaceExhausted);
+    }
+
+    /**
+     * The exact next-ID bookkeeping state at a point in time: the next ID to hand out, and
+     * whether the ID space is already exhausted (in which case {@code nextId} is a frozen,
+     * no-longer-meaningful bookkeeping value - see {@link ActivityManager}'s own
+     * {@code idSpaceExhausted} field comment).
+     */
+    public record IdAllocationState(int nextId, boolean idSpaceExhausted) {
+    }
+
+    /**
      * Replaces every stored activity with the given previously-saved activities, without
      * re-validating duplicates or overlaps, and syncs the next-ID counter past the highest loaded
      * ID (or marks the ID space exhausted if the highest loaded ID is {@code Integer.MAX_VALUE}).
@@ -63,22 +110,26 @@ public class ActivityManager {
      * be higher than the largest current ID, since earlier activities may have been deleted.
      *
      * @param snapshot activities captured immediately before the command ran
-     * @param snapshotNextId the exact next-ID counter captured with the activities
+     * @param idAllocationState the exact next-ID bookkeeping (see {@link #snapshotIdAllocation()})
+     *     captured with the activities, including whether the ID space was already exhausted
      * @param snapshotOrder the exact default order captured with the activities
      * @throws IllegalArgumentException if the supplied next ID would collide with a snapshot ID
      */
-    public void restoreState(List<Activity> snapshot, int snapshotNextId, ActivityOrder snapshotOrder) {
+    public void restoreState(List<Activity> snapshot, IdAllocationState idAllocationState,
+            ActivityOrder snapshotOrder) {
         long minimumNextId = 1;
         for (Activity activity : snapshot) {
             minimumNextId = Math.max(minimumNextId, (long) activity.getId() + 1);
         }
-        if (snapshotNextId < minimumNextId) {
+        // An exhausted state is never a collision risk: it represents an ID space that already
+        // extends past every representable int, so it cannot fall short of any actual ID.
+        if (!idAllocationState.idSpaceExhausted() && idAllocationState.nextId() < minimumNextId) {
             throw new IllegalArgumentException("snapshot next ID would collide with an activity");
         }
         activities.clear();
         activities.addAll(snapshot);
-        nextId = snapshotNextId;
-        idSpaceExhausted = false;
+        nextId = idAllocationState.nextId();
+        idSpaceExhausted = idAllocationState.idSpaceExhausted();
         defaultOrder = snapshotOrder;
     }
 

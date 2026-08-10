@@ -78,12 +78,17 @@ final class CommandTransactionExecutor {
     private final class Snapshot {
         private final List<Activity> activities = ActivityCopyFactory.copyAll(activityManager.getAll());
         private final List<Topic> topics = copyTopics(topicManager.getAll());
-        private final int nextId = activityManager.getNextId();
+        // Captured via the non-throwing snapshotIdAllocation(), not getNextId(): getNextId()
+        // throws once the ID space is exhausted, but a snapshot must be capturable for *every*
+        // mutating command (mark, delete, reset, topic/preference changes, ...), not only ones
+        // that allocate a new activity ID - otherwise ID exhaustion would block every other
+        // mutating command from even starting, not just ones that actually need a new ID.
+        private final ActivityManager.IdAllocationState idAllocationState = activityManager.snapshotIdAllocation();
         private final ActivityOrder order = activityManager.getDefaultOrder();
         private final PreferenceProfile preferences = preferenceManager.getProfile();
 
         private void restore() {
-            activityManager.restoreState(activities, nextId, order);
+            activityManager.restoreState(activities, idAllocationState, order);
             topicManager.loadAll(topics);
             preferenceManager.setProfile(preferences);
         }

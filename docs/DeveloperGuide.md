@@ -756,6 +756,19 @@ contract and preserve each caller's distinct error and recovery behaviour.
   `FieldParser.rejectDuplicateMarkers` only scans for the command's own declared markers occurring
   twice, leaving undeclared free text untouched, and reuses `ArgumentTokenizer`'s
   `Duplicate option "..."` wording for consistency.
+- `parser.common.DateTimeParser` and `storage.ActivityStorage` (plus `storage.preference
+  .PreferenceStorage`) each define their own strict `uuuu-MM-dd`/`HH:mm` `DateTimeFormatter`
+  constants and shape-then-strict-parse logic, which look like duplication worth extracting into
+  one shared codec. `ActivityStorage` already carries a comment explaining why this is
+  intentional: a persistence codec must keep reading the exact bytes it already wrote regardless
+  of how the CLI parser's input rules evolve, so coupling storage's wire format to
+  `parser.common` would risk a future parser-ergonomics change (e.g. relaxing what `add`/`edit`
+  accept) silently breaking storage's ability to reload files it saved under the old rules. Since
+  the two are already correctly decoupled (storage carries no "not before today"/"not before now"
+  policy, and neither package imports the other), the remaining duplication is confined to format
+  constants and shape/strict-parse mechanics - real, but low-severity, and extracting it would
+  reintroduce exactly the coupling the existing comment was written to avoid. Left as-is; revisit
+  only if the two formats are ever deliberately required to diverge or converge further.
 
 ## 19. Testing
 

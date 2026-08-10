@@ -65,12 +65,19 @@ public class RecurrencePlanner {
                 continue;
             }
 
-            // Checked arithmetic: nextId comes from ActivityManager.getNextId(), which already
-            // guarantees it is a valid available ID, but the batch offset added here could still
-            // overflow int range in the (astronomically unlikely) case where nextId is already
-            // close to Integer.MAX_VALUE - fail predictably instead of silently wrapping into a
-            // bogus candidate ID.
-            FixedActivity candidate = copyForDate(source, targetDate, Math.addExact(nextId, toCreate.size()));
+            // nextId comes from ActivityManager.getNextId(), which already guarantees it is a
+            // valid available ID, but the batch offset added here could still push the candidate
+            // past int range in the (astronomically unlikely) case where nextId is already close
+            // to Integer.MAX_VALUE. Computed as long and explicitly rejected with a domain
+            // exception - not Math.addExact's raw ArithmeticException, which is an anticipated
+            // capacity limit here, not an unexpected internal failure - so it fails predictably
+            // instead of silently wrapping into a bogus candidate ID.
+            long candidateId = (long) nextId + toCreate.size();
+            if (candidateId > Integer.MAX_VALUE) {
+                throw new InvalidActivityException(
+                        "not enough activity IDs remain to create this many recurring sessions.");
+            }
+            FixedActivity candidate = copyForDate(source, targetDate, (int) candidateId);
             try {
                 activityManager.checkNoConflicts(candidate, -1);
             } catch (DuplicateActivityException e) {

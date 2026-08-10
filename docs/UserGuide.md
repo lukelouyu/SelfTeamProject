@@ -92,6 +92,10 @@ accessibility information, or medical advice.
   restart from ID `[1]`.
 - Commands documented as taking no arguments (`next`, `bye`, `order view`, `facility list`,
   `connection list`) reject any trailing text rather than silently ignoring it.
+- Every field prefix (e.g. `n/`, `c/`, `date/`) may appear at most once in a single `add` or `edit`
+  command. Supplying the same prefix twice (e.g. `n/A n/B`) is rejected with
+  `Duplicate option "n/".` rather than the second occurrence being silently absorbed into the
+  first's value.
 
 ## 5. Command Overview
 

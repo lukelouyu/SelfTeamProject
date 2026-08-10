@@ -9,6 +9,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -24,6 +25,11 @@ import seedu.unienable.storage.Storage;
  * data directory so the real project's data/ folder is never touched.
  */
 class UniEnableTest {
+    // Fixed strictly before every hardcoded activity date literal used below (earliest is
+    // 2026-08-15), so "date must not be in the past" checks stay deterministic forever instead
+    // of depending on the real wall clock and eventually failing once it catches up.
+    private static final LocalDateTime TEST_NOW = LocalDateTime.of(2026, 8, 10, 12, 0);
+
     @TempDir
     Path tempDir;
 
@@ -33,7 +39,7 @@ class UniEnableTest {
         System.setOut(new PrintStream(capturedOutput));
 
         try {
-            UniEnable.run(tempDir, new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+            UniEnable.run(tempDir, new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), () -> TEST_NOW);
         } finally {
             System.setOut(originalOut);
         }
@@ -48,7 +54,7 @@ class UniEnableTest {
         System.setErr(new PrintStream(capturedError));
 
         try {
-            UniEnable.run(tempDir, new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+            UniEnable.run(tempDir, new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), () -> TEST_NOW);
         } finally {
             System.setOut(originalOut);
             System.setErr(originalErr);
@@ -70,7 +76,7 @@ class UniEnableTest {
         System.setOut(new PrintStream(capturedOutput));
         try {
             UniEnable.run(invalidDataDirectory,
-                    new ByteArrayInputStream("list\nbye\n".getBytes(StandardCharsets.UTF_8)));
+                    new ByteArrayInputStream("list\nbye\n".getBytes(StandardCharsets.UTF_8)), () -> TEST_NOW);
         } finally {
             System.setOut(originalOut);
         }

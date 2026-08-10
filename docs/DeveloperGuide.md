@@ -83,6 +83,19 @@ argument checks for the end-after-start and duration-fits-window invariants, so 
 state is rejected even when Java assertions are disabled. Callers additionally validate untrusted
 input before construction, as described in Section 14.
 
+IDs stay a plain `int` end to end rather than widening the whole model to `long`, but every
+`ActivityManager` site that advances the next-ID counter (`loadAll`, `restoreState`, `add`,
+`addAllAtomically`) now guards against `int` overflow instead of performing raw `+ 1`/`++`
+arithmetic: `loadAll`/`restoreState` compute the candidate next ID as `long` so the comparison
+itself cannot wrap, and an `idSpaceExhausted` flag is set once that value would exceed
+`Integer.MAX_VALUE`. `getNextId()`, `add()`, and `addAllAtomically()` all throw
+`IllegalStateException` once exhausted rather than silently reusing or wrapping an ID; a batch call
+is additionally rejected atomically upfront if it would need more IDs than remain.
+`RecurrencePlanner`'s own candidate-ID arithmetic (`nextId + toCreate.size()`) uses
+`Math.addExact` for the same reason. This is intentionally a defensive guard for an
+astronomically unlikely scenario (billions of activities in one data file), not a change to
+normal ID behaviour.
+
 ## 6. Command and parser design
 
 `CommandDispatcher.dispatch(input, now)` separates the first command word from its arguments and
@@ -728,11 +741,21 @@ contract and preserve each caller's distinct error and recovery behaviour.
   recurrence dates.
 - Accessibility records remain separate from activities; activities do not store route state.
 - `reset all` and recurrence use the same class-schedule eligibility policy.
-- `parser.common.ArgumentTokenizer`/`ArgumentMarker` now provide declared-marker parsing and
+- `parser.common.ArgumentTokenizer`/`ArgumentMarker` provide declared-marker parsing and
   duplicate-marker rejection for `preference set`. `logic.graph.AccessibilityGraph`, the other
   preparatory utility from the same hardening session, is no longer unused - v2.0's `route` is its
   first real caller, via
   `logic.route.AccessibleRouteGraphFactory` (Section 12).
+- `add`/`edit` also reject a repeated declared field prefix (e.g. `n/A n/B`), but through
+  `FieldParser.rejectDuplicateMarkers` rather than by migrating them onto `ArgumentTokenizer`.
+  `ArgumentTokenizer` additionally rejects any *undeclared* marker-shaped token
+  (`[A-Za-z][A-Za-z0-9]*/`) found unquoted in the text, which would force free-text description/
+  note values containing an incidental `word/` (e.g. `n/Meeting w/ friends`) to be quoted -
+  acceptable for `preference set`'s small fixed-value fields, but a materially larger behavioural
+  change than this fix calls for on `add`/`edit`'s free-text fields.
+  `FieldParser.rejectDuplicateMarkers` only scans for the command's own declared markers occurring
+  twice, leaving undeclared free text untouched, and reuses `ArgumentTokenizer`'s
+  `Duplicate option "..."` wording for consistency.
 
 ## 19. Testing
 

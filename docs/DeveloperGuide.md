@@ -191,20 +191,26 @@ contract; commands that alter persistent state declare `MUTATING` beside their i
 `Command.getEffect()` is abstract, so a new command cannot compile until its effect is chosen. A
 command whose execution may be a no-op (reset or an already-applied preference operation) also
 reports whether this invocation has a state change. `ApplicationRunner` therefore has no central
-`instanceof` list to maintain. Before executing a changing command, it captures deep copies of
-activities and topics plus the exact `nextId`, saved order, and immutable preference profile.
+`instanceof` list to maintain. `CommandTransactionExecutor.execute` captures a deep `Snapshot` of
+activities and topics plus the exact `nextId`, saved order, and immutable preference profile
+immediately before a mutating command runs, and restores it itself if `command.execute()` throws.
 
-Success feedback is withheld until `Storage.saveAll` succeeds. If command execution throws after
-mutation, or if saving fails, the runner restores the snapshot through
-`ActivityManager.restoreState`, `TopicManager.loadAll`, and `PreferenceManager.setProfile`; the
-attempted command is therefore never left partially applied in memory. After a save failure the
+Success feedback is withheld until `Storage.saveAll` succeeds. `ApplicationRunner.trySave` catches
+both the documented checked `StorageException` and an unanticipated unchecked `RuntimeException`
+from `saveAll` (e.g. a bug inside a serializer), reporting either as a save failure the same way;
+`ApplicationRunner.processCommand` then calls the same `CommandTransactionExecutor.Execution
+.rollback()` used for an execution-time failure, restoring the pre-command snapshot through
+`ActivityManager.restoreState`, `TopicManager.loadAll`, and `PreferenceManager.setProfile`. The
+attempted command is therefore never left partially applied in memory, regardless of whether
+`saveAll` failed in its documented way or in an unanticipated one. After a save failure the
 unsaved-change flag remains set so `bye` retries and cannot falsely claim that data was saved.
 
 <p align="center"><img src="diagrams/sequence/MutationRollbackSequence.png" width="760" alt="Mutation rollback sequence diagram"></p>
 
 There are two complementary rollback layers:
 
-- in-memory rollback in `ApplicationRunner` restores the pre-command object graph and counters;
+- in-memory rollback in `CommandTransactionExecutor` restores the pre-command object graph and
+  counters, whether the failure originated inside the command itself or in a later save;
 - file rollback in `Storage` restores the prior persisted files if a staged multi-file commit
   fails partway through.
 

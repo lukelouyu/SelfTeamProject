@@ -109,7 +109,16 @@ class EditCommandParser {
         if (old.isComplete()) {
             newActivity.mark();
         }
-        return new EditCommand(activityManager, id, newActivity);
+        // Mirrors buildFixed/buildFlexible's own condition for calling requireNotPastIfToday
+        // above, so EditCommand can re-run that exact same check against a freshly-sampled now
+        // right before execution (see PreExecutionValidatable) - but only when this edit actually
+        // supplied a new date/start-time value. An edit that never touches timing must not be
+        // rejected just because the (unchanged, carried-over) original start time has since
+        // passed; only an edit that is actively (re)setting the start time needs re-validating.
+        boolean requiresFreshStartTimeCheck = fields.containsKey("date/")
+                || (newType == ScheduleType.FIXED && fields.containsKey("from/"))
+                || (newType == ScheduleType.FLEXIBLE && fields.containsKey("earliest/"));
+        return new EditCommand(activityManager, id, newActivity, requiresFreshStartTimeCheck);
     }
 
     private FixedActivity buildFixed(int id, String description, ActivityCategory category, LocalDate date,

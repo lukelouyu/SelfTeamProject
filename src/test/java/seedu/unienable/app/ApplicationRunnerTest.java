@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -623,6 +625,66 @@ class ApplicationRunnerTest {
         assertTrue(output.contains("All user data has been reset."),
                 "the reset menu must still be offered and actionable once the ID space is "
                         + "exhausted, even with zero activities currently stored");
+    }
+
+    /**
+     * Returns a Supplier that returns {@code early} for the first {@code callsBeforeAdvance}
+     * calls, then {@code late} forever after - simulating real time advancing partway through a
+     * scripted, non-interactive run, e.g. between a command's initial dispatch-time validation
+     * and a later, post-confirmation re-validation, without depending on actual wall-clock delay.
+     */
+    private static Supplier<LocalDateTime> advancingAfterCalls(int callsBeforeAdvance, LocalDateTime early,
+            LocalDateTime late) {
+        AtomicInteger callCount = new AtomicInteger(0);
+        return () -> callCount.getAndIncrement() < callsBeforeAdvance ? early : late;
+    }
+
+    @Test
+    public void recommendAdopt_placementElapsesDuringConfirmationWait_rejectsInsteadOfAdopting() throws Exception {
+        // Regression test: RecommendCommandParser only checked staleness once, at dispatch time,
+        // before the confirmation prompt was even shown. A user can take a real amount of time to
+        // answer "Proceed with adoption? (y/n)"; if the proposed start time elapses during that
+        // wait, adoption used to still silently proceed against the now-past placement.
+        Files.createDirectories(dataDirectory);
+        Files.writeString(dataDirectory.resolve("activities.txt"),
+                "FLEXIBLE|1|Essay draft|OTHERS|2026-08-10|12:00|12:10|5|1|1|INCOMPLETE|||\n");
+        // now stays 10:00 for "recommend today"'s generation and "recommend adopt"'s own
+        // dispatch-time check (both still before the 12:00 placement, so neither rejects it);
+        // it then advances to 12:01 - after the placement's 12:00 start - for the fresh
+        // post-confirmation check this fix adds.
+        Supplier<LocalDateTime> nowSupplier = advancingAfterCalls(2,
+                LocalDateTime.of(2026, 8, 10, 10, 0), LocalDateTime.of(2026, 8, 10, 12, 1));
+
+        String output = run("recommend today\nrecommend adopt\ny\nview 1\nbye\n", new Storage(dataDirectory),
+                nowSupplier);
+
+        assertFalse(output.contains("Recommendation adopted."),
+                "adoption must not succeed once the proposed placement has elapsed during confirmation");
+        assertTrue(output.contains("[Error] Invalid input:") && output.contains("stale"));
+        String viewSection = output.substring(output.lastIndexOf("Activity [1]"));
+        assertFalse(viewSection.contains("Adopted"), "the activity must remain unscheduled");
+    }
+
+    @Test
+    public void edit_startTimeElapsesDuringConfirmationWait_rejectsInsteadOfSaving() throws Exception {
+        // Same root cause as above, for edit: EditCommandParser only checked "not in the past"
+        // once, at dispatch time, before the "Save changes? (y/n)" prompt was shown.
+        Files.createDirectories(dataDirectory);
+        Files.writeString(dataDirectory.resolve("activities.txt"),
+                "FIXED|1|Old task|OTHERS|2026-08-10|09:00|10:00|1|1|INCOMPLETE||\n");
+        // now stays 10:00 for edit's own dispatch-time check (before the newly-requested 12:01
+        // start, so it is not rejected yet); it then advances to 12:02 - after that newly
+        // requested start - for the fresh post-confirmation check this fix adds.
+        Supplier<LocalDateTime> nowSupplier = advancingAfterCalls(1,
+                LocalDateTime.of(2026, 8, 10, 10, 0), LocalDateTime.of(2026, 8, 10, 12, 2));
+
+        String output = run("edit 1 from/12:01 to/12:30\ny\nview 1\nbye\n", new Storage(dataDirectory), nowSupplier);
+
+        assertFalse(output.contains("Activity [1] has been updated."),
+                "the edit must not succeed once its newly-requested start time has elapsed during confirmation");
+        assertTrue(output.contains("[Error] Invalid input:") && output.contains("has passed"));
+        String viewSection = output.substring(output.lastIndexOf("Activity [1]"));
+        assertTrue(viewSection.contains("09:00"), "the original, unedited start time must remain in effect");
     }
 
     private static int countOccurrences(String text, String needle) {

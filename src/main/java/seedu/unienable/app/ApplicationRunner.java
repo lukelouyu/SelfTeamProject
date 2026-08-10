@@ -13,6 +13,7 @@ import seedu.unienable.accessibility.classes.Connection;
 import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
+import seedu.unienable.command.PreExecutionValidatable;
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.exception.UniEnableException;
 import seedu.unienable.logic.ActivityManager;
@@ -244,6 +245,14 @@ public class ApplicationRunner {
             Command command = dispatcher.dispatch(line, nowSupplier.get());
             if (!confirmationHandler.confirmIfNeeded(command)) {
                 return true;
+            }
+            if (command instanceof PreExecutionValidatable validatable) {
+                // A confirmation prompt (e.g. "Proceed with adoption? (y/n)") can sit unanswered
+                // for a real amount of time, so a time-sensitive check already run once at
+                // dispatch() - before the prompt was even shown - can be stale by now. Re-check
+                // against a freshly-sampled now, immediately before the command is allowed to
+                // mutate anything.
+                validatable.validateBeforeExecution(nowSupplier.get());
             }
             CommandTransactionExecutor.Execution execution = transactionExecutor.execute(command);
             CommandResult result = execution.getResult();

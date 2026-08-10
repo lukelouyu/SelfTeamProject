@@ -33,7 +33,7 @@ class EditCommandTest {
         manager.add(newFixedActivity(manager.getNextId(), "Old", LocalTime.of(9, 0), LocalTime.of(10, 0)));
         FixedActivity replacement = newFixedActivity(1, "New", LocalTime.of(9, 0), LocalTime.of(10, 0));
 
-        CommandResult result = new EditCommand(manager, 1, replacement).execute();
+        CommandResult result = new EditCommand(manager, 1, replacement, false).execute();
 
         assertEquals("New", manager.getById(1).getDescription());
         assertTrue(result.getFeedback().contains("Activity [1] has been updated."));
@@ -44,7 +44,7 @@ class EditCommandTest {
         ActivityManager manager = new ActivityManager();
         FixedActivity replacement = newFixedActivity(999, "Ghost", LocalTime.of(9, 0), LocalTime.of(10, 0));
 
-        assertThrows(InvalidIndexException.class, () -> new EditCommand(manager, 999, replacement).execute());
+        assertThrows(InvalidIndexException.class, () -> new EditCommand(manager, 999, replacement, false).execute());
     }
 
     @Test
@@ -54,14 +54,14 @@ class EditCommandTest {
         manager.add(newFixedActivity(manager.getNextId(), "Second", LocalTime.of(14, 0), LocalTime.of(15, 0)));
         FixedActivity replacement = newFixedActivity(2, "Second", LocalTime.of(9, 30), LocalTime.of(10, 30));
 
-        assertThrows(DuplicateActivityException.class, () -> new EditCommand(manager, 2, replacement).execute());
+        assertThrows(DuplicateActivityException.class, () -> new EditCommand(manager, 2, replacement, false).execute());
     }
 
     @Test
     public void getId_returnsConstructorId() throws Exception {
         FixedActivity replacement = newFixedActivity(5, "New", LocalTime.of(9, 0), LocalTime.of(10, 0));
 
-        EditCommand command = new EditCommand(new ActivityManager(), 5, replacement);
+        EditCommand command = new EditCommand(new ActivityManager(), 5, replacement, false);
 
         assertEquals(5, command.getId());
     }
@@ -70,7 +70,7 @@ class EditCommandTest {
     public void getNewActivity_returnsConstructorReplacement() throws Exception {
         FixedActivity replacement = newFixedActivity(5, "New", LocalTime.of(9, 0), LocalTime.of(10, 0));
 
-        EditCommand command = new EditCommand(new ActivityManager(), 5, replacement);
+        EditCommand command = new EditCommand(new ActivityManager(), 5, replacement, false);
 
         assertEquals(replacement, command.getNewActivity());
     }
@@ -81,7 +81,7 @@ class EditCommandTest {
         manager.add(newFixedActivity(manager.getNextId(), "Old", LocalTime.of(9, 0), LocalTime.of(10, 0)));
         FixedActivity replacement = newFixedActivity(1, "New", LocalTime.of(9, 0), LocalTime.of(10, 0));
 
-        Confirmation confirmation = new EditCommand(manager, 1, replacement).getConfirmation();
+        Confirmation confirmation = new EditCommand(manager, 1, replacement, false).getConfirmation();
 
         assertTrue(confirmation.isAsk());
         assertTrue(confirmation.getMessage().contains("Save changes? (y/n)"));
@@ -95,7 +95,7 @@ class EditCommandTest {
         manager.add(original);
         FixedActivity identicalReplacement = newFixedActivity(1, "Same", LocalTime.of(9, 0), LocalTime.of(10, 0));
 
-        Confirmation confirmation = new EditCommand(manager, 1, identicalReplacement).getConfirmation();
+        Confirmation confirmation = new EditCommand(manager, 1, identicalReplacement, false).getConfirmation();
 
         assertTrue(confirmation.isCancel());
         assertEquals("No changes to activity [1].", confirmation.getMessage());
@@ -106,7 +106,7 @@ class EditCommandTest {
         ActivityManager manager = new ActivityManager();
         FixedActivity replacement = newFixedActivity(999, "Ghost", LocalTime.of(9, 0), LocalTime.of(10, 0));
 
-        assertThrows(InvalidIndexException.class, () -> new EditCommand(manager, 999, replacement)
+        assertThrows(InvalidIndexException.class, () -> new EditCommand(manager, 999, replacement, false)
                 .getConfirmation());
     }
 }

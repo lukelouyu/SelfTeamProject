@@ -5,7 +5,7 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
-## 0i. Second-pass re-audit of v2.1: three new correctness fixes (2026-08-10/11, Claude Code) — committed and pushed to main, not yet re-released as of this note
+## 0i. Second-pass re-audit of v2.1: three new correctness fixes (2026-08-10/11, Claude Code) — committed, pushed, and `v2.1` retagged/re-released
 
 An independent re-audit of the tagged/released v2.1 snapshot (Section 0h below) found three real
 new-or-remaining correctness defects and one diagram-accuracy issue, on top of confirming every
@@ -80,11 +80,23 @@ fixture changes needed, plus three manual smoke tests against a freshly rebuilt 
 `activities.txt`/`academic-calendar.txt` fixtures) directly reproducing and then confirming the fix
 for the ID-exhaustion and recur-capacity scenarios end to end.
 
-**Not yet done as of this note:** whether to cut a `v2.1.1` patch release (new jar/zip/tag/GitHub
-release) for these fixes hasn't been decided - the prior `v2.1` release instruction was explicit
-and one-off; this session's work was prompted by a bug report, not a release request, so the
-release decision was left to the user rather than assumed. If asked, the same `verifyReleaseZip` +
-full-pipeline discipline from Section 0h applies unchanged.
+**Release decision:** since this session's work was prompted by a bug report rather than an
+explicit release request, whether to publish anything was asked rather than assumed (same
+discipline as Section 4's "explicit permission required" rule for anything user-visible). The user
+chose to **retag `v2.1` in place** (not cut a separate `v2.1.1`), matching the project's own
+`v2.0.1` retag precedent (Section 0h's own history: `git show v2.0.1` shows it was moved once
+already, from its original cut to `dca0675`). Executed as: `git tag -d v2.1` + `git tag -a v2.1`
+at the new HEAD (`d2c7557`) + force-replace the remote tag
+(`git push origin :refs/tags/v2.1` then `git push origin v2.1`) - deleting the underlying tag
+briefly turned the existing GitHub release into an orphaned `draft` under a synthetic
+"untagged-..." URL, which needed `gh release edit v2.1 --tag v2.1 --target d2c7557 --draft=false
+--latest` to reattach and republish, plus `gh release upload v2.1 <jar> <zip> --clobber` to
+replace the assets. Release notes were extended in place (not replaced) with a "Retagged
+(2026-08-11)" section covering the three fixes, following the same append-don't-rewrite pattern
+`v2.0.1`'s own notes already used for its own retag. Verified after the fact: `gh release
+download` + `sha256sum` on both assets matched the freshly-built
+`d75e7be9.../ea4e68fe...` checksums exactly, and `git rev-parse v2.1^{commit}` matches
+`git rev-parse HEAD`.
 
 ## 0h. v2.1 tagged and released (2026-08-10, Claude Code)
 

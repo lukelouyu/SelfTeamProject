@@ -770,6 +770,27 @@ contract and preserve each caller's distinct error and recovery behaviour.
   reintroduce exactly the coupling the existing comment was written to avoid. Left as-is; revisit
   only if the two formats are ever deliberately required to diverge or converge further.
 
+### Maintainability review (2026-08 codebase audit)
+
+`GuideCommand`, `RecommendationService`, `DashboardService`, `ActivityCommandParser`,
+`ActivityStorage`, and `ApplicationRunner` were each reviewed for whether their size reflects
+genuinely mixed responsibilities or just legitimate, cohesive content. None were changed:
+`GuideCommand` is ~35 lines of command logic plus a large but simple static help-text lookup
+table; `DashboardService` and `RecommendationService` are each one cohesive computation pipeline
+whose length tracks real algorithmic/metric complexity; `ActivityCommandParser` is already a thin
+router produced by earlier decomposition; `ActivityStorage`'s length tracks its two persisted
+record shapes' field counts; `ApplicationRunner` was already slimmed by extracting
+`CommandTransactionExecutor` (Section 10). Two extractions were identified as justified by the
+same reasoning that motivated `ActivityConflictChecker` (Section 18's first subsection) but were
+deferred as out of scope for this correctness-focused audit pass, since neither is a defect:
+`ActivityManager`'s "next relevant activity" selector (`next`/`findScheduledInProgress`/
+`findNearestUpcomingScheduled`/`findSoonestEndingFlexible`, ~150 lines) is a self-contained,
+stateless computation over `(activities, now)` that could become its own `NextActivityFinder`
+collaborator; and `Storage`'s ~150-line generic atomic multi-file commit/rollback engine
+(`tempSiblingOf`/`backupIfExists`/`commit`/`restore`/`commitAllWithRollback`) has zero knowledge of
+activities/topics and is independently testable with arbitrary temp files, and could become its
+own `AtomicFileTransaction` collaborator.
+
 ## 19. Testing
 
 The automated strategy has four layers:

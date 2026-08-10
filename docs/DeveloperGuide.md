@@ -266,6 +266,16 @@ with `accessibility == YES` as eligible edges.
 
 <p align="center"><img src="diagrams/class/RouteClassDiagram.png" width="700" alt="Route class diagram"></p>
 
+**Cumulative distance is `long`, individual edges stay `int`.** `Connection.distanceInMetres` and
+`AccessibilityGraph.Edge.distanceInMetres` remain `int`, since a single persisted connection
+distance is already bounded by that type. `AccessibilityGraph`'s Dijkstra frontier
+(`QueueEntry.distanceInMetres`), its `bestDistance` map, and `GraphPath.totalDistanceInMetres` are
+all `long`, because a multi-hop route's *cumulative* distance can exceed `Integer.MAX_VALUE` even
+when no individual edge does - a plain `int` running total would silently wrap and could corrupt
+the shortest-path comparison. `reconstructPath` additionally tracks a `visited` set while walking
+the predecessor chain and throws `IllegalStateException` if a facility is revisited, so a corrupted
+`previous` map fails fast instead of looping indefinitely.
+
 **Why the `YES`-only filter lives in `logic.route.AccessibleRouteGraphFactory`, not in
 `logic.graph.AccessibilityGraph`.** `AccessibilityGraph` was built during v1.0 hardening as
 generic, policy-free Dijkstra-prep infrastructure over *any* facility/connection dataset - its own

@@ -35,7 +35,7 @@ class AccessibilityGraph <<read-only>> {
 
 class GraphPath <<immutable>> {
   - facilityNames : List<String>
-  - totalDistanceInMetres : int
+  - totalDistanceInMetres : long
 }
 
 class FacilityManager <<read-only>>

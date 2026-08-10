@@ -5,6 +5,21 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0h. v2.1 tagged and released (2026-08-10, Claude Code)
+
+Cut immediately after Section 0g below, at commit `e8276f0` (0f's audit fixes + 0g's diagram
+split, nothing else). Full pipeline re-run fresh before tagging: `clean test checkstyleMain
+checkstyleTest javadoc verifyReleaseZip`, then the Unix text-UI harness separately (its own
+`clean` step meant `build/distributions/unienable.zip` had to be rebuilt with `verifyReleaseZip`
+afterward, since `clean` doesn't survive across separate `gradlew` invocations) - 1,250 tests,
+Checkstyle, Javadoc, release-ZIP verification (extracted-distribution smoke test), and the text-UI
+harness all passed. Annotated tag `v2.1` created and pushed;
+[GitHub release](https://github.com/lukelouyu/SelfTeamProject/releases/tag/v2.1) published with
+both `unienable.jar` and `unienable.zip` attached (SHA-256: `af50d5...` / `0d606a...`, full
+strings in the release body) and detailed notes covering every fix from Section 0f plus the
+Section 0g diagram split, matching v2.0.1's release-notes format/tone. No CHANGELOG.md exists in
+this repo - release notes live only in the GitHub release body, consistent with v1.0/v2.0/v2.0.1.
+
 ## 0g. Split RecommendationSequence into generation/adoption diagrams (2026-08-10, Claude Code) — committed and pushed
 
 Follow-up to Section 0f below, same day: the user (reviewing 0f's work) asked for

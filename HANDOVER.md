@@ -5,6 +5,87 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0i. Second-pass re-audit of v2.1: three new correctness fixes (2026-08-10/11, Claude Code) — committed and pushed to main, not yet re-released as of this note
+
+An independent re-audit of the tagged/released v2.1 snapshot (Section 0h below) found three real
+new-or-remaining correctness defects and one diagram-accuracy issue, on top of confirming every
+Section 0f finding was still correctly fixed. All were verified against current source before
+fixing (same discipline as 0f), fixed, regression-tested, and validated end to end against a
+rebuilt JAR. Full detail: `CODEBASE_AUDIT_REPORT.md` Section 12 (which now supersedes Section 11's
+original `READY` verdict - Section 11 is kept, marked superseded, not deleted).
+
+**1. ID exhaustion silently disabled every unrelated mutating command (confirmed regression from
+0f's own fix, fixed).** 0f's `getNextId()` throwing once exhausted was correct in isolation, but
+`CommandTransactionExecutor.Snapshot`'s field initializer called it unconditionally for *every*
+mutating command's pre-execution snapshot - so exhaustion transitively blocked `mark`, `delete`,
+`edit`, `reset all`, topic/preference mutations, everything, not just `add`/`recur`'s own
+allocation. `ResetCommand.hasAnythingToReset()` had the identical problem via its own `getNextId()`
+call, blocking even the reset *menu* from being shown - the one command that should be able to
+recover from this state could not run either. Fixed: `ActivityManager` gained a non-throwing
+`snapshotIdAllocation()` (returning a new `IdAllocationState(nextId, idSpaceExhausted)` record)
+for `Snapshot`'s exclusive use, `hasAllocatedAnyId()` for `ResetCommand`, and `tryGetNextId():
+OptionalInt` for a narrower related gap in `ResetCommand`'s post-reset success message.
+`restoreState()` now takes an `IdAllocationState` and restores the exhaustion flag from it, instead
+of unconditionally clearing it to `false` (a related bug: a snapshot taken while genuinely
+exhausted used to silently un-exhaust the manager on rollback). Tests: 7 new in
+`ActivityManagerTest`, 2 new in `ApplicationRunnerTest` reproducing the exact reported end-to-end
+scenario (`mark 2147483647` then `delete`+`reset all` with the ID space exhausted). Commit
+`2aee025`.
+
+**2. Recur's ID-capacity exhaustion surfaced as a generic internal error (confirmed, fixed).**
+0f's `Math.addExact` fix in `RecurrencePlanner` was arithmetically correct but throws a raw
+`ArithmeticException`, not a `UniEnableException` - an anticipated capacity limit reported as
+"[Error] An unexpected internal error occurred" instead of a clean validation message. Fixed:
+explicit `long` computation + `InvalidActivityException("not enough activity IDs remain...")`,
+matching every other early-rejection condition already in that method. The existing regression test
+updated to expect the domain exception instead of the raw one. Commit `2a64f1d`.
+
+**3. Time-sensitive validation went stale during the confirmation wait (confirmed, fixed - the
+most realistic-in-ordinary-use of the three).** `now` was sampled exactly once per command, at
+dispatch time, before a `Confirmable` command's y/n prompt was even shown. A user can take a real
+amount of time to answer; if the basis of a "not in the past" check elapsed during that wait, the
+stale value was still silently accepted. Reproduced for both `recommend adopt` (a proposed
+placement elapsing while answering "Proceed with adoption?") and `edit` (a newly-requested start
+time elapsing while answering "Save changes?"), using a `Supplier<LocalDateTime>` in tests that
+advances between dispatch and post-confirmation execution - no real elapsed time needed to
+reproduce deterministically. Fixed with a new `PreExecutionValidatable` interface
+(`validateBeforeExecution(now)`), called by `ApplicationRunner` with a freshly-sampled `now`
+immediately after confirmation and immediately before transaction execution; only
+`RecommendAdoptCommand` and `EditCommand` implement it (the only two `Confirmable` commands with a
+time-sensitive check that can go stale during the wait - `add` isn't `Confirmable` at all).
+`EditCommand`'s re-check only applies when the edit actually supplied a new date/start-time value
+(the boolean is computed once by `EditCommandParser`, mirroring its own existing parse-time
+condition exactly, and passed through the constructor - re-deriving it by diffing old vs. new
+activity was considered and rejected, since it would subtly change semantics for a user
+re-supplying an unchanged value). Tests: 2 new end-to-end `ApplicationRunnerTest` cases
+reproducing both exact scenarios; `EditCommandTest`'s existing 8 cases updated for the new
+constructor parameter (defaulting to `false`, i.e. no behavioural change for any of them). Commit
+`cd87438`.
+
+**4. Adoption diagram's loop didn't match the two-phase source (confirmed, fixed).**
+`RecommendationAdoptionSequence.puml` (from 0g) showed one interleaved validate-then-mutate loop
+per placement; `RecommendAdoptCommand.execute()` actually validates every placement first
+(collecting `AdoptionTarget`s), then mutates every placement second, in two separate loops - so a
+bad later placement can never leave earlier ones partially adopted. Split the loop to match, added
+a note explaining why, relabelled the snapshot note as an explicitly simplified view of the
+`CommandTransactionExecutor`-owned flow (pointing to the Mutation rollback sequence diagram for the
+full picture, rather than redrawing that participant into this diagram), and added the new
+finding-3 `validateBeforeExecution(now)` step with its own stale-during-confirmation-wait branch,
+since it postdates when this diagram was first drawn. `DeveloperGuide.md` Sections 8 and 16
+updated in prose for the same reason. Commit `dc62a95`.
+
+**Validation:** full pipeline re-run clean (1261 tests, up from 1250; Checkstyle; Javadoc;
+`verifyReleaseZip`'s extracted-distribution smoke test), `text-ui-test/runtest.sh` passes with no
+fixture changes needed, plus three manual smoke tests against a freshly rebuilt JAR (seeded
+`activities.txt`/`academic-calendar.txt` fixtures) directly reproducing and then confirming the fix
+for the ID-exhaustion and recur-capacity scenarios end to end.
+
+**Not yet done as of this note:** whether to cut a `v2.1.1` patch release (new jar/zip/tag/GitHub
+release) for these fixes hasn't been decided - the prior `v2.1` release instruction was explicit
+and one-off; this session's work was prompted by a bug report, not a release request, so the
+release decision was left to the user rather than assumed. If asked, the same `verifyReleaseZip` +
+full-pipeline discipline from Section 0h applies unchanged.
+
 ## 0h. v2.1 tagged and released (2026-08-10, Claude Code)
 
 Cut immediately after Section 0g below, at commit `e8276f0` (0f's audit fixes + 0g's diagram

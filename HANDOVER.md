@@ -5,6 +5,159 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0f. Full codebase audit remediation pass: overflow, rollback, parser, ID, and doc-drift fixes (2026-08-10, Claude Code) — read this first, committed and pushed
+
+Starting point: `a84146d` (already includes 0e's recommender rewrite, already committed and
+pushed by the time this session started — see the note at the top of Section 0e; it is stale).
+An independently-written, detailed audit (eight findings, P1–P4) was supplied as this session's
+task. Every finding was re-verified against current source before any change, per this file's own
+"trust but verify" discipline, using eight parallel research passes (one per finding) reading full
+source + full tests + git history before touching anything. Two findings turned out to be only
+*partially* still open — see below. Full narrative, root-cause analysis, and a
+recommendation→implementation traceability table for all eight live in
+`CODEBASE_AUDIT_REPORT.md` at the repo root (new file, this session); this section is a condensed
+pointer to it, not a replacement.
+
+**1. `AccessibilityGraph` cumulative-distance overflow (confirmed, fixed).** Dijkstra's running
+distance was plain `int` end to end (`bestDistance` map, `QueueEntry.distanceInMetres`, the
+`candidate` local, `GraphPath.totalDistanceInMetres`), while `ConnectionStorage` only rejects
+`distanceInMetres <= 0` — no upper bound. A multi-hop route whose true total exceeds
+`Integer.MAX_VALUE` could wrap to negative and get wrongly preferred by Dijkstra's comparison.
+Fixed: `bestDistance`/`QueueEntry`/`GraphPath.totalDistanceInMetres` now `long`; individual edge
+distances stay `int` (already bounded by storage). `reconstructPath` also gained a visited-set
+cycle guard (`IllegalStateException` on a repeated facility) as defence against any future
+corruption reaching it, and was made package-private specifically so the guard is directly
+testable without needing to first corrupt a live Dijkstra run. Tests:
+`AccessibilityGraphTest.getShortestPath_cumulativeDistanceExceedsIntegerMaxValue_choosesTrueShortestPath`,
+`..._multiHopAboveIntegerMaxValue_reportsExactUnwrappedTotal`,
+`reconstructPath_cyclicPredecessorMap_throwsInsteadOfLoopingIndefinitely`,
+`GraphPathTest.getTotalDistanceInMetres_valueAboveIntegerMaxValue_preservedExactly`. Verified
+end-to-end against the built shadow JAR with a synthetic three-facility dataset (two 1.2B-metre
+hops vs. a 2B-metre direct edge) — correctly chose the direct edge. Commit `3b036d6`.
+
+**2. Rollback gap on unchecked persistence failure (partially confirmed — the checked-exception
+path was already fixed by an earlier commit not yet reflected in this file; only the unchecked
+path was still open — fixed).** `ApplicationRunner.trySave()` only caught `StorageException`; an
+unanticipated `RuntimeException` from `Storage.saveAll()` propagated past the
+`if (!trySave()) { execution.rollback(); ... }` call site entirely and was swallowed by the outer
+boundary catch with no rollback, leaving the in-memory model mutated while disk still reflected
+the pre-command state. Fixed by widening `trySave()`'s catch clause to also catch
+`RuntimeException` and report it the same way — the existing rollback-on-failed-save call site
+then covers both cases automatically, no restructuring needed. Tests:
+`ApplicationRunnerTest.add_saveFailsWithRuntimeException_rollsBackAndReportsNoFalseSuccess`,
+`..._saveFailsWithRuntimeExceptionThenRetrySucceeds_doesNotConsumeIdOnFailedAttempt`, plus two new
+test doubles (`RuntimeExceptionAfterStorage`, `RuntimeExceptionOnceThenSucceedStorage`) mirroring
+the existing `StorageException`-based ones. Commit `7562104`.
+
+**3. Duplicate Add/Edit field prefixes silently absorbed (confirmed, fixed — deliberately
+*not* via the "migrate to `ArgumentTokenizer`" approach the supplied audit recommended).**
+`add n/A n/B c/...` silently merged the second `n/` into the first field's value ("A n/B") instead
+of being rejected, while `ArgumentTokenizer` (used only by `preference set`) already rejects a
+repeated marker. Fixed via a new `FieldParser.rejectDuplicateMarkers(text, markers...)`, called by
+both `AddCommandParser`/`EditCommandParser`, reusing `ArgumentTokenizer`'s `Duplicate option "..."`
+wording for consistency. **Deliberately did not migrate `add`/`edit` onto `ArgumentTokenizer`
+itself**, even though that was the externally-suggested "best solution": `ArgumentTokenizer`
+additionally rejects any *undeclared* marker-shaped token found unquoted anywhere in the text,
+which would force `add`/`edit`'s free-text description/note fields to require quoting any
+incidental `word/` (e.g. `n/Meeting w/ friends` would need quoting) — a materially larger
+behavioural change than the finding called for. The two prior pinning tests
+(`parseAdd_markerSuppliedTwice_firstOccurrenceValueAbsorbsTheSecond`,
+`parseEdit_markerSuppliedTwice_firstOccurrenceValueAbsorbsTheSecond`) were replaced with rejection
+tests, not merely deleted. `text-ui-test/input.txt`'s scripted `edit 1 n/New name n/Another name`
+case, which depended on the old absorb behaviour for its downstream assertions, was updated (added
+a follow-up `edit 1 n/New name` so the rest of the script's activity-1-renamed assumptions still
+hold) and `EXPECTED.TXT` regenerated from verified-correct output. Commits `17bba67`, `6952cda`.
+
+**4. `UniEnableTest` E2E suite used the real wall clock (confirmed, fixed — time-critical: today
+is 2026-08-10, the suite's earliest hardcoded "not before today" date literal is 2026-08-15, so
+this genuinely had days left before it would have started failing).** All three
+`UniEnable.run(...)` call sites in the file used the 2-arg overload (real
+`LocalDateTime::now`) instead of the existing 3-arg injectable-time overload already used
+correctly elsewhere (e.g. `ApplicationRunnerTest`). Fixed: added
+`private static final LocalDateTime TEST_NOW = LocalDateTime.of(2026, 8, 10, 12, 0);` (strictly
+before every hardcoded date literal in the file) and threaded it into all three call sites via the
+3-arg overload. All 47 existing `UniEnableTest` cases re-verified passing unchanged with the fixed
+clock. No other file in `src/test` was found calling a real-clock API. Commit `b4ba68f`.
+
+**5. `ActivityManager` next-ID counter overflow (confirmed, fixed).** `loadAll`'s
+`Math.max(nextId, activity.getId() + 1)` silently overflowed for a loaded `id ==
+Integer.MAX_VALUE`, and — worse than a simple wraparound — `Math.max` then reset `nextId` back
+down to `1`, masking that the ID was ever taken and risking a duplicate-ID collision on the very
+next `add()`. The same unchecked-arithmetic shape existed in `restoreState`, `add` (`nextId++`),
+`addAllAtomically` (`nextId + index`, `nextId += candidates.size()`), and
+`RecurrencePlanner.plan`'s own `nextId + toCreate.size()`. Fixed: `ActivityManager` gained a
+`boolean idSpaceExhausted` flag; `loadAll`/`restoreState` compute the candidate next ID as `long`
+(so the comparison itself can't overflow) and set the flag once that value would exceed
+`Integer.MAX_VALUE`; `getNextId()`/`add()`/`addAllAtomically()` all throw `IllegalStateException`
+once exhausted instead of wrapping or silently reusing an ID, and a batch call is rejected
+atomically upfront if it needs more IDs than remain. `RecurrencePlanner` uses `Math.addExact`.
+IDs stay plain `int` throughout — only the bookkeeping arithmetic was widened/checked, not the ID
+type. Tests: seven new `ActivityManagerTest` cases (load-time exhaustion, final-ID consumption,
+post-exhaustion rejection for single/batch add, exact-fit batch, reset recovery) plus
+`RecurrencePlannerTest.plan_nextIdNearIntegerMaxValue_throwsArithmeticExceptionInsteadOfWrappingCandidateId`.
+Commit `b82c644`.
+
+**6. Developer Guide recommender section drift (partially confirmed — the supplied audit's
+premise assumed the whole section was stale; re-verification against current source found only
+one paragraph actually was, since 0e's own rewrite above had already fixed the rest — fixed).**
+`grep` confirmed `preferredRangePenalty`/`chooseBestSlot`/`chooseNextActivity` don't exist anywhere
+in `src/main`; the DG's whole-day-optimization narrative (added by 0e / commit `d9d89fe`) already
+correctly says so. What was actually still stale: one earlier paragraph, never revisited since
+`d9d89fe` deleted the field it describes, claiming `preferredRangePenalty` was "kept rather than
+removed... always 0... a no-op safety net" — directly contradicted by the very next paragraph in
+the same section, which correctly says the whole scoring apparatus was removed. Corrected only
+that one paragraph; the rest of the section, and the recommendation class/sequence diagrams, were
+confirmed accurate and left untouched. Commit `3b19069`.
+
+**7. Date/time-parsing duplication between `DateTimeParser` and `ActivityStorage` (confirmed real,
+declined — diverges from the supplied audit's "extract a shared codec" recommendation).**
+Real, verbatim duplication of format constants and strict-parse logic exists. `ActivityStorage`
+already carries a comment explaining this is *intentional*: a persistence codec must keep reading
+the exact bytes it already wrote regardless of how the CLI parser's input rules evolve, so a
+shared codec would risk exactly the coupling that comment warns against (a future parser-ergonomics
+relaxation silently changing what storage can reload). No code change; the existing rationale was
+elevated into a new `DeveloperGuide.md` §18 bullet so it's discoverable without reading the comment
+in isolation. Commit `797bf07`.
+
+**8. Large-class review (partially justified — diverges from the supplied audit's specific
+suggestion to decompose `GuideCommand`).** All eight originally-flagged classes were read in full.
+`GuideCommand` (585 lines) was judged **not** to need decomposition: ~35 lines are command logic,
+the rest is one static help-text lookup table, not branching logic — splitting a map literal
+across five new files (`GuideTopic`/`GuideContentProvider`/etc., as the supplied audit suggested)
+would relocate complexity, not reduce it. Two *different* extractions were independently judged
+genuinely justified and were **not implemented, only documented as deferred** (correctness fixes
+took priority within this session's scope): a `NextActivityFinder` from `ActivityManager`'s
+~150-line stateless "next relevant activity" selector (mirroring the existing
+`ActivityConflictChecker` precedent), and an `AtomicFileTransaction` from `Storage`'s ~150-line
+generic atomic multi-file commit/rollback engine (zero domain knowledge, independently testable) —
+the latter wasn't called out by the supplied audit at all. Recorded in `DeveloperGuide.md` §18
+under "Maintainability review (2026-08 codebase audit)". No commit beyond the doc note (`ec528a3`).
+
+**Docs synced:** `UserGuide.md` §4 (duplicate-prefix rejection rule);
+`DeveloperGuide.md` §5 (ID-overflow guard), §10 (rollback, now naming
+`CommandTransactionExecutor` explicitly), §12 (route distance `long`/`int` split + cycle guard),
+§16 (Finding 6 above), §18 (four new/updated design-decision bullets), §19 (`UniEnableTest`'s
+deterministic time). Diagrams regenerated: `MutationRollbackSequence.puml`/`.png` (the "file
+commit fails" branch now also covers an unexpected `RuntimeException`),
+`RouteClassDiagram.puml`/`.png` (`GraphPath.totalDistanceInMetres` corrected from `int` to `long`
+— was stale even before this session).
+
+**Validation:** `./gradlew clean test checkstyleMain checkstyleTest javadoc shadowJar build` all
+green (1250 tests, 0 failures — up from 1236 before this session's 14 net-new test methods);
+`text-ui-test/runtest.sh` passes after the Finding 3 fixture update; a manual release smoke test
+against the built JAR verified both the duplicate-prefix rejection and the route-overflow fix
+end-to-end (not just via unit tests). 14 commits, each independently reviewed and tested before the
+next; pushed to `origin/main` as a clean fast-forward (`a84146d..e7bb8d5`). Working tree clean
+except three pre-existing untracked presentation files unrelated to this session's scope, left
+untouched throughout.
+
+**One correction to Section 0e above:** its header still says "not yet committed" as of this
+writing, but git history shows its content (commit `d9d89fe` and neighbours) was committed and
+pushed well before this session started (`a84146d`, this session's starting HEAD, already includes
+it). Left Section 0e's own text unedited since verifying and rewriting historical entries was out
+of this session's scope — flagging it here so the next session doesn't repeat the "not yet
+committed" assumption.
+
 ## 0e. Whole-day recommender rewrite, command aliases, and boundary-enforcement guard (2026-08-06, Claude Code) — read this first, not yet committed
 
 **Not committed as of this note.** Everything below is verified in the working tree on top of

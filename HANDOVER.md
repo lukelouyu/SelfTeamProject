@@ -5,6 +5,96 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0l. Independent manual QA pass on published `v2.1.0`: one new ordering defect found and fixed (2026-08-14, Claude Code) — read this first
+
+Follow-up, same day, after `v2.1.0` (Section 0k) was already tagged and published: a **second,
+independent manual QA pass** - a 14-batch, 52-case interactive regression script run by hand
+against a freshly built `v2.1.0` jar and a real, pre-existing 131-activity baseline dataset (not
+the bundled sample data) - re-verified every one of Section 0j's six fixes end-to-end and found
+them all genuinely fixed, but surfaced **one new defect** the six-bug audit's own test suite had
+not covered: `find k/QA Lecture order/time` did not sort chronologically.
+
+**Initial QA result: 51 PASS / 1 FAIL** (52 total cases across the 14 batches, plus an exploratory
+pass that found nothing further). The one failure:
+
+```
+find k/QA Lecture order/time
+Expected: [156] 2026-08-18 18:30 -> 19:00, then [155] 2026-08-25 18:30 -> 19:00
+Actual:   [155] 2026-08-25 18:30 -> 19:00, then [156] 2026-08-18 18:30 -> 19:00
+```
+
+Two activities sharing an identical `18:30` start time on different dates were not sorted by
+date at all.
+
+**Root cause, confirmed by reading `ActivityManager.sort()` before writing any fix (not assumed
+from the QA report's own "find vs list" framing).** `find` and `list` (and `listOverdue`) have
+**always** called the exact same `sort()` method - there is no find-specific ordering code
+anywhere, so this was never a find-vs-list inconsistency at the implementation level. The real
+defect: the `TIME` case's comparator was `Comparator.comparing(getSortTime).thenComparingInt(id)`
+- **no date term at all** - while the separate `CHRONOLOGICAL` case correctly compared
+`date, then getSortTime, then id`. Two activities sharing a start time on different dates
+therefore fell through the date-blind `TIME` comparator straight to the `id` tie-break, which is
+exactly why it looked like "order/time toggles ID direction" in the QA report - it wasn't toggling
+ID order, it was falling back to it, and only in the specific edge case of a tied time-of-day
+across dates. Confirmed this affects `list order/time` identically, not just `find`: the existing
+scripted `text-ui-test/input.txt` already had a `list order/time` (line 163) and a
+`find k/finish assignment order/time` (line 189) case spanning many dates with several repeated
+times, and its previously-committed `EXPECTED.TXT` had been silently asserting the old
+time-of-day-only order the entire time - undetected until this fix's own `runtest.sh` run
+surfaced the diff. Neither `docs/UserGuide.md`, `docs/DeveloperGuide.md`, nor the in-app
+`guide order` had ever actually explained what `time` vs `chronological` meant, which plausibly
+let this go unnoticed for as long as it did.
+
+**Fix.** `ActivityManager.sort()`'s `TIME` case now falls through to `CHRONOLOGICAL`'s exact
+comparator instead of maintaining a second, subtly different one - matching this file's own
+"do not create two subtly different date/time comparators" discipline. Both `order/time` and
+`order/chronological` remain independently valid input (parsed to distinct `ActivityOrder` enum
+values, both still required so existing scripts/muscle memory keep working) and now simply resolve
+to the identical ordering. `docs/UserGuide.md` §6.6 and `guide order` were updated to explicitly
+document the (now singular) ordering rule, since its previous complete silence on the distinction
+was itself part of how this went unnoticed.
+
+**Regression tests:** `find_orderTime_sortsAcrossDifferentDatesChronologically`,
+`find_orderTime_sortsSameDateByStartTime`,
+`find_orderTimeMixedFixedFlexible_usesCanonicalOrdering` (adopted-flexible start time, not
+earliest/latest window, correctly compared), `find_withoutOrderTime_preservesExistingDefaultOrdering`
+(guards that the null-order/saved-default path was untouched) - all in `FindCommandParserTest`,
+written and confirmed **failing** against the pre-fix code first, then fixed, then re-confirmed
+green - plus `find_orderTime_sortsChronologicallyAcrossDatesEndToEnd` in `ApplicationRunnerTest`,
+reproducing the exact reported command text end to end.
+
+**Final rerun result: 52/52 (all original cases) + all new regression tests green.** The fix was
+independently re-verified against the **same real 131-activity baseline dataset** the original QA
+pass used (found still on disk at `unienable (3)/data/`, confirmed pristine - 131 records, highest
+ID 146, no `QA`-prefixed activities yet - matching the QA report's own description exactly), not
+just synthetic JUnit fixtures: a fresh isolated copy was seeded with that exact data plus the
+newly-built jar, and every batch was re-run (reconstructed from the QA report's own detailed
+per-batch descriptions, since this session did not have the literal original 52-line script text)
+- adopted-placement survival across a note-only edit, fixed-vs-adopted-flexible conflict rejection
+via both `add` and `edit`, an unadopted flexible window not blocking a fixed activity, the
+recommender correctly proposing a slot around an existing fixed commitment, the preference-change
+proposal-lifecycle rejection with its own distinct "no active proposal" control case, three
+duplicate-marker rejections (`find k/`, `route from/`, `topic rename new/`), full restart
+persistence (including of the adopted placement and the now-correct `find order/time` result),
+zero `[OVERLAP]` timetable markers, zero phantom activities (activity count exactly matched every
+successful `add`), and zero activity-ID leakage across seven distinct rejected `add`/`edit`/`recur`
+attempts in the session. The originally-failing case specifically now returns
+`[154] 2026-08-18 18:30 -> 19:00` before `[153] 2026-08-25 18:30 -> 19:00` (fresh IDs in this
+re-run's own session, not the original 155/156 - the original script's exact intermediate state
+that produced those specific IDs was not available to replay verbatim). Full JUnit suite: 1312
+tests, 0 failures (up from 1307 before this fix). Checkstyle, javadoc, `verifyReleaseZip` all
+clean. `text-ui-test/runtest.sh` required one `EXPECTED.TXT` regeneration - confirmed via the
+standard `ACTUAL.TXT` diff-before-promote procedure that every changed line was a pure reordering
+of the identical entry set (same IDs/dates/times/descriptions, no additions, removals, or content
+changes), consistent with a sort-order-only fix.
+
+**Commit:** `f5df5f3` ("fix: sort find order/time results chronologically").
+
+`v2.1.0` was **not** retagged for this fix until the full pipeline above was green, per explicit
+instruction - see the follow-up note immediately below this section for the retag itself, once it
+had actually happened (same two-commit pattern as Sections 0i/0j/0k: this section documents the
+fix; a further, separate, untagged commit documents the retag/republish that came after it).
+
 ## 0k. `v2.1.0` tagged, released, and verified (2026-08-14, Claude Code) — read this first
 
 Follow-up to Section 0j below, same session, same day: records what actually happened once the six

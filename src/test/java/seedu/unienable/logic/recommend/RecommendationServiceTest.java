@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -593,5 +594,88 @@ class RecommendationServiceTest {
                 TomatoSuggestion.OFF);
 
         assertTrue(RecommendationService.hasOutOfPreferredRangePlacement(proposal, narrowedProfile));
+    }
+
+    /**
+     * Performance-hardening regression: eight same-day flexible activities used to fall inside the
+     * old {@code PERMUTATION_CAP} of 8 (40,320 orderings, a measured multi-second worst case); the
+     * cap is now 7, so eight activities take the bounded heuristic path instead. Either way, the
+     * result must still be exactly reproducible across repeated calls with identical input - no
+     * hash-order or timing-dependent nondeterminism.
+     */
+    @Test
+    public void recommend_eightFlexibleActivities_returnsDeterministically() throws Exception {
+        List<Activity> activities = new ArrayList<>();
+        for (int id = 1; id <= 8; id++) {
+            activities.add(flexible(id, "Activity " + id, 8, 0, 22, 0, 45));
+        }
+        ActivityManager manager = managerWith(activities);
+        PreferenceProfile preferences = PreferenceProfile.of(LocalTime.of(8, 0), LocalTime.of(22, 0), 0,
+                TomatoSuggestion.OFF);
+
+        RecommendationProposal first = RecommendationService.recommendDate(manager, preferences, MONDAY, MIDNIGHT);
+        RecommendationProposal second = RecommendationService.recommendDate(manager, preferences, MONDAY, MIDNIGHT);
+
+        assertEquals(first.getPlacements(), second.getPlacements());
+        assertEquals(first.getUnscheduledActivityIds(), second.getUnscheduledActivityIds());
+    }
+
+    /**
+     * Performance-hardening regression: seven same-day flexible activities with wide, fully
+     * overlapping windows is the worst case for {@link RecommendationService#exhaustiveSearch} -
+     * every one of 7! = 5,040 orderings is a candidate, and (since every activity fits) the
+     * item-count pruning never triggers, so this exercises the un-pruned incremental-generation
+     * path directly. A generous 5-second bound (CI machines vary; the old cap-8 defect measured
+     * multiple seconds for a strictly smaller 40,320-ordering search before the incremental-
+     * generation fix, so this is not a brittle near-actual-runtime threshold) guards against a
+     * regression back toward unbounded materialization, not a tight timing assertion.
+     */
+    @Test
+    public void recommend_largeFlexibleSet_doesNotMaterializeAllPermutations() throws Exception {
+        List<Activity> activities = new ArrayList<>();
+        for (int id = 1; id <= 7; id++) {
+            activities.add(flexible(id, "Activity " + id, 8, 0, 22, 0, 45));
+        }
+        ActivityManager manager = managerWith(activities);
+        PreferenceProfile preferences = PreferenceProfile.of(LocalTime.of(8, 0), LocalTime.of(22, 0), 0,
+                TomatoSuggestion.OFF);
+
+        long start = System.nanoTime();
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager, preferences, MONDAY,
+                MIDNIGHT);
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+        assertEquals(7, proposal.getPlacements().size());
+        assertTrue(elapsedMs < 5000,
+                "exhaustive search over 7 activities took " + elapsedMs + " ms, expected well under 5000 ms");
+    }
+
+    /**
+     * Correctness-preservation regression for the permutation-search rewrite: a purely greedy,
+     * single-order placement (process activities in ID order, each at its own earliest slot) would
+     * place the wide-window activity first, at 09:00-10:00, leaving no room for the tight one whose
+     * only possible slot is also 09:00-10:00 - only a search that also tries the reverse ordering
+     * finds the schedule that fits both. The optimizer must still find it after being rewritten to
+     * generate and prune orderings incrementally instead of materializing them all first.
+     */
+    @Test
+    public void recommend_optimization_preservesExpectedSchedule() throws Exception {
+        FlexibleActivity onlyFitsNineToTen = flexible(1, "Tight block", 9, 0, 10, 0, 60);
+        FlexibleActivity fitsEitherHour = flexible(2, "Wide block", 9, 0, 11, 0, 60);
+        ActivityManager manager = managerWith(List.of(onlyFitsNineToTen, fitsEitherHour));
+        PreferenceProfile preferences = PreferenceProfile.of(LocalTime.of(8, 0), LocalTime.of(20, 0), 0,
+                TomatoSuggestion.OFF);
+
+        RecommendationProposal proposal = RecommendationService.recommendDate(manager, preferences, MONDAY,
+                MIDNIGHT);
+
+        assertEquals(2, proposal.getPlacements().size());
+        assertTrue(proposal.getUnscheduledActivityIds().isEmpty());
+        RecommendedPlacement tight = proposal.getPlacements().stream()
+                .filter(placement -> placement.activityId() == 1).findFirst().orElseThrow();
+        RecommendedPlacement wide = proposal.getPlacements().stream()
+                .filter(placement -> placement.activityId() == 2).findFirst().orElseThrow();
+        assertEquals(LocalTime.of(9, 0), tight.startTime());
+        assertEquals(LocalTime.of(10, 0), wide.startTime());
     }
 }

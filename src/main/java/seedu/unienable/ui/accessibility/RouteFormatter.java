@@ -3,7 +3,6 @@ package seedu.unienable.ui.accessibility;
 import java.util.List;
 
 import seedu.unienable.accessibility.classes.Connection;
-import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
 import seedu.unienable.logic.graph.GraphPath;
 
 /**

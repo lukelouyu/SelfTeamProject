@@ -6,7 +6,7 @@ import java.util.Map;
 
 import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
-import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
+import seedu.unienable.ui.accessibility.AccessibilityDisclaimer;
 
 /**
  * Displays the built-in application guide: either the main numbered menu or one topic's text.
@@ -17,7 +17,6 @@ import seedu.unienable.command.accessibility.common.AccessibilityDisclaimer;
  * not a topic; it's a no-op that acknowledges the selection instead of showing topic text.
  */
 public class GuideCommand extends ReadOnlyCommand {
-    private static final String COMING_SOON_NOTE = "\n(Coming soon in a future release.)";
     private static final String RETURN_MESSAGE = "Returning to the command prompt.";
 
     /**

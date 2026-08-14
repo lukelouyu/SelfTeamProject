@@ -14,10 +14,10 @@ import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidDateTimeException;
 import seedu.unienable.exception.InvalidIndexException;
 import seedu.unienable.logic.ActivityManager;
+import seedu.unienable.logic.validation.ActivityTimeValidator;
 import seedu.unienable.model.classes.Activity;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
-import seedu.unienable.parser.common.DateTimeParser;
 import seedu.unienable.ui.MessageFormatter;
 
 /**
@@ -93,7 +93,7 @@ public class EditCommand extends Command implements Confirmable, PreExecutionVal
         LocalTime start = newActivity instanceof FixedActivity
                 ? ((FixedActivity) newActivity).getStartTime()
                 : ((FlexibleActivity) newActivity).getEarliestStart();
-        DateTimeParser.requireNotPastIfToday(start, newActivity.getDate(), now);
+        ActivityTimeValidator.requireNotPastIfToday(start, newActivity.getDate(), now);
     }
 
     @Override

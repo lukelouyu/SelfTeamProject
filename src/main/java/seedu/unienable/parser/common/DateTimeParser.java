@@ -9,6 +9,7 @@ import java.time.format.ResolverStyle;
 import java.util.regex.Pattern;
 
 import seedu.unienable.exception.InvalidDateTimeException;
+import seedu.unienable.logic.validation.ActivityTimeValidator;
 
 /**
  * Parses date and time text in the formats documented in the User Guide (yyyy-MM-dd, HH:mm).
@@ -103,10 +104,10 @@ public class DateTimeParser {
     /**
      * Rejects an activity start time that has already passed or is exactly now, when date is
      * today - a well-formed date/time combination that {@link #parseNotBeforeDate} alone cannot
-     * catch, since it only looks at the date. Used for an activity's start time (add's
-     * from/earliest, or edit's date/from/earliest when actively supplied) - not for read-only
-     * filters (list/find date/) or for previously-saved activities being left alone, both of
-     * which must continue to accept a genuinely past date/time.
+     * catch, since it only looks at the date. Delegates to
+     * {@link ActivityTimeValidator#requireNotPastIfToday}, the neutral validation layer shared
+     * with {@code command} (which needs the identical rule immediately before execution, not just
+     * at parse time) so neither package depends on the other for it.
      *
      * @param time the already-resolved start time to check
      * @param date the activity's resolved date
@@ -117,10 +118,7 @@ public class DateTimeParser {
      */
     public static void requireNotPastIfToday(LocalTime time, LocalDate date, LocalDateTime now)
             throws InvalidDateTimeException {
-        if (date.equals(now.toLocalDate()) && !time.isAfter(now.toLocalTime())) {
-            throw new InvalidDateTimeException("activity start time has passed. Please enter a start time after "
-                    + TIME_FORMAT.format(now.toLocalTime()) + ".");
-        }
+        ActivityTimeValidator.requireNotPastIfToday(time, date, now);
     }
 
     /**

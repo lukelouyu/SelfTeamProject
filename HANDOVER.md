@@ -5,6 +5,57 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0o. `v2.1.0` retagged/republished for the quality-hardening pass, verified (2026-08-14, Claude Code) — read this first
+
+Follow-up to Section 0n, same session: records the push and retag once the user explicitly
+requested them, per the same two-commit pattern Sections 0i/0k/0m/0m-follow-up already established
+(the commit that gets tagged records the fixes; a separate, later, untagged commit records the
+retag/publish narrative once it actually happened).
+
+**Push.** `git fetch origin` confirmed `origin/main` unchanged at `eb1a23f` (this session's own
+starting HEAD) immediately before pushing; `git push origin main` was a clean fast-forward
+(`eb1a23f..62fac62`, the seven commits from Section 0n). Verified after: `git rev-parse HEAD` and
+`git rev-parse origin/main` both `62fac62`.
+
+**Fresh JAR/ZIP**, built clean from this exact HEAD (`./gradlew clean releaseZip
+verifyReleaseZip`), manifest confirmed (`Main-Class: seedu.unienable.UniEnable`), bare `java -jar`
+startup smoke test passed, plus a fresh-directory smoke test against the actual `unienable.zip`
+directly reproducing the Section 0n bug-fix scenario (seeded `data/activities.txt` with a completed
+`09:00-10:00` fixed activity, `-Dunienable.fixedNow=2026-08-19T15:00`): both `dashboard today` and
+`recommend today` showed `Completion [##########] 100% (1/1)`. SHA-256:
+- `unienable.jar`: `e1c34029493daf4890dda63df83e4b9147b4391aae91f304e6feab8c3c0744f8`
+- `unienable.zip`: `98061fa8369aebbb8ed96098aba391228e06c0cfdba7f8e08eb0e4ad889cf1e2`
+
+**`v2.1.0` retagged in place** (not a new `v2.1.1` - explicit user instruction was to retag
+`v2.1.0`, matching this project's `v2.0.1`/`v2.1`/Section 0m retag precedent). Old target recorded
+first (`git rev-parse v2.1.0^{commit}` = `451fd93`, Section 0m's HEAD), then `git tag -d v2.1.0` +
+`git tag -a v2.1.0 ... 62fac62` + `git push origin :refs/tags/v2.1.0` + `git push origin v2.1.0`.
+Deleting the underlying tag turned the GitHub release into an orphaned `draft` (confirmed via
+`gh release view v2.1.0 --json isDraft` -> `true` immediately after) - `gh release edit v2.1.0
+--tag v2.1.0 --target main --draft=false --latest --notes-file <updated notes>` reattached,
+republished, and updated the release notes in one call. `gh release upload v2.1.0 <jar> <zip>
+--clobber` replaced both assets - confirmed exactly two assets afterward (no stale duplicates),
+server-computed digests matching the checksums above exactly.
+
+**Release notes updated in place** (appended, not replaced from scratch - same discipline as every
+prior retag in this file): a new "Additional pass: code-quality hardening (independent QA review)"
+section summarizing the Section 0n now-bug fix, the exhaustive-search performance fix, and the
+code-quality changes, plus updated verification numbers (1,319 tests) and the new checksums in the
+"Release assets" section at the bottom (old checksums removed, not left stale alongside the new
+ones, matching how every earlier retag in this file has handled the same section).
+
+**Published-asset verification.** `gh release download v2.1.0 --dir <fresh temp dir>` then
+`sha256sum` matched the freshly-built checksums above exactly; the downloaded jar was smoke-tested
+directly with the exact fixed-clock/seeded-activity reproduction above and showed the corrected
+`100% (1/1)` completion line for both `dashboard today` and `recommend today` - the published asset
+is confirmed to be the corrected build.
+
+**Final state.** `git rev-parse HEAD` / `origin/main` / `v2.1.0^{commit}` all `62fac62`; `v2.1`
+unchanged. `git status`: clean except the same two pre-existing untracked presentation files
+flagged since Section 0f. No stale release JAR/ZIP, temporary fixture, or copied GitHub asset left
+inside the repository - all verification artifacts were written under this session's external
+scratch directory.
+
 ## 0n. Code-quality hardening pass after independent QA review: bug fix, perf fix, architecture, docs, tests (2026-08-14, Claude Code) — read this first
 
 This session was **quality hardening, not feature development**, per an independent QA review
@@ -230,15 +281,16 @@ JavaDoc-cleanup commit, for the same reason.
 | `92fd841` | docs: align JavaDoc and comments with occupied-schedule conflict semantics |
 | `2effa59` | docs: clarify overdue boundary and architecture updates |
 
-**Release/tag rule followed.** This session was quality hardening, not a release; per explicit
-instruction, the `v2.1.0` tag/release was **not** moved, deleted, recreated, or republished, and
-nothing was pushed. `v2.1.0` remains at `451fd93` (Section 0m), untouched.
+**Release/tag rule at the time these fixes were committed.** No release action was taken until the
+user separately, explicitly requested it after reviewing this work - per this file's own "ask
+before publishing" discipline. See the follow-up note immediately above this section (Section 0o)
+for the push/retag/republish that happened once that explicit instruction arrived, in the same
+two-commit pattern this file has used for every prior retag.
 
-**Final state.** `git rev-parse HEAD` is `2effa59`. `git status`: clean except the same two
-pre-existing untracked presentation files flagged since Section 0f - left untouched, out of this
-session's scope. `origin/main` was **not** updated (no push performed, none requested). The
-corrected `HEAD` is ready for review/push/release at the user's discretion - no release action was
-taken or implied by this session.
+**Final state as of this section's own commit (`2effa59`).** `git status`: clean except the same
+two pre-existing untracked presentation files flagged since Section 0f - left untouched, out of
+this session's scope. `origin/main` had not yet been updated at this point - see Section 0o for the
+push and retag that followed once requested.
 
 ## 0m. `v2.1.0` retagged/republished for the `order/time` fix, verified (2026-08-14, Claude Code) — read this first
 

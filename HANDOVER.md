@@ -5,6 +5,82 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0k. `v2.1.0` tagged, released, and verified (2026-08-14, Claude Code) — read this first
+
+Follow-up to Section 0j below, same session, same day: records what actually happened once the six
+fixes described there were verified, committed, and pushed, per this file's own established
+two-commit pattern (Section 0i itself was written the same way - the commit that gets tagged
+records the fixes; a separate, later, untagged commit records the tag/publish narrative once it has
+actually happened, not predicted in advance).
+
+**Full pipeline re-run clean, fresh, at the exact commit that got tagged:** `./gradlew clean test
+checkstyleMain checkstyleTest javadoc verifyReleaseZip` all green (1307 tests, 0 failures);
+`bash text-ui-test/runtest.sh` → `Test passed!` (after promoting the one intentional `guide recur`
+`EXPECTED.TXT` line, verified via the standard `ACTUAL.TXT` diff-before-promote procedure - no other
+scripted scenario changed); `releaseZip`/`verifyReleaseZip` re-run once more after `runtest.sh`'s own
+`clean` step, per this file's standing note that a separate `gradlew` invocation's `clean` doesn't
+survive across processes.
+
+**Push.** `git fetch origin` immediately before pushing confirmed `origin/main` was still `1f042ee`
+(Section 0j's starting point, no drift). `git push origin main` succeeded as a clean fast-forward
+(`1f042ee..fb40b03`, the 9 commits listed in Section 0j). Verified after: `git rev-parse HEAD` and
+`git rev-parse origin/main` both `fb40b03`.
+
+**`v2.1.0` tag.** Verified before tagging: `v2.1.0` did not exist, locally or on
+`origin` (`git tag --list` / `git ls-remote --tags origin`, both showed only `v2.1`). Per Section
+0j's naming reconciliation, this meant creating a **new** tag, not moving or deleting `v2.1`.
+Created as an annotated tag at the verified `fb40b03`: `git tag -a v2.1.0 -m "..." fb40b03`, then
+`git push origin v2.1.0` (`* [new tag] v2.1.0 -> v2.1.0`). Verified after: `git rev-parse
+v2.1.0^{commit}` is `fb40b03`, matching `HEAD`/`origin/main` exactly; `git tag --list` now shows
+both `v2.1` (still `d2c7557`, untouched) and `v2.1.0` (`fb40b03`).
+
+**Fresh release JAR/ZIP.** `./gradlew clean releaseZip verifyReleaseZip` from the freshly-tagged
+commit (not reusing any earlier build). `unzip -p build/libs/unienable.jar META-INF/MANIFEST.MF`
+confirmed `Main-Class: seedu.unienable.UniEnable`; a bare `java -jar` startup smoke test (`bye`)
+showed the normal welcome/goodbye banners. SHA-256 (`sha256sum`):
+- `unienable.jar`: `5a52f94a109ba6fa37212ac8d72c5511644d9498fa4f6fda0583694332ae3779`
+- `unienable.zip`: `fa2cbd2db3f559482522e17403fd89d9ee8cbd41ff1301d9b380e02298f472c6`
+
+**Fresh-directory smoke test against the actual release ZIP** (not the repo's tracked `data/`,
+not a bare jar copy): extracted `unienable.zip` into a clean external temp directory and re-ran, in
+one scripted session, the exact reported reproductions for bugs A/C/F together (add a flexible
+activity, adopt it via `recommend`, edit a non-scheduling field, add an overlapping fixed activity,
+run a duplicate-keyword `find`) - every one showed the fixed behaviour: `Adopted     : 10:00 ->
+11:00` survived the edit; the overlapping `add` was rejected with `This timing overlaps activity
+[1], Study (10:00 -> 11:00).`; `find k/Study k/Assignment` was rejected with `Duplicate option
+"k/".`. (Bugs B/D/E were already smoke-tested against an earlier identically-built jar during
+Section 0j's own verification pass, before this final rebuild - not re-run a second time here since
+nothing in the source changed between that build and this one, only the fresh compile itself.)
+
+**`v2.1.0` GitHub release published.** No pre-existing `v2.1.0` release existed
+(`gh release view v2.1.0` → `release not found`, confirmed before creating), so this was a plain
+`gh release create v2.1.0 build/libs/unienable.jar build/distributions/unienable.zip --title
+"UniEnable v2.1.0" --notes-file <notes> --latest` - not a `--clobber`/asset-replacement case, since
+there was no old `v2.1.0` JAR to remove. Published at
+[https://github.com/lukelouyu/SelfTeamProject/releases/tag/v2.1.0](https://github.com/lukelouyu/SelfTeamProject/releases/tag/v2.1.0),
+not a draft, not a prerelease, marked `--latest`. Release notes cover the six fixes, regression
+hardening, documentation updates, and verification results in the structure requested for this
+session, with the two checksums above quoted verbatim in the notes body itself.
+
+**Published-asset verification (not just the local build).** `gh release download v2.1.0
+--dir <fresh temp dir>` then `sha256sum` on both downloaded files matched the freshly-built
+checksums above **exactly**, byte for byte - confirmed independently via `gh release view v2.1.0
+--json assets`, whose own server-computed `digest` fields (`sha256:5a52f94a...`/`sha256:fa2cbd2d...`)
+also match. A `java -jar` startup + the same add/adopt/edit/overlap/duplicate-keyword scripted
+session as above, re-run directly against the **downloaded** jar (not the local build artifact),
+showed identical correct output (`Adopted     : 10:00 -> 11:00` present after edit) - the
+user-visible GitHub asset is confirmed to actually be the corrected build, not merely the local one.
+
+**Final cleanliness check.** `git status`: clean except the same two pre-existing untracked
+presentation files this file has flagged as out-of-scope since Section 0f
+(`.codex-presentations/`, `UniEnable_NUS_Enablers_Presentation.pptx.inspect.ndjson`) - left
+untouched, not part of this session's scope. No stale release JAR/ZIP, temporary test fixture,
+copied GitHub asset, or modified generated diagram was left inside the repository - every build/
+smoke-test artifact (including the fresh downloads used for asset verification above) was written
+under the session's own external scratch directory, never inside the repo tree.
+`git rev-parse HEAD` / `origin/main` / `v2.1.0^{commit}` all `fb40b03`; `v2.1` unchanged at
+`d2c7557`.
+
 ## 0j. Independent testing-engineering audit: six confirmed correctness bugs fixed, `v2.1.0` corrective release (2026-08-14, Claude Code) — read this first
 
 This session originated from an **independent testing-engineering audit** of the codebase (a bug

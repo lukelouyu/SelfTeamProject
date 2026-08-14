@@ -5,6 +5,260 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0j. Independent testing-engineering audit: six confirmed correctness bugs fixed, `v2.1.0` corrective release (2026-08-14, Claude Code) — read this first
+
+This session originated from an **independent testing-engineering audit** of the codebase (a bug
+report supplied as this session's task, structurally similar to the prior review reports that
+drove Sections 0f/0i - a fresh set of findings, not a re-check of those already-fixed ones). It
+listed six reported bugs (labelled A-F below); this session's own discipline (matching Section 0f's
+"trust but verify") was to reproduce each one against current source *before* writing any fix, not
+implement the report's prose on faith. **All six reproduced and were confirmed real defects** -
+none turned out to be already fixed or unreproducible. Starting HEAD: `1f042ee` (tip of Section
+0i's retag work). Ending HEAD before this note: `e27cbee`.
+
+**A. Editing an adopted flexible activity silently lost its placement (confirmed, fixed).**
+`EditCommandParser.buildFlexible` always constructed a brand-new `FlexibleActivity` via the
+unadopted-state constructor - so `edit 1 note/Bring notes` on an activity already adopted from a
+recommendation (e.g. `Adopted: 10:00 -> 11:00`) silently reverted it to unscheduled, even though
+nothing about its schedule was touched. Root cause: the method never read
+`((FlexibleActivity) old).getAdoptedStartTime()` at all. Fixed: after building the replacement's
+window/duration, the old adopted start is re-applied via `FlexibleActivity.canAdoptAt`/
+`setAdoptedStartTime` whenever it still fits (covering both non-scheduling edits, where it always
+fits, and scheduling edits that widen or shift the window without excluding the old start); it is
+left cleared, never re-applied, only when a scheduling edit genuinely invalidates it -
+`MessageFormatter.appendTimingChanges` gained its own `adopted` Before/After diff line so the
+confirmation preview states this explicitly (`Before: adopted = 10:00 -> 11:00` /
+`After : adopted = None`) rather than losing state silently. Tests:
+`editAdoptedFlexible_nonSchedulingEdit_preservesAdoptedPlacement`,
+`editAdoptedFlexible_validWindowEdit_preservesAdoptedPlacement`,
+`editAdoptedFlexible_invalidatingScheduleEdit_handlesPlacementExplicitly` (all in
+`EditCommandParserTest`), plus an `ApplicationRunnerTest` end-to-end case verifying the placement
+survives a save + restart reload. Commit `d053d2b`.
+
+**B. `route` could display a different connection than the one Dijkstra actually chose (confirmed,
+fixed).** With two parallel accessible connections between the same facility pair (e.g. a 100 m
+`PATH` and a 50 m `RAMP`), `route from/A to/B` printed `[1] A -> B | 100 m | PATH ...` alongside
+`Total distance: 50 m` - a real, user-visible inconsistency. Root cause:
+`AccessibilityGraph`'s Dijkstra only ever recorded a predecessor *facility name*
+(`Map<String, String> previous`); `GraphPath` carried only names + total distance, no edge
+identity; `RouteCommand.resolveSegments`/`findConnectionBetween` then re-derived a connection per
+hop by scanning for the *first* endpoint match in `ConnectionManager`'s load order, with no way to
+know which of several parallel connections Dijkstra had actually used. Fixed: `Edge` now carries
+the originating `Connection`; the relaxation loop records the winning edge's connection into a
+parallel `viaConnection` map at the same moment it updates `bestDistance`; `GraphPath` gained a
+`connections` field/`getConnections()` built from that map; `RouteCommand` reads it directly -
+`resolveSegments`/`findConnectionBetween`/`connects` are deleted outright, not patched. Tests:
+`getShortestPath_parallelEdges_retainsExactChosenConnection` and a load-order-reversed companion
+(`AccessibilityGraphTest`), `route_parallelEdges_displaysChosenEdgeAndMatchingDistance` and its
+companion (`RouteCommandTest`), plus `GraphPathTest`/`RouteFormatterTest` updates for the widened
+constructor. `RouteClassDiagram.puml`/`.png` and `RouteSequence.puml`/`.png` regenerated. Commit
+`68762cf`.
+
+**C. A new fixed activity could overlap an already-adopted flexible activity (confirmed, fixed).**
+`add`/`edit` accepted a fixed activity overlapping an adopted flexible activity's real committed
+time slot, only for the timetable's independent `[OVERLAP]` marker (a completely separate
+detection path, `TimetableService.findOverlapIds`) to notice afterward. Root cause:
+`ActivityConflictChecker.checkNoConflicts`'s overlap check only ever ran `if (candidate instanceof
+FixedActivity)` and only ever compared against other `FixedActivity` instances - an adopted
+`FlexibleActivity` was invisible to it entirely, despite representing a real scheduled commitment
+exactly like a fixed activity does. Fixed: a new `effectiveInterval(Activity)` helper returns the
+activity's occupied `(date, start, end)` - always present for `FixedActivity`, present only once
+`hasAdoptedPlacement()` for `FlexibleActivity`, absent (empty) for an unadopted one - and the
+overlap check now compares any two activities that both have one, regardless of type combination.
+`storage.ActivityStorage.validateAgainstAlreadyLoaded` got the identical, independently-duplicated
+fix (storage deliberately does not depend on `logic`, same layering rule Section 11/18 already
+document for date/time parsing), so a hand-edited `activities.txt` with an impossible persisted
+schedule is now rejected at load time too. An unadopted flexible window still never blocks
+anything, confirmed by dedicated tests. Tests (all in `ActivityConflictCheckerTest` unless noted):
+`addFixed_overlappingAdoptedFlexible_isRejected`, `editFixed_overlappingAdoptedFlexible_isRejected`,
+`scheduledInterval_unadoptedFlexible_doesNotBlockNormalWindowOverlap`,
+`scheduledInterval_adoptedFlexible_blocksRealOverlap`, plus adopted-flexible-vs-adopted-flexible
+cases, `ActivityStorageTest`'s load-time equivalents, `AddCommandParserTest`/`EditCommandParserTest`
+parser-level cases, and `ApplicationRunnerTest` end-to-end. `ActivityConflictValidationClassDiagram.puml`/
+`.png` regenerated. Commit `5059868`.
+
+**D. `recur` could create occurrences in the past (confirmed, fixed).** `RecurrencePlanner.plan`
+never received `now` at all and did zero past-date checking, so a requested week resolving to an
+already-passed calendar date was silently created like any other. Fixed: `now` is now threaded
+through `CommandDispatcher.dispatch` -> `RecurCommandParser.parse` -> `RecurrencePlanner.plan` (the
+same seam every other time-sensitive command already uses); a new `requireNotPast` check - run
+inline in the same per-week loop that already builds the plan entirely before `RecurCommand` even
+exists - rejects any target date (other than the source's own, already-skipped date) that is before
+`now`'s date, or is `now`'s own date at a time not after the source's inherited start time, mirroring
+`DateTimeParser.parseNotBeforeDate`/`requireNotPastIfToday`'s exact two-tier shape. Because this
+lives inside `plan()`, the existing "nothing is created until `RecurCommand.execute()` runs, and
+that never happens if `plan()` throws" structure gives whole-batch atomicity for free - no
+restructuring needed. Error format: `Week 1 resolves to 2026-08-11, which has already passed.\nNo
+recurring activities were created.` Tests (all in `RecurrencePlannerTest` unless noted):
+`recur_occurrenceBeforeToday_rejectedAtomically`, `recur_todayFixedOccurrenceAlreadyStarted_rejected`,
+`recur_invalidOccurrence_createsNothing`, `recur_allFutureOccurrences_stillSucceeds`, plus an
+`ApplicationRunnerTest` end-to-end case. A new `RecurrenceTestData.NOW` fixed-clock constant was
+added and threaded through every existing recur test (`RecurrencePlannerTest`, `RecurCommandTest`,
+`RecurCommandParserTest`, `RecurrenceFormatterTest`, `RecurNextWeekIntegrationTest`,
+`ScreenshotRecurrenceRegressionTest`) since `plan()`'s signature gained the required parameter -
+zero behavioural change to any of those, confirmed by every one passing unmodified in substance.
+`guide recur` and the User Guide's recur section updated; `text-ui-test/EXPECTED.TXT` regenerated
+for that one guide-text line only (verified via `runtest.sh`/`ACTUAL.TXT` diff - no other scripted
+scenario changed, confirming none of the other five fixes altered any existing scripted output).
+`RecurrencePlanningSequence.puml`/`.png` regenerated. Commit `b739a7d`.
+
+**E. Recommendation proposal lifecycle contradicted its own documentation (confirmed - a real
+inconsistency between code and docs, not a guessed product rule; fixed).** Per this file's own
+"do not guess the product rule" instruction, the *documented* contract was established first, not
+assumed: `docs/UserGuide.md` §11/§12.4, `docs/DeveloperGuide.md` §16, and `guide preference`
+(`"An existing unadopted proposal is also unaffected until you act on it"`) all unambiguously say a
+`preference set`/`preference reset` must **not** discard an active recommendation proposal - only
+that `recommend adopt` re-validates it against the *current* profile at adopt time
+(`RecommendationService.hasOutOfPreferredRangePlacement`, already implemented and already called
+from `RecommendCommandParser`). The actual code contradicted this: `ApplicationRunner.processCommand`
+called `recommendationManager.clear()` after **every** successful mutating command with zero
+exceptions, including `preference set`/`preference reset` - so by the time `recommend adopt` ran,
+the proposal was already gone, and `hasOutOfPreferredRangePlacement` was unreachable through the
+real CLI (only reachable in isolated unit tests that construct `RecommendCommandParser` directly,
+bypassing `ApplicationRunner` entirely - which is exactly why this shipped unnoticed). Fixed: `code
+now matches docs`, not the other way around - `preference set`/`preference reset` succeeding is the
+one deliberate, narrow exception to the generic clear-on-mutation rule; every other mutating command
+(`add`, `edit`, `delete`, `mark`, `recur`, `reset all`, every `topic` mutation, `recommend adopt`
+itself) still clears the proposal exactly as before, since no documented contract says otherwise for
+them and re-litigating that per command was out of this fix's scope. Tests: three new
+`ApplicationRunnerTest` end-to-end cases -
+`recommend_thenPreferenceChangeInvalidatesProposal_adoptRejectedNotLost` (the exact reported
+reproduction, asserting the previously-unreachable revalidation message now appears instead of "no
+active proposal"), `recommend_thenPreferenceChangeStillFits_adoptStillSucceeds`, and
+`recommend_thenUnrelatedMutation_stillClearsProposal` (guard confirming the fix's scope is exactly
+the two preference commands). Commit `407cdbe`.
+
+**F. Duplicate command markers rejected inconsistently across parsers (confirmed, fixed).**
+`FieldParser.rejectDuplicateMarkers` already existed (Section 0f finding 3) and was already used by
+`add`/`edit`, but `find`, `list`, `route`, `connection find`, `facility find`, and every `topic`
+subcommand extracted marker fields without it - so `find k/Study k/Assignment` silently mis-parsed
+into a garbled two-word keyword search instead of being rejected, `route from/A from/B to/C` and
+`connection find from/A from/B` silently absorbed the repeated `from/` into a garbled facility name
+(the latter then matching zero connections with no error at all), and `topic rename ... new/Baz
+new/Qux` silently renamed to the garbled literal string `"Baz new/Qux"`. Fixed: all six parsers now
+call the same `FieldParser.rejectDuplicateMarkers` guard, reusing its existing `Duplicate option
+"..."` wording - deliberately **not** migrated onto `ArgumentTokenizer` (same reasoning Section 0f
+already established: that would additionally reject any undeclared marker-shaped token found
+unquoted in free text, breaking e.g. `n/Meeting w/ friends`, a materially larger change than this
+finding calls for). Confirmed safe for every affected parser's own free-text-ish fields (`k/`,
+`topic/`, topic names) via `FieldParserTest`'s existing `rejectDuplicateMarkers_undeclaredSlashBearingText_isIgnored`
+guarantee - re-verified live: `add n/Meeting w/ friends c/ACADEMIC ...` still accepts the incidental
+`w/` unchanged. Tests: two new cases per parser (twelve total) in `FindCommandParserTest`,
+`ListCommandParserTest`, `RouteCommandParserTest`, `ConnectionCommandParserTest`,
+`FacilityCommandParserTest`, `TopicCommandParserTest`, plus two `ApplicationRunnerTest` end-to-end
+cases (`find`, `topic rename`). `dashboard`/`timetable`/`recommend` were reviewed and found already
+safe (whole-word-token parsers that already reject a second `date/`/`day/` token, just with
+different wording) - deliberately left as-is, not a silent gap. Commit `155570d`.
+
+**Cross-feature regression review (Section 8 of the audit spec).** Beyond each bug's own unit/
+parser-level tests, `ApplicationRunnerTest` (commit `c4f5815`) covers every scenario the spec's
+Section 8 checklist named end-to-end through the real `CommandDispatcher`/
+`CommandTransactionExecutor`/`Storage` pipeline - adopted-flexible lifecycle across a save+restart,
+every conflict-lifecycle combination (Fixed↔Fixed already covered by pre-existing tests, Fixed↔
+adopted-Flexible and adopted-Flexible↔adopted-Flexible newly covered), routing with parallel edges,
+recurrence's past-boundary atomic rejection, duplicate-marker rejection for a representative subset,
+and the full recommendation lifecycle across a preference change. All 1307 tests pass (up from 1261
+before this session - 46 net new), `checkstyleMain`/`checkstyleTest` clean, `javadoc` builds clean
+(0 errors; this session's `./gradlew javadoc` run reported 0 warnings via the default Gradle task
+output, differing from the "100 pre-existing warnings" figure earlier sessions cited from a more
+verbose invocation - not chased further since it is not a release gate either way, and no error was
+present), `bash text-ui-test/runtest.sh` passes (one intentional `EXPECTED.TXT` line for the `guide
+recur` text change, confirmed via the standard `ACTUAL.TXT` diff-before-promote procedure - no other
+scripted scenario's output changed, direct evidence none of the six fixes altered any existing
+command's successful-path output), `./gradlew verifyReleaseZip` passes.
+
+**Manual JAR smoke tests, fresh `data/` directories, real system clock (2026-08-14):** all six
+reported reproductions were re-run verbatim (or as close as the real clock allowed) against a
+freshly built, freshly extracted `unienable.jar` + `data/`, not just asserted by JUnit -
+A: adopted-flexible edit-then-view showed `Adopted     : 10:00 -> 11:00` surviving `edit 1
+note/Bring notes`. B: a synthetic two-facility/two-connection dataset (`100 m PATH` id 1, `50 m
+RAMP` id 2) printed `[1] A -> B | 50 m | RAMP ...` / `Total distance: 50 m` - matching, not the old
+mismatched 100 m/50 m pair. C: adding a fixed activity over the same adopted slot from test A was
+rejected with `[Error] Conflict: This timing overlaps activity [1], Study (10:00 -> 11:00).` D: **not
+reproducible live against the real wall clock** - the bundled `data/academic-calendar.txt`'s
+earliest instructional week (Week 1, `2026-08-10`-`2026-08-14`) had not yet fully elapsed as of this
+session's real system date (`2026-08-14`), so there was no genuinely past instructional week to
+request; covered instead by the deterministic injected-clock JUnit suite above, which is strictly
+more rigorous than a real-clock manual repro could be for a date-boundary bug and is this project's
+own standing convention for exactly this reason (Section 5's "hardcoded near-future placeholder"
+risk family). E: the exact reported scenario (`recommend` -> `preference set start/10:30` -> `y` ->
+`recommend adopt`) produced `[Error] Invalid input: This recommendation proposal no longer fits your
+current preferred daily start/end - preferences changed since it was generated. Generate a new
+recommendation with recommend.` - not `"No recommendation proposal is currently active."` F: `find
+k/Study k/Assignment`, `route from/A from/B to/C`, and `topic rename ... new/Baz new/Qux` all
+produced `Duplicate option "..."` for their respective repeated marker; `topic add c/ACADEMIC
+n/Foo` (control) succeeded normally in between, confirming the fix didn't over-reject.
+
+**No reported issue was found not reproducible.** All six were real, confirmed defects.
+
+**Documentation and diagrams synced:** `docs/UserGuide.md` (duplicate-marker scope widened past
+add/edit; edit's adopted-placement carry-over/clear rule; fixed-activity overlap wording now
+covers adopted flexible activities; `route`'s parallel-edge connection-identity guarantee; `recur`'s
+past-occurrence rejection rule), `docs/DeveloperGuide.md` (§7 conflict-validation rules rewritten
+for effective-occupied-interval; §8 edit section gained the adopted-placement carry-over paragraph;
+§9 recur section gained the `now`-threading/`requireNotPast` paragraph; §11 storage section's
+overlap description corrected; §12 route section rewritten for `Edge`/`GraphPath` connection
+tracking and `RouteCommand`'s simplified segment reading, with the old buggy `resolveSegments`
+approach explicitly called out as removed, not just superseded silently; §16 recommend section
+gained a "Proposal lifecycle vs. other mutating commands" paragraph naming the
+`isPreferenceMutation` exception explicitly; §18 duplicate-marker bullet widened to the six newly
+covered parsers, plus a new bullet on the `ScheduledInterval` duplication mirroring the existing
+date/time-parsing-duplication discussion), `command.general.GuideCommand`'s `recur` topic text.
+Four diagrams regenerated from their already-updated `.puml` sources via the same local
+`plantuml.jar` toolchain prior sessions used (`C:\Users\lukel\AppData\Local\Temp\
+unienable-plantuml-tool\tp-master\tools\plantuml.jar` - still present in this environment, reused
+without a fresh permission prompt since it is neither new nor freshly downloaded this session):
+`RouteClassDiagram`, `RouteSequence`, `ActivityConflictValidationClassDiagram`,
+`RecurrencePlanningSequence` (all `.puml`+`.png` pairs, visually verified rendered correctly, not
+error placeholders). 22 `.puml`/22 `.png` files remain 1:1 paired. `EditActivitySequence.puml` and
+the recommendation-lifecycle diagrams were reviewed and found to already be accurate at their
+existing level of abstraction (the adopted-placement carry-over and the `ApplicationRunner`-level
+proposal-clearing exception are both internal details one level below what those specific diagrams
+show) - deliberately left unregenerated, not overlooked.
+
+**Product-lifecycle decision made:** Bug E above - "code now matches docs" was the applied fix
+direction, established by reading the existing documented contract first (per this file's own "do
+not guess the product rule" instruction), not by picking whichever direction seemed more
+defensible in isolation.
+
+**Test-count change:** 1261 → **1307** (46 net new tests), zero deleted or weakened.
+
+**Commits, in order:**
+| Commit | Message |
+|---|---|
+| `d053d2b` | fix: preserve adopted placement across flexible edits |
+| `68762cf` | fix: retain exact connection edges in route paths |
+| `5059868` | fix: include adopted flexible activities in conflict checks |
+| `b739a7d` | fix: reject past recurrence occurrences |
+| `407cdbe` | fix: align recommendation proposal lifecycle with documented contract |
+| `155570d` | fix: reject duplicate command markers consistently |
+| `c4f5815` | test: add cross-feature end-to-end regression coverage for QA fixes |
+| `e27cbee` | docs: synchronize guides after second-pass QA fixes |
+
+(`EditCommandParserTest.java`'s changes landed in the Bug C commit `5059868` rather than Bug A's
+`d053d2b`, since the file carries one Bug-C-only regression test alongside Bug A's three - splitting
+a single file's hunks across two commits via non-interactive tooling was judged not worth the
+fragility for one test method; every commit's test suite still passes standalone at that point in
+history, since Bug C's own production fix is what that one test needs, not Bug A's.)
+
+**`v2.1` vs. `v2.1.0` naming, reconciled for future sessions:** this file's history (Sections
+0h/0i) records prior release work under the tag name `v2.1` - that tag exists, at `d2c7557`, and is
+**left untouched by this session**, preserving historical release integrity exactly as instructed.
+The user explicitly requested this corrective release be published as `v2.1.0`. Verified before any
+tag operation: `v2.1.0` did not exist, locally or on the remote, before this session. Per instruction,
+since only `v2.1` existed and `v2.1.0` did not, `v2.1` was **not** deleted, moved, or reinterpreted -
+`v2.1.0` is a **new** tag, cut fresh at this session's own verified HEAD (see the follow-up note
+below for the exact commit and verification results). Any future session should treat `v2.1` and
+`v2.1.0` as two distinct, both-real tags: `v2.1` is the original v2.1 line (including its own 0i
+retag for three earlier fixes), `v2.1.0` is this session's corrective pass on top of it. Do not
+assume they are the same tag under two names, and do not silently delete either without a fresh
+explicit instruction.
+
+Verification, commit, push, tag, and publish results for this pass are completed and recorded in
+the follow-up note immediately below this section (mirroring Section 0i's own two-commit pattern:
+this section's own commit is the one that gets tagged; the tag/publish narrative is recorded
+afterward, once it has actually happened, rather than predicted here).
+
 ## 0i. Second-pass re-audit of v2.1: three new correctness fixes (2026-08-10/11, Claude Code) — committed, pushed, and `v2.1` retagged/re-released
 
 An independent re-audit of the tagged/released v2.1 snapshot (Section 0h below) found three real

@@ -5,6 +5,52 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0m. `v2.1.0` retagged/republished for the `order/time` fix, verified (2026-08-14, Claude Code) — read this first
+
+Follow-up to Section 0l, same session: records the actual retag/republish once the fix there was
+fully green, per the same two-commit pattern Sections 0i/0j/0k already established.
+
+**Push.** `git fetch origin` confirmed `origin/main` unchanged at `f3fdd1e` before pushing;
+`git push origin main` was a clean fast-forward (`f3fdd1e..451fd93`, the two commits from Section
+0l - `f5df5f3` fix, `451fd93` this file's own entry). Verified: `git rev-parse HEAD`/`origin/main`
+both `451fd93`.
+
+**Fresh JAR/ZIP**, built clean from this exact HEAD (`./gradlew clean releaseZip
+verifyReleaseZip`), manifest confirmed (`Main-Class: seedu.unienable.UniEnable`), startup smoke
+test passed, plus a fresh-directory smoke test against the actual `unienable.zip` reproducing the
+exact `find k/QA Lecture order/time` scenario one more time. SHA-256:
+- `unienable.jar`: `1fc3737755a972bd39cdd919068f04c87976bfe0ee6f6dcc7055a4819e02372f`
+- `unienable.zip`: `cd7f4268da1ae03a6a9f71b303a6434ba840abc6127d7ed80d6587d543feea97`
+
+**`v2.1.0` retagged in place** (not a new `v2.1.1` - the user's explicit instruction was to
+"ensure the final `v2.1.0` tag points to the corrected `main` HEAD," matching this project's own
+`v2.0.1`/`v2.1` retag precedent). Old target recorded first (`git rev-parse v2.1.0^{commit}` =
+`fb40b03`, Section 0k's HEAD), then `git tag -d v2.1.0` + `git tag -a v2.1.0 ... 451fd93` +
+`git push origin :refs/tags/v2.1.0` + `git push origin v2.1.0`. Exactly as Section 0i's own
+retag documented for `v2.1`, deleting the underlying tag turned the GitHub release into an
+orphaned `draft` - `gh release edit v2.1.0 --tag v2.1.0 --target main --draft=false --latest`
+reattached and republished it (note: `--target` needed the branch name `main`, not a commit SHA -
+`gh` rejected a short SHA with `Release.target_commitish is invalid`; a full 40-character SHA
+would likely also have worked, `main` was simplest since it already pointed at the right commit).
+`gh release upload v2.1.0 <jar> <zip> --clobber` replaced both assets - confirmed exactly two
+assets afterward (no stale duplicates), server-computed digests matching the checksums above
+exactly. Release notes updated in place (not replaced from scratch) with a new "Additional fix:
+`order/time` ordering semantics" section - deliberately framed as an ordering-semantics defect,
+not "another parser fix" (`order/time` already parsed and applied correctly per its own
+definition; that definition was what was wrong), per explicit instruction - plus updated
+verification numbers (1312 tests) and the new checksums.
+
+**Published-asset verification.** `gh release download v2.1.0 --dir <fresh temp dir>` then
+`sha256sum` matched the freshly-built checksums above exactly; the downloaded jar was smoke-tested
+directly with the exact `find k/QA Lecture order/time` reproduction and showed the corrected
+ordering - the published asset is confirmed to be the corrected build.
+
+**Final state.** `git rev-parse HEAD` / `origin/main` / `v2.1.0^{commit}` all `451fd93`; `v2.1`
+unchanged at `d2c7557`. `git status`: clean except the same two pre-existing untracked
+presentation files flagged since Section 0f. No stale release JAR/ZIP, temporary fixture, or
+copied GitHub asset left inside the repository - all verification artifacts were written under
+this session's external scratch directory.
+
 ## 0l. Independent manual QA pass on published `v2.1.0`: one new ordering defect found and fixed (2026-08-14, Claude Code) — read this first
 
 Follow-up, same day, after `v2.1.0` (Section 0k) was already tagged and published: a **second,

@@ -58,7 +58,7 @@ class RecommendCommandTest {
         RecommendationManager recommendationManager = new RecommendationManager();
 
         InvalidCommandException exception = assertThrows(InvalidCommandException.class,
-                () -> new RecommendViewCommand(activityManager, recommendationManager).execute());
+                () -> new RecommendViewCommand(activityManager, recommendationManager, NOW).execute());
 
         assertEquals("No recommendation proposal is currently active. Generate one with recommend.",
                 exception.getMessage());

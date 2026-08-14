@@ -1,15 +1,9 @@
 package seedu.unienable.ui.recommend;
 
-import java.util.List;
-
-import seedu.unienable.logic.dashboard.DashboardService;
-import seedu.unienable.logic.timetable.TimetableService;
-import seedu.unienable.model.classes.Activity;
-import seedu.unienable.model.dashboard.DashboardSummary;
+import seedu.unienable.model.recommend.RecommendationPreview;
 import seedu.unienable.model.recommend.RecommendationProposal;
 import seedu.unienable.model.recommend.RecommendedPlacement;
 import seedu.unienable.model.timetable.TimetableMode;
-import seedu.unienable.model.timetable.TimetableView;
 import seedu.unienable.ui.dashboard.DashboardFormatter;
 import seedu.unienable.ui.timetable.TimetableFormatter;
 
@@ -18,8 +12,13 @@ public final class RecommendationFormatter {
     private RecommendationFormatter() {
     }
 
-    /** Formats a generated or viewed recommendation preview. */
-    public static String formatPreview(RecommendationProposal proposal, List<Activity> previewActivities) {
+    /**
+     * Formats an already-calculated recommendation preview. preview's timetable and dashboard are
+     * taken as given - this method performs no business calculation of its own, matching this
+     * project's UI-formats/logic-calculates layering.
+     */
+    public static String formatPreview(RecommendationPreview preview) {
+        RecommendationProposal proposal = preview.getProposal();
         StringBuilder result = new StringBuilder("Recommended timetable preview\n");
         result.append("Period: ").append(proposal.getTimetablePeriod().getLabel());
         if (proposal.getPlacements().isEmpty()) {
@@ -40,11 +39,8 @@ public final class RecommendationFormatter {
             result.append("\n\nUnscheduled activity IDs: ").append(proposal.getUnscheduledActivityIds());
         }
 
-        TimetableView timetable = TimetableService.build(previewActivities, proposal.getTimetablePeriod());
-        DashboardSummary dashboard = DashboardService.summarize(previewActivities,
-                proposal.getDashboardPeriod(), proposal.getDashboardPeriod().getStart());
-        result.append("\n\n").append(TimetableFormatter.format(timetable, TimetableMode.DETAIL));
-        result.append("\n\n").append(DashboardFormatter.format(dashboard, true));
+        result.append("\n\n").append(TimetableFormatter.format(preview.getTimetable(), TimetableMode.DETAIL));
+        result.append("\n\n").append(DashboardFormatter.format(preview.getDashboard(), true));
         return result.toString();
     }
 

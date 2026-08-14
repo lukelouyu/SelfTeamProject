@@ -133,6 +133,81 @@ class ApplicationRunnerTest {
         assertTrue(output.contains("2026-08-19"));
     }
 
+    /**
+     * Confirmed-bug regression: {@code recommend today}'s preview dashboard must evaluate
+     * completion eligibility against the actual injected now, not the selected period's own
+     * {@code start} (midnight) - previously it used
+     * {@code proposal.getDashboardPeriod().getStart()}, so a completed activity that had already
+     * ended by the real now still showed "No activities are due yet." instead of 100%.
+     */
+    @Test
+    public void recommendToday_previewDashboard_usesActualNow() throws Exception {
+        Storage storage = new Storage(dataDirectory);
+        storage.prepareDataFiles();
+        storage.saveActivities(List.of(new FixedActivity(1, "Morning briefing", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 19), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null)));
+
+        String output = run("mark 1\nrecommend today\nbye\n", storage,
+                () -> LocalDateTime.of(2026, 8, 19, 15, 0));
+
+        assertFalse(output.contains("No activities are due yet."),
+                "an activity that ended hours before the actual now must already be due");
+        assertTrue(output.contains("Completion  [##########] 100% (1/1)"));
+    }
+
+    /** Companion to the fix above: the recommend preview dashboard must agree with a plain dashboard. */
+    @Test
+    public void recommendToday_previewDashboard_matchesDashboardCompletion() throws Exception {
+        Storage storage = new Storage(dataDirectory);
+        storage.prepareDataFiles();
+        storage.saveActivities(List.of(new FixedActivity(1, "Morning briefing", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 19), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null)));
+        Supplier<LocalDateTime> nowSupplier = () -> LocalDateTime.of(2026, 8, 19, 15, 0);
+
+        String dashboardOutput = run("mark 1\ndashboard today\nbye\n", storage, nowSupplier);
+        String recommendOutput = run("mark 1\nrecommend today\nbye\n", new Storage(dataDirectory), nowSupplier);
+
+        String completionLine = "Completion  [##########] 100% (1/1)";
+        assertTrue(dashboardOutput.contains(completionLine), "test setup: dashboard must show 100% complete");
+        assertTrue(recommendOutput.contains(completionLine),
+                "recommend today's preview dashboard must match the equivalent plain dashboard");
+    }
+
+    /**
+     * A this-week proposal's dashboard period spans the whole week, so an already-elapsed and
+     * completed activity earlier in the week must already count as due, using the real now - not
+     * the week's own Monday-00:00 start.
+     */
+    @Test
+    public void recommendThisWeek_previewDashboard_countsAlreadyDueActivities() throws Exception {
+        Storage storage = new Storage(dataDirectory);
+        storage.prepareDataFiles();
+        storage.saveActivities(List.of(new FixedActivity(1, "Monday standup", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 17), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null)));
+
+        String output = run("mark 1\nrecommend this week\nbye\n", storage,
+                () -> LocalDateTime.of(2026, 8, 19, 15, 0));
+
+        assertTrue(output.contains("Completion  [##########] 100% (1/1)"));
+    }
+
+    /** An activity scheduled entirely tomorrow has not become due yet at any point today. */
+    @Test
+    public void recommendTomorrow_previewDashboard_hasNoDueActivitiesYet() throws Exception {
+        Storage storage = new Storage(dataDirectory);
+        storage.prepareDataFiles();
+        storage.saveActivities(List.of(new FixedActivity(1, "Tomorrow lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 20), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null)));
+
+        String output = run("recommend tomorrow\nbye\n", storage, () -> LocalDateTime.of(2026, 8, 19, 15, 0));
+
+        assertTrue(output.contains("Completion: No activities are due yet."));
+    }
+
     @Test
     public void recur_saveFails_rollsBackWholeBatchAndReportsNoFalseSuccess() throws Exception {
         RecurrenceTestData.writeCalendar(dataDirectory.resolve("academic-calendar.txt"));

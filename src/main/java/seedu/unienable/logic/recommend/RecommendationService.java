@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -18,14 +17,17 @@ import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.dashboard.DashboardService;
 import seedu.unienable.logic.timetable.TimetableService;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.dashboard.DashboardSummary;
 import seedu.unienable.model.classes.ActivityCopyFactory;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.preference.PreferenceProfile;
 import seedu.unienable.model.preference.TomatoSuggestion;
+import seedu.unienable.model.recommend.RecommendationPreview;
 import seedu.unienable.model.recommend.RecommendationProposal;
 import seedu.unienable.model.recommend.RecommendedPlacement;
 import seedu.unienable.model.timetable.TimetablePeriod;
+import seedu.unienable.model.timetable.TimetableView;
 
 /** Builds deterministic recommendation proposals without mutating stored activities. */
 public final class RecommendationService {
@@ -33,12 +35,15 @@ public final class RecommendationService {
 
     /**
      * Number of a single day's remaining flexible activities small enough to search exhaustively
-     * (every ordering tried). {@code PERMUTATION_CAP}! orderings is the resulting worst case -
-     * 8! = 40320, cheap even with a per-ordering placement pass - so real-world days (a handful of
+     * via {@link #exhaustiveSearch} (every ordering evaluated, subject to the item-count pruning
+     * described there). {@code PERMUTATION_CAP}! orderings is the worst case with no pruning -
+     * 7! = 5,040, consistently well under a second even unpruned - so real-world days (a handful of
      * flexible activities) always get a provably optimal schedule; only implausibly large single
-     * days fall back to {@link #heuristicOrderings}.
+     * days fall back to {@link #heuristicOrderings}. Lowered from 8 (40,320 worst-case orderings,
+     * measured multi-second worst case even with pruning and without materializing every ordering)
+     * after benchmarking - see {@code HANDOVER.md} for the before/after numbers.
      */
-    private static final int PERMUTATION_CAP = 8;
+    private static final int PERMUTATION_CAP = 7;
 
     private RecommendationService() {
     }
@@ -149,6 +154,28 @@ public final class RecommendationService {
         return copies;
     }
 
+    /**
+     * Calculates the full preview bundle (timetable and dashboard projections) for proposal,
+     * evaluated against activityManager's current activities with proposal's placements applied.
+     * now is the actual injected current time, used unchanged as the dashboard's completion-
+     * eligibility basis - the same now a plain {@code dashboard} command would use for the same
+     * period, so a preview never disagrees with the equivalent normal dashboard about which
+     * activities are already due.
+     *
+     * @param activityManager the manager supplying the current activities
+     * @param proposal the proposal to preview
+     * @param now the actual injected current date and time
+     * @return the calculated preview bundle
+     */
+    public static RecommendationPreview buildPreview(ActivityManager activityManager,
+            RecommendationProposal proposal, LocalDateTime now) {
+        List<Activity> previewActivities = applyPreview(activityManager.getAll(), proposal);
+        TimetableView timetable = TimetableService.build(previewActivities, proposal.getTimetablePeriod());
+        DashboardSummary dashboard = DashboardService.summarize(previewActivities, proposal.getDashboardPeriod(),
+                now);
+        return new RecommendationPreview(proposal, timetable, dashboard);
+    }
+
     private static RecommendationProposal build(ActivityManager activityManager, PreferenceProfile preferences,
             TimetablePeriod timetablePeriod, seedu.unienable.model.dashboard.DashboardPeriod dashboardPeriod,
             LocalDateTime now) {
@@ -251,39 +278,75 @@ public final class RecommendationService {
             return DaySchedule.empty();
         }
 
-        DaySchedule best = null;
         if (candidates.size() <= PERMUTATION_CAP) {
-            List<List<FlexibleActivity>> orderings = new ArrayList<>();
-            permute(candidates, 0, orderings);
-            for (List<FlexibleActivity> ordering : orderings) {
-                DaySchedule attempt = placeInOrder(ordering, commitments, preferences, now);
-                if (best == null || attempt.betterThan(best)) {
-                    best = attempt;
-                }
-            }
-        } else {
-            for (List<FlexibleActivity> ordering : heuristicOrderings(candidates)) {
-                DaySchedule attempt = placeInOrder(ordering, commitments, preferences, now);
-                if (best == null || attempt.betterThan(best)) {
-                    best = attempt;
-                }
+            return exhaustiveSearch(candidates, commitments, preferences, now);
+        }
+        DaySchedule best = null;
+        for (List<FlexibleActivity> ordering : heuristicOrderings(candidates)) {
+            DaySchedule attempt = placeInOrder(ordering, commitments, preferences, now);
+            if (best == null || attempt.betterThan(best)) {
+                best = attempt;
             }
         }
         return best;
     }
 
-    /** Fills orderings with every permutation of candidates via in-place backtracking. */
-    private static void permute(List<FlexibleActivity> candidates, int index,
-            List<List<FlexibleActivity>> orderings) {
-        if (index == candidates.size()) {
-            orderings.add(new ArrayList<>(candidates));
+    /**
+     * Searches every ordering of candidates for the best-scoring {@link DaySchedule}, generating
+     * orderings via the same in-place swap backtracking {@code permute} used before, but evaluating
+     * each ordering's greedy placement incrementally as its prefix is built rather than
+     * materializing every ordering into a {@code List<List<FlexibleActivity>>} first - the prior
+     * approach's {@code candidates.size()! } (up to 40,320 at the {@link #PERMUTATION_CAP} boundary)
+     * list allocation was the source of the factorial memory/time spike. A branch is pruned as soon
+     * as even the best possible outcome for its remaining depth - every not-yet-placed candidate
+     * successfully placed - could not exceed the best schedule already found on item count, the
+     * scoring rule's top-priority criterion ({@link DaySchedule#betterThan}); this is a safe bound
+     * because an ordering's final item count can never exceed placedSoFar's size plus the number of
+     * candidates still unplaced in it.
+     */
+    private static DaySchedule exhaustiveSearch(List<FlexibleActivity> candidates, List<Commitment> baseCommitments,
+            PreferenceProfile preferences, LocalDateTime now) {
+        FlexibleActivity[] ordering = candidates.toArray(new FlexibleActivity[0]);
+        DaySchedule[] best = new DaySchedule[1];
+        searchOrderings(ordering, 0, baseCommitments, new ArrayList<>(), preferences, now, best);
+        return best[0];
+    }
+
+    private static void searchOrderings(FlexibleActivity[] ordering, int index, List<Commitment> commitments,
+            List<ScheduledItem> placedSoFar, PreferenceProfile preferences, LocalDateTime now,
+            DaySchedule[] best) {
+        if (best[0] != null && placedSoFar.size() + (ordering.length - index) < best[0].items().size()) {
             return;
         }
-        for (int i = index; i < candidates.size(); i++) {
-            Collections.swap(candidates, index, i);
-            permute(candidates, index + 1, orderings);
-            Collections.swap(candidates, index, i);
+        if (index == ordering.length) {
+            DaySchedule attempt = new DaySchedule(List.copyOf(placedSoFar));
+            if (best[0] == null || attempt.betterThan(best[0])) {
+                best[0] = attempt;
+            }
+            return;
         }
+        for (int i = index; i < ordering.length; i++) {
+            swap(ordering, index, i);
+            FlexibleActivity activity = ordering[index];
+            Optional<LocalTime> start = earliestValidSlot(activity, commitments, preferences, now);
+            List<Commitment> nextCommitments = commitments;
+            if (start.isPresent()) {
+                nextCommitments = new ArrayList<>(commitments);
+                nextCommitments.add(Commitment.fromFlexible(activity, start.get()));
+                placedSoFar.add(new ScheduledItem(activity, start.get()));
+            }
+            searchOrderings(ordering, index + 1, nextCommitments, placedSoFar, preferences, now, best);
+            if (start.isPresent()) {
+                placedSoFar.remove(placedSoFar.size() - 1);
+            }
+            swap(ordering, index, i);
+        }
+    }
+
+    private static void swap(FlexibleActivity[] array, int first, int second) {
+        FlexibleActivity temp = array[first];
+        array[first] = array[second];
+        array[second] = temp;
     }
 
     /**

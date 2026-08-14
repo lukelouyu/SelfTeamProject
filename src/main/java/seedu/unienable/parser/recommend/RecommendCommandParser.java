@@ -46,7 +46,7 @@ public class RecommendCommandParser {
                     RelativeDateResolver.tomorrow(now));
         }
         if ("view".equalsIgnoreCase(trimmed)) {
-            return new RecommendViewCommand(activityManager, recommendationManager);
+            return new RecommendViewCommand(activityManager, recommendationManager, now);
         }
         if ("cancel".equalsIgnoreCase(trimmed)) {
             return new RecommendCancelCommand(recommendationManager);

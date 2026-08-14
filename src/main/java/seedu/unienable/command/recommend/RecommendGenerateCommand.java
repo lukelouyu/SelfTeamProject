@@ -2,7 +2,6 @@ package seedu.unienable.command.recommend;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import seedu.unienable.command.ReadOnlyCommand;
 import seedu.unienable.command.CommandResult;
@@ -10,7 +9,7 @@ import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.preference.PreferenceManager;
 import seedu.unienable.logic.recommend.RecommendationManager;
 import seedu.unienable.logic.recommend.RecommendationService;
-import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.recommend.RecommendationPreview;
 import seedu.unienable.model.recommend.RecommendationProposal;
 import seedu.unienable.ui.recommend.RecommendationFormatter;
 
@@ -55,7 +54,7 @@ public class RecommendGenerateCommand extends ReadOnlyCommand {
             proposal = RecommendationService.recommendThisWeek(activityManager, preferenceManager.getProfile(), now);
         }
         recommendationManager.setProposal(proposal);
-        List<Activity> previewActivities = RecommendationService.applyPreview(activityManager.getAll(), proposal);
-        return new CommandResult(RecommendationFormatter.formatPreview(proposal, previewActivities));
+        RecommendationPreview preview = RecommendationService.buildPreview(activityManager, proposal, now);
+        return new CommandResult(RecommendationFormatter.formatPreview(preview));
     }
 }

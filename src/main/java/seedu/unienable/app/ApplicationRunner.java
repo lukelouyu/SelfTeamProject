@@ -14,6 +14,8 @@ import seedu.unienable.accessibility.classes.Facility;
 import seedu.unienable.command.Command;
 import seedu.unienable.command.CommandResult;
 import seedu.unienable.command.PreExecutionValidatable;
+import seedu.unienable.command.preference.PreferenceResetCommand;
+import seedu.unienable.command.preference.PreferenceSetCommand;
 import seedu.unienable.exception.StorageException;
 import seedu.unienable.exception.UniEnableException;
 import seedu.unienable.logic.ActivityManager;
@@ -265,7 +267,9 @@ public class ApplicationRunner {
                     execution.rollback();
                     return true;
                 }
-                recommendationManager.clear();
+                if (!isPreferenceMutation(command)) {
+                    recommendationManager.clear();
+                }
             }
             ui.showFramed(result.getFeedback());
             return true;
@@ -280,6 +284,24 @@ public class ApplicationRunner {
             ui.showFramed("[Error] An unexpected internal error occurred. Enter guide for help.");
             return true;
         }
+    }
+
+    /**
+     * Returns whether the given command is {@code preference set}/{@code preference reset} - the
+     * one pair of mutating commands that must NOT clear an active recommendation proposal on
+     * success. This is a documented product contract (User Guide S11/S12.4, Developer Guide S16's
+     * boundary-enforcement pipeline, {@code guide preference}): a preference change never
+     * retroactively moves already-adopted placements, and an existing unadopted proposal survives
+     * a preference change too - {@code recommend adopt} re-validates it against the current
+     * profile at adopt time instead (see {@code RecommendationService.hasOutOfPreferredRangePlacement},
+     * called from {@code RecommendCommandParser}). Every other mutating command still clears the
+     * proposal on success, unchanged.
+     *
+     * @param command the just-executed command
+     * @return true if command is a preference set/reset command
+     */
+    private boolean isPreferenceMutation(Command command) {
+        return command instanceof PreferenceSetCommand || command instanceof PreferenceResetCommand;
     }
 
     /**

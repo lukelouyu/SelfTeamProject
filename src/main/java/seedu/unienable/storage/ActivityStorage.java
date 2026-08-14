@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -152,14 +153,42 @@ public class ActivityStorage {
                 throw new InvalidActivityException("duplicates activity [" + existing.getId() + "]");
             }
         }
-        if (candidate instanceof FixedActivity) {
-            FixedActivity fixedCandidate = (FixedActivity) candidate;
+        Optional<ScheduledInterval> candidateInterval = effectiveInterval(candidate);
+        if (candidateInterval.isPresent()) {
             for (Activity existing : alreadyLoaded) {
-                if (existing instanceof FixedActivity && overlaps(fixedCandidate, (FixedActivity) existing)) {
+                Optional<ScheduledInterval> existingInterval = effectiveInterval(existing);
+                if (existingInterval.isPresent() && overlaps(candidateInterval.get(), existingInterval.get())) {
                     throw new InvalidActivityException("overlaps activity [" + existing.getId() + "]");
                 }
             }
         }
+    }
+
+    /**
+     * Returns the given activity's effective occupied interval, or empty if it does not currently
+     * occupy any time - a {@link FixedActivity} always does, a {@link FlexibleActivity} only once
+     * it has an adopted placement. Mirrors {@code logic.ActivityConflictChecker}'s identical
+     * concept, kept as a small local duplicate rather than a shared dependency since storage
+     * deliberately does not import from logic (see this class's own persistence-format comment
+     * above for the same reasoning applied to date/time parsing).
+     */
+    private Optional<ScheduledInterval> effectiveInterval(Activity activity) {
+        if (activity instanceof FixedActivity) {
+            FixedActivity fixed = (FixedActivity) activity;
+            return Optional.of(new ScheduledInterval(fixed.getDate(), fixed.getStartTime(), fixed.getEndTime()));
+        }
+        if (activity instanceof FlexibleActivity) {
+            FlexibleActivity flexible = (FlexibleActivity) activity;
+            if (flexible.hasAdoptedPlacement()) {
+                return Optional.of(new ScheduledInterval(flexible.getDate(), flexible.getAdoptedStartTime(),
+                        flexible.getAdoptedEndTime()));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** One activity's occupied date/time span, used only to compare candidates for overlap. */
+    private record ScheduledInterval(LocalDate date, LocalTime start, LocalTime end) {
     }
 
     private boolean isExactDuplicate(Activity existing, Activity candidate) {
@@ -181,12 +210,10 @@ public class ActivityStorage {
         return false;
     }
 
-    private boolean overlaps(FixedActivity candidate, FixedActivity existing) {
-        if (!candidate.getDate().equals(existing.getDate())) {
-            return false;
-        }
-        return existing.getStartTime().isBefore(candidate.getEndTime())
-                && candidate.getStartTime().isBefore(existing.getEndTime());
+    private boolean overlaps(ScheduledInterval candidate, ScheduledInterval existing) {
+        return candidate.date().equals(existing.date())
+                && existing.start().isBefore(candidate.end())
+                && candidate.start().isBefore(existing.end());
     }
 
     /**

@@ -22,7 +22,14 @@ class ActivityConflictChecker <<package-private, stateless>> {
   ~ ActivityConflictChecker()
   ~ checkNoConflicts(candidate : Activity, excludedActivityId : int, activitiesToCheck : List<? extends Activity>) : void
   - isDuplicate(candidate : Activity, excludedActivityId : int, activitiesToCheck : List<? extends Activity>) : boolean
-  - findOverlap(candidate : FixedActivity, excludedActivityId : int, activitiesToCheck : List<? extends Activity>) : FixedActivity
+  - {static} effectiveInterval(activity : Activity) : Optional<ScheduledInterval>
+  - findOverlap(candidateInterval : ScheduledInterval, excludedActivityId : int, activitiesToCheck : List<? extends Activity>) : Activity
+}
+
+class ScheduledInterval <<record, private>> {
+  - date : LocalDate
+  - start : LocalTime
+  - end : LocalTime
 }
 
 abstract class Activity
@@ -36,10 +43,17 @@ ActivityConflictChecker ..> Activity
 ActivityConflictChecker ..> FixedActivity
 ActivityConflictChecker ..> FlexibleActivity
 ActivityConflictChecker ..> DuplicateActivityException : throws
+ActivityConflictChecker "1" ..> "0..2" ScheduledInterval : derives per check
 
 note bottom of ActivityConflictChecker
   Checks exact scheduling duplicates first.
-  Then checks same-date fixed/fixed overlap using
+  Then computes each side's effective occupied
+  interval: a FixedActivity always has one; a
+  FlexibleActivity only once hasAdoptedPlacement()
+  is true (adopted start/end, not the earliest/
+  latest window); an unadopted FlexibleActivity
+  has none and can never conflict. Two occupied
+  intervals overlap when
   existing.start < candidate.end and
   candidate.start < existing.end.
   The first overlap in list order is reported.

@@ -278,6 +278,37 @@ class ActivityStorageTest {
     }
 
     @Test
+    public void load_fixedOverlappingAdoptedFlexible_secondLineIsSkippedWithWarning() throws Exception {
+        // Bug C regression: a manually edited (or otherwise corrupted) activities.txt with a
+        // FIXED line overlapping an already-loaded adopted FLEXIBLE line previously loaded
+        // completely silently, since load-time validation only ever compared FIXED-vs-FIXED.
+        Path file = writeFile(
+                "FLEXIBLE|12|Study|ACADEMIC|2026-08-15|09:00|18:00|60|3|2|INCOMPLETE|||10:00",
+                "FIXED|13|Meeting|ACADEMIC|2026-08-15|10:00|11:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals(12, result.getRecords().get(0).getId());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().get(0).contains("overlaps activity [12]"));
+    }
+
+    @Test
+    public void load_fixedOverlappingUnadoptedFlexibleWindow_bothLoad() throws Exception {
+        // The flexible activity here has no adopted placement (trailing field empty), so it is
+        // just a scheduling window, not an occupied interval - it must not block anything.
+        Path file = writeFile(
+                "FLEXIBLE|12|Study|ACADEMIC|2026-08-15|09:00|18:00|60|3|2|INCOMPLETE|||",
+                "FIXED|13|Meeting|ACADEMIC|2026-08-15|10:00|11:00|4|3|INCOMPLETE||");
+
+        LoadResult<Activity> result = new ActivityStorage().load(file);
+
+        assertEquals(0, result.getWarnings().size());
+        assertEquals(2, result.getRecords().size());
+    }
+
+    @Test
     public void load_fixedAndFlexibleWithSameTimingDoNotCountAsOverlap() throws Exception {
         // Overlap detection only applies between two FixedActivity records - a FlexibleActivity
         // has no confirmed placement yet, so it cannot conflict with a fixed activity's slot.

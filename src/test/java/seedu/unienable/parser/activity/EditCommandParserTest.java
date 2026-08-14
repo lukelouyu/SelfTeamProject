@@ -1,6 +1,7 @@
 package seedu.unienable.parser.activity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,6 +12,7 @@ import java.time.LocalTime;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.unienable.command.activity.crud.EditCommand;
 import seedu.unienable.exception.DuplicateActivityException;
 import seedu.unienable.exception.InvalidActivityException;
 import seedu.unienable.exception.InvalidCommandException;
@@ -550,5 +552,93 @@ class EditCommandParserTest {
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
 
         assertThrows(InvalidActivityException.class, () -> parser.parse(manager, topicManager, TODAY, "1 c/BOGUS"));
+    }
+
+    // Bug A regression coverage: editing an adopted FlexibleActivity previously always rebuilt a
+    // brand-new unadopted object, silently losing the adopted placement on every edit - even a
+    // purely non-scheduling one.
+
+    @Test
+    public void editAdoptedFlexible_nonSchedulingEdit_preservesAdoptedPlacement() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FlexibleActivity(manager.getNextId(), "Study", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(12, 0), 60,
+                EnergyRating.of(3), SensoryRating.of(2), null, null, LocalTime.of(10, 0)));
+
+        parser.parse(manager, topicManager, TODAY, "1 note/Bring notes").execute();
+
+        FlexibleActivity updated = (FlexibleActivity) manager.getById(1);
+        assertTrue(updated.hasAdoptedPlacement());
+        assertEquals(LocalTime.of(10, 0), updated.getAdoptedStartTime());
+        assertEquals(LocalTime.of(11, 0), updated.getAdoptedEndTime());
+        assertEquals("Bring notes", updated.getNote());
+    }
+
+    @Test
+    public void editAdoptedFlexible_validWindowEdit_preservesAdoptedPlacement() throws Exception {
+        // Widening latest/ still lets the same 10:00 adopted start fit the new window, so it must
+        // survive the edit rather than being unconditionally dropped just because the object was
+        // rebuilt.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FlexibleActivity(manager.getNextId(), "Study", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(12, 0), 60,
+                EnergyRating.of(3), SensoryRating.of(2), null, null, LocalTime.of(10, 0)));
+
+        parser.parse(manager, topicManager, TODAY, "1 latest/14:00").execute();
+
+        FlexibleActivity updated = (FlexibleActivity) manager.getById(1);
+        assertEquals(LocalTime.of(14, 0), updated.getLatestEnd());
+        assertTrue(updated.hasAdoptedPlacement());
+        assertEquals(LocalTime.of(10, 0), updated.getAdoptedStartTime());
+    }
+
+    @Test
+    public void editAdoptedFlexible_invalidatingScheduleEdit_handlesPlacementExplicitly() throws Exception {
+        // Moving earliest/ to 11:00 leaves a perfectly valid 60-minute window (11:00-12:00), but
+        // the previously-adopted 10:00 start no longer fits inside it. The placement must be
+        // cleared explicitly (not silently) - the confirmation preview must call it out before the
+        // user answers "Save changes?", and the resulting activity must come out unadopted rather
+        // than carrying a now-invalid start time.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FlexibleActivity(manager.getNextId(), "Study", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(10, 0), LocalTime.of(12, 0), 60,
+                EnergyRating.of(3), SensoryRating.of(2), null, null, LocalTime.of(10, 0)));
+
+        EditCommand command = parser.parse(manager, topicManager, TODAY, "1 earliest/11:00");
+        String preview = command.getConfirmation().getMessage();
+        assertTrue(preview.contains("Before: adopted = 10:00 -> 11:00"),
+                "confirmation preview must show the placement being cleared: " + preview);
+        assertTrue(preview.contains("After : adopted = None"),
+                "confirmation preview must show the placement being cleared: " + preview);
+
+        command.execute();
+
+        FlexibleActivity updated = (FlexibleActivity) manager.getById(1);
+        assertFalse(updated.hasAdoptedPlacement());
+        assertEquals(LocalTime.of(11, 0), updated.getEarliestStart());
+    }
+
+    @Test
+    public void editFixed_overlappingAdoptedFlexible_isRejected() throws Exception {
+        // Bug C regression: editing a fixed activity's timing to overlap an already-adopted
+        // flexible activity must be rejected before the confirmation prompt, just like editing it
+        // to overlap another fixed activity already is.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FlexibleActivity(manager.getNextId(), "Study", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(18, 0), 60,
+                EnergyRating.of(3), SensoryRating.of(2), null, null, LocalTime.of(10, 0)));
+        manager.add(new FixedActivity(manager.getNextId(), "Meeting", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(13, 0), LocalTime.of(14, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> parser.parse(manager, topicManager, TODAY, "2 from/10:30 to/11:30"));
+
+        assertTrue(exception.getMessage().contains("Study"));
+        assertEquals(LocalTime.of(13, 0), ((FixedActivity) manager.getById(2)).getStartTime());
     }
 }

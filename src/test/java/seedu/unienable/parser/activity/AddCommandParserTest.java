@@ -21,8 +21,10 @@ import seedu.unienable.exception.MissingInputException;
 import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.classes.Activity;
+import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
 import seedu.unienable.model.classes.FlexibleActivity;
+import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.enums.ScheduleType;
 
@@ -741,6 +743,26 @@ class AddCommandParserTest {
                         "n/Task c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/10:00 latest/18:00 "
                                 + "energy/5 sensory/2"));
         assertEquals("dur is required.", exception.getMessage());
+    }
+
+    @Test
+    public void addFixed_overlappingAdoptedFlexible_isRejected() throws Exception {
+        // Bug C regression: an adopted flexible activity is a real scheduled commitment, so a new
+        // fixed activity overlapping it must be rejected up front, not silently accepted and only
+        // later flagged as [OVERLAP] in the timetable.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        manager.add(new FlexibleActivity(manager.getNextId(), "Study", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(18, 0), 60,
+                EnergyRating.of(3), SensoryRating.of(2), null, null, LocalTime.of(10, 0)));
+
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> parser.parse(manager, topicManager, TODAY,
+                        "n/Meeting c/ACADEMIC date/2026-08-15 type/FIXED from/10:00 to/11:00 "
+                                + "energy/2 sensory/2").execute());
+
+        assertTrue(exception.getMessage().contains("Study"));
+        assertEquals(1, manager.size());
     }
 
 }

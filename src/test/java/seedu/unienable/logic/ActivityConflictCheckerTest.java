@@ -36,6 +36,14 @@ class ActivityConflictCheckerTest {
                 earliestStart, latestEnd, 90, EnergyRating.of(3), SensoryRating.of(3), null, null);
     }
 
+    private static FlexibleActivity adoptedFlexible(int id, String description, LocalDate date,
+            LocalTime earliestStart, LocalTime latestEnd, int durationMinutes, LocalTime adoptedStartTime)
+            throws Exception {
+        return new FlexibleActivity(id, description, ActivityCategory.ACADEMIC, date,
+                earliestStart, latestEnd, durationMinutes, EnergyRating.of(3), SensoryRating.of(3), null, null,
+                adoptedStartTime);
+    }
+
     @Test
     public void checkNoConflicts_exactFixedDuplicate_throwsExactMessage() throws Exception {
         FixedActivity existing = fixed(1, "Lecture", DATE, LocalTime.of(9, 0), LocalTime.of(11, 0));
@@ -235,5 +243,95 @@ class ActivityConflictCheckerTest {
                 () -> checker.checkNoConflicts(candidate, NO_EXCLUDED_ID, List.of(first, second)));
 
         assertEquals("This timing overlaps activity [7], First (09:00 -> 11:00).", exception.getMessage());
+    }
+
+    // Bug C regression coverage: an adopted FlexibleActivity is a real scheduled commitment and
+    // must be treated as an occupied interval, just like a FixedActivity; an unadopted one remains
+    // a mere window and must never block anything.
+
+    @Test
+    public void scheduledInterval_unadoptedFlexible_doesNotBlockNormalWindowOverlap() throws Exception {
+        FlexibleActivity existing = flexible(1, "Existing window", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0));
+        FixedActivity candidate = fixed(2, "New fixed", DATE, LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+        checker.checkNoConflicts(candidate, NO_EXCLUDED_ID, List.of(existing));
+    }
+
+    @Test
+    public void scheduledInterval_adoptedFlexible_blocksRealOverlap() throws Exception {
+        FlexibleActivity existing = adoptedFlexible(1, "Study", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 60, LocalTime.of(10, 0));
+        FixedActivity candidate = fixed(2, "Meeting", DATE, LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> checker.checkNoConflicts(candidate, NO_EXCLUDED_ID, List.of(existing)));
+
+        assertEquals("This timing overlaps activity [1], Study (10:00 -> 11:00).", exception.getMessage());
+    }
+
+    @Test
+    public void addFixed_overlappingAdoptedFlexible_isRejected() throws Exception {
+        FlexibleActivity existing = adoptedFlexible(1, "Study", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 60, LocalTime.of(10, 0));
+        FixedActivity candidate = fixed(2, "Meeting", DATE, LocalTime.of(10, 30), LocalTime.of(11, 30));
+
+        assertThrows(DuplicateActivityException.class,
+                () -> checker.checkNoConflicts(candidate, NO_EXCLUDED_ID, List.of(existing)));
+    }
+
+    @Test
+    public void editFixed_overlappingAdoptedFlexible_isRejected() throws Exception {
+        // Same as addFixed_overlappingAdoptedFlexible_isRejected, but with the candidate excluding
+        // its own prior ID, mirroring how EditCommandParser/ActivityManager.replace() call this.
+        FlexibleActivity existing = adoptedFlexible(1, "Study", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 60, LocalTime.of(10, 0));
+        FixedActivity original = fixed(2, "Meeting", DATE, LocalTime.of(13, 0), LocalTime.of(14, 0));
+        FixedActivity candidate = fixed(2, "Meeting", DATE, LocalTime.of(10, 30), LocalTime.of(11, 30));
+
+        assertThrows(DuplicateActivityException.class,
+                () -> checker.checkNoConflicts(candidate, 2, List.of(existing, original)));
+    }
+
+    @Test
+    public void checkNoConflicts_fixedContainedInsideAdoptedFlexible_reportsOverlap() throws Exception {
+        FlexibleActivity existing = adoptedFlexible(1, "Study", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 180, LocalTime.of(9, 0));
+        FixedActivity candidate = fixed(2, "Meeting", DATE, LocalTime.of(10, 0), LocalTime.of(10, 30));
+
+        assertThrows(DuplicateActivityException.class,
+                () -> checker.checkNoConflicts(candidate, NO_EXCLUDED_ID, List.of(existing)));
+    }
+
+    @Test
+    public void checkNoConflicts_fixedAdjacentToAdoptedFlexible_isAccepted() throws Exception {
+        FlexibleActivity existing = adoptedFlexible(1, "Study", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 60, LocalTime.of(9, 0));
+        FixedActivity candidate = fixed(2, "Meeting", DATE, LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+        checker.checkNoConflicts(candidate, NO_EXCLUDED_ID, List.of(existing));
+    }
+
+    @Test
+    public void checkNoConflicts_twoAdoptedFlexiblesOverlap_reportsOverlap() throws Exception {
+        FlexibleActivity existing = adoptedFlexible(1, "Study", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 60, LocalTime.of(10, 0));
+        FlexibleActivity candidate = adoptedFlexible(2, "Jogging", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 60, LocalTime.of(10, 30));
+
+        DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
+                () -> checker.checkNoConflicts(candidate, NO_EXCLUDED_ID, List.of(existing)));
+
+        assertEquals("This timing overlaps activity [1], Study (10:00 -> 11:00).", exception.getMessage());
+    }
+
+    @Test
+    public void checkNoConflicts_twoAdoptedFlexiblesNotOverlapping_isAccepted() throws Exception {
+        FlexibleActivity existing = adoptedFlexible(1, "Study", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 60, LocalTime.of(10, 0));
+        FlexibleActivity candidate = adoptedFlexible(2, "Jogging", DATE,
+                LocalTime.of(9, 0), LocalTime.of(18, 0), 60, LocalTime.of(11, 0));
+
+        checker.checkNoConflicts(candidate, NO_EXCLUDED_ID, List.of(existing));
     }
 }

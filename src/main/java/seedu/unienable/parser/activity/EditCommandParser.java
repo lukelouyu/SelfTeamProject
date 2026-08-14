@@ -161,8 +161,21 @@ class EditCommandParser {
             durationMinutes = ((FlexibleActivity) old).getDurationMinutes();
         }
         ActivityCommandParser.validateDurationFitsWindow(earliestStart, latestEnd, durationMinutes);
-        return new FlexibleActivity(id, description, category, date, earliestStart, latestEnd, durationMinutes,
-                energy, sensory, topic, note);
+        FlexibleActivity updated = new FlexibleActivity(id, description, category, date, earliestStart, latestEnd,
+                durationMinutes, energy, sensory, topic, note);
+        // A brand-new FlexibleActivity always starts unadopted; carry the old object's adopted
+        // placement across whenever it still fits the (possibly unchanged) new window, so a
+        // non-scheduling edit never silently loses it and a scheduling edit only drops it when the
+        // new window genuinely can no longer hold it - never as a side effect of the object being
+        // rebuilt. canAdoptAt() is the same fit check FlexibleActivity itself uses to validate a
+        // placement, reused here rather than re-implemented.
+        if (!typeChanged) {
+            LocalTime adoptedStartTime = ((FlexibleActivity) old).getAdoptedStartTime();
+            if (adoptedStartTime != null && updated.canAdoptAt(adoptedStartTime)) {
+                updated.setAdoptedStartTime(adoptedStartTime);
+            }
+        }
+        return updated;
     }
 
     private LocalTime resolveRequiredTime(Map<String, String> fields, String marker, boolean typeChanged,

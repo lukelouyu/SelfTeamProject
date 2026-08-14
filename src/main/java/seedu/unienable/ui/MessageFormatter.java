@@ -153,6 +153,13 @@ public class MessageFormatter {
         appendChange(result, "earliest", oldFlexible.getEarliestStart(), newFlexible.getEarliestStart());
         appendChange(result, "latest", oldFlexible.getLatestEnd(), newFlexible.getLatestEnd());
         appendChange(result, "dur", oldFlexible.getDurationMinutes(), newFlexible.getDurationMinutes());
+        appendChange(result, "adopted", adoptedSummary(oldFlexible), adoptedSummary(newFlexible));
+    }
+
+    private static String adoptedSummary(FlexibleActivity flexible) {
+        return flexible.hasAdoptedPlacement()
+                ? flexible.getAdoptedStartTime() + " -> " + flexible.getAdoptedEndTime()
+                : "None";
     }
 
     private static String scheduleSummary(Activity activity) {

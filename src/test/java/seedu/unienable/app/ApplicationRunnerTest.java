@@ -156,6 +156,49 @@ class ApplicationRunnerTest {
     }
 
     @Test
+    public void find_duplicateKeywordMarker_rejectedEndToEnd() throws Exception {
+        // Bug F regression, application level: "find k/Study k/Assignment" must be rejected as a
+        // duplicate marker, not silently mis-parsed into a garbled two-word keyword search.
+        String input = String.join("\n", "find k/Study k/Assignment", "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+
+        assertTrue(output.contains("Duplicate option \"k/\"."));
+    }
+
+    @Test
+    public void topicRename_duplicateNewMarker_rejectedEndToEnd() throws Exception {
+        String input = String.join("\n",
+                "topic add c/ACADEMIC n/Foo",
+                "topic rename c/ACADEMIC old/Foo new/Baz new/Qux",
+                "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+
+        assertTrue(output.contains("Duplicate option \"new/\"."));
+    }
+
+    @Test
+    public void recur_pastOccurrence_rejectedEndToEndWithNothingCreated() throws Exception {
+        // Bug D regression, end to end: Week 2's target date (2026-08-21) has already passed
+        // relative to "now" (2026-08-25); the whole plan - including Week 3's genuinely future
+        // date - must be rejected atomically before the confirmation prompt, with nothing created.
+        RecurrenceTestData.writeCalendar(dataDirectory.resolve("academic-calendar.txt"));
+        Files.createDirectories(dataDirectory);
+        Files.writeString(dataDirectory.resolve("activities.txt"),
+                "FIXED|1|CS2113 LEC|ACADEMIC|2026-08-14|16:00|18:00|2|2|INCOMPLETE||\n");
+        String input = String.join("\n", "recur 1 week 1;2;3", "list", "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory), () -> LocalDateTime.of(2026, 8, 25, 9, 0));
+
+        assertTrue(output.contains("Week 2"));
+        assertTrue(output.contains("2026-08-21"));
+        assertTrue(output.contains("already passed"));
+        assertTrue(output.contains("Here are 1 matching activity:"),
+                "no recurring occurrence - past or future - may be created once any one is rejected");
+    }
+
+    @Test
     public void resetAllDeleteAll_saveFails_rollsBackAndReportsNoFalseSuccess() throws Exception {
         String input = String.join("\n",
                 "add n/Task one c/OTHERS date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
@@ -533,6 +576,122 @@ class ApplicationRunnerTest {
         assertTrue(viewSection.contains("Duration    : 60 min"));
         assertFalse(viewSection.contains("Adopted"),
                 "the rolled-back flexible activity must remain unscheduled in memory");
+    }
+
+    @Test
+    public void recommendAdopt_thenNonSchedulingEdit_preservesAdoptedPlacementAcrossRestart() throws Exception {
+        // Bug A regression, end to end: add -> recommend -> adopt -> edit a non-scheduling field
+        // -> save -> restart -> the adopted placement must still be there, both in memory
+        // immediately after the edit and after a full reload from disk.
+        String input = String.join("\n",
+                "add n/Essay draft c/ACADEMIC date/2099-01-01 type/FLEXIBLE earliest/09:00 latest/14:00 "
+                        + "dur/60 energy/4 sensory/3",
+                "recommend date/2099-01-01",
+                "recommend adopt",
+                "y",
+                "edit 1 note/Bring notes",
+                "y",
+                "view 1",
+                "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+        String restartOutput = run("view 1\nbye\n", new Storage(dataDirectory));
+
+        String viewSection = output.substring(output.lastIndexOf("Activity [1]"));
+        assertTrue(viewSection.contains("Adopted     : 09:00 -> 10:00"),
+                "adopted placement must survive a non-scheduling edit in memory");
+        assertTrue(viewSection.contains("Bring notes"));
+        assertEquals(List.of("FLEXIBLE|1|Essay draft|ACADEMIC|2099-01-01|09:00|14:00|60|4|3|INCOMPLETE||"
+                        + "Bring notes|09:00"),
+                Files.readAllLines(dataDirectory.resolve("activities.txt")));
+        assertTrue(restartOutput.contains("Adopted     : 09:00 -> 10:00"),
+                "adopted placement must survive a save + restart reload");
+    }
+
+    @Test
+    public void addFixed_overlappingAdoptedFlexible_isRejectedEndToEnd() throws Exception {
+        // Bug C regression, end to end: once a flexible activity is adopted, a new fixed activity
+        // request that overlaps its adopted slot must be rejected at add-time, not silently
+        // accepted and only later flagged with [OVERLAP] in the timetable.
+        String input = String.join("\n",
+                "add n/Study c/ACADEMIC date/2099-01-01 type/FLEXIBLE earliest/09:00 latest/14:00 "
+                        + "dur/60 energy/4 sensory/3",
+                "recommend date/2099-01-01",
+                "recommend adopt",
+                "y",
+                "add n/Meeting c/ACADEMIC date/2099-01-01 type/FIXED from/09:00 to/10:00 energy/2 sensory/2",
+                "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+
+        assertTrue(output.contains("This timing overlaps activity [1], Study (09:00 -> 10:00)."));
+        assertEquals(List.of("FLEXIBLE|1|Study|ACADEMIC|2099-01-01|09:00|14:00|60|4|3|INCOMPLETE|||09:00"),
+                Files.readAllLines(dataDirectory.resolve("activities.txt")));
+    }
+
+    @Test
+    public void recommend_thenPreferenceChangeInvalidatesProposal_adoptRejectedNotLost() throws Exception {
+        // Bug E regression: preference set/reset must not indiscriminately clear an active
+        // recommendation proposal (the documented contract - User Guide S11/S12.4, guide
+        // preference/recommend). The proposal must survive the preference change and be
+        // re-validated at adopt time - previously ApplicationRunner cleared every proposal after
+        // any successful mutation, including preference set, so "recommend adopt" always failed
+        // with "No recommendation proposal is currently active" instead of ever reaching the
+        // "no longer fits your current preferred daily start/end" revalidation message.
+        String input = String.join("\n",
+                "add n/Essay draft c/ACADEMIC date/2099-01-01 type/FLEXIBLE earliest/09:00 latest/14:00 "
+                        + "dur/60 energy/4 sensory/3",
+                "recommend date/2099-01-01",
+                "preference set start/10:30",
+                "y",
+                "recommend adopt",
+                "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+
+        assertTrue(output.contains("Preference profile updated."));
+        assertTrue(output.contains("no longer fits your current preferred daily start/end"),
+                "the proposal must survive the preference change and be rejected by revalidation, "
+                        + "not report \"no active proposal\"");
+        assertFalse(output.contains("No recommendation proposal is currently active."));
+        assertFalse(output.contains("Recommendation adopted."));
+    }
+
+    @Test
+    public void recommend_thenPreferenceChangeStillFits_adoptStillSucceeds() throws Exception {
+        // Companion case: a preference change that does NOT invalidate the proposal's placements
+        // must still let adoption succeed normally afterward.
+        String input = String.join("\n",
+                "add n/Essay draft c/ACADEMIC date/2099-01-01 type/FLEXIBLE earliest/09:00 latest/14:00 "
+                        + "dur/60 energy/4 sensory/3",
+                "recommend date/2099-01-01",
+                "preference set start/08:30",
+                "y",
+                "recommend adopt",
+                "y",
+                "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+
+        assertTrue(output.contains("Preference profile updated."));
+        assertTrue(output.contains("Recommendation adopted."));
+    }
+
+    @Test
+    public void recommend_thenUnrelatedMutation_stillClearsProposal() throws Exception {
+        // Regression guard: the fix is scoped to preference set/reset only - every other mutating
+        // command must still clear an active proposal on success, exactly as before.
+        String input = String.join("\n",
+                "add n/Essay draft c/ACADEMIC date/2099-01-01 type/FLEXIBLE earliest/09:00 latest/14:00 "
+                        + "dur/60 energy/4 sensory/3",
+                "recommend date/2099-01-01",
+                "add n/Other c/ACADEMIC date/2099-01-02 type/FIXED from/09:00 to/10:00 energy/1 sensory/1",
+                "recommend adopt",
+                "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+
+        assertTrue(output.contains("No recommendation proposal is currently active."));
     }
 
     @Test

@@ -5,6 +5,241 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0n. Code-quality hardening pass after independent QA review: bug fix, perf fix, architecture, docs, tests (2026-08-14, Claude Code) — read this first
+
+This session was **quality hardening, not feature development**, per an independent QA review
+supplied as this session's task. Scope: (1) fix a newly confirmed recommendation/dashboard bug,
+(2) reduce the recommendation algorithm's factorial performance cliff, (3) fix two genuine package
+dependency cycles, (4) remove misleading names/stale comments/dead code, (5) strengthen regression
+coverage, (6) keep CS2113-style code quality, (7) update this file. No release/tag action was in
+scope and none was taken - see "Final state" below.
+
+**Starting state.** Date 2026-08-14. Branch `main`. Starting HEAD `eb1a23f` (Section 0m). Working
+tree clean except the same two pre-existing untracked presentation files flagged since Section 0f
+(`.codex-presentations/`, `UniEnable_NUS_Enablers_Presentation.pptx.inspect.ndjson`) - confirmed
+still unrelated to this project's source and left untouched.
+
+**1. Confirmed defect: recommendation preview dashboard used the wrong `now` (fixed).**
+`RecommendationFormatter.formatPreview` called `DashboardService.summarize(previewActivities,
+proposal.getDashboardPeriod(), proposal.getDashboardPeriod().getStart())` - the third argument is
+the completion-eligibility basis, and the period's own `start` (midnight) was passed instead of the
+real injected `now`. Reproduction: `now = 2026-08-14 15:00`, a `09:00 -> 10:00` activity marked
+`COMPLETE`; `dashboard today` correctly showed `Completion [##########] 100% (1/1)`, but
+`recommend today`'s embedded dashboard showed `Completion: No activities are due yet.` - the two
+views disagreed about which activities were already due.
+
+Root cause confirmed by reading the formatter before writing any fix: the UI formatter was also
+doing business calculation (`DashboardService.summarize`/`TimetableService.build` called directly
+from `ui.recommend.RecommendationFormatter`), which is how a period boundary ended up standing in
+for `now` in the first place - nothing forced the actual injected `now` to flow that far down. Fix:
+a new `RecommendationService.buildPreview(activityManager, proposal, now)` applies the proposal's
+placements to copied activities and builds the preview timetable/dashboard from them using the real
+`now`, bundled into a new immutable `model.recommend.RecommendationPreview` (proposal + timetable +
+dashboard). `RecommendGenerateCommand` and `RecommendViewCommand` (which did not previously receive
+`now` at all - now threaded through from `RecommendCommandParser`, which already had it) call
+`buildPreview` and hand the result straight to `RecommendationFormatter.formatPreview(preview)`,
+which now does no calculation of its own - this fixes the bug and the UI/logic layering violation in
+one change, since the layering violation was the root cause. Regression tests (all
+`ApplicationRunnerTest`, fixed injected `now`, no wall-clock dependence):
+`recommendToday_previewDashboard_usesActualNow`,
+`recommendToday_previewDashboard_matchesDashboardCompletion`,
+`recommendThisWeek_previewDashboard_countsAlreadyDueActivities`,
+`recommendTomorrow_previewDashboard_hasNoDueActivitiesYet`. Commit `59a50b8`.
+
+**2. Performance: recommendation exhaustive search's factorial cliff at `PERMUTATION_CAP` (fixed).**
+`RecommendationService.optimizeDay`'s exhaustive path materialized every permutation of a day's
+remaining flexible activities into a `List<List<FlexibleActivity>>` (via `permute`), then evaluated
+each independently from a fresh copy of the base commitments (`placeInOrder`). Benchmarked locally
+(this machine, synthetic same-day flexible activities with wide overlapping windows so every
+ordering is a genuine candidate - the true adversarial case): ~34 ms at 5 activities, ~342 ms at 7,
+**~2.7 s at 8** (8! = 40,320 orderings), dropping back to ~5 ms at 9 once the heuristic fallback took
+over - a real, reproducible cliff, matching the independent QA benchmark's reported numbers closely.
+
+Fix, in two parts. First, `exhaustiveSearch`/`searchOrderings` replaced `permute`/`placeInOrder`:
+the identical in-place swap permutation-generation algorithm, but fused directly with greedy
+placement so no ordering is ever materialized as a full list, plus a branch-and-bound prune once
+`placedSoFar.size() + remainingDepth` can no longer reach the best item count already found
+(`DaySchedule.betterThan`'s top-priority criterion - a safe bound, since a completed branch's item
+count can never exceed already-placed items plus however many candidates remain unplaced). Measured
+in isolation (cap still 8, to isolate this effect from the cap change below): n=8 went from ~2.7 s to
+~2.65 s - a real but small improvement, because the pruning bound never triggers when every candidate
+activity is mutually compatible (the exact adversarial benchmark scenario has no branch to prune).
+Second, `PERMUTATION_CAP` was lowered from 8 to 7 (5,040 worst-case orderings, consistently well
+under a second even unpruned) specifically because the benchmark showed pruning alone does not bound
+the true worst case. With both changes: n=7 (still exhaustive) ~316 ms, n=8 (now heuristic) ~7 ms -
+no more cliff. Scheduling output is unchanged for every `n <= PERMUTATION_CAP`: identical orderings
+explored, identical greedy placement logic, identical `DaySchedule.betterThan` winner selection -
+confirmed by every pre-existing `RecommendationServiceTest` case passing unmodified. Tests:
+`recommend_eightFlexibleActivities_returnsDeterministically`,
+`recommend_largeFlexibleSet_doesNotMaterializeAllPermutations` (generous 5 s CI-safe bound, not a
+brittle near-actual-runtime threshold - chosen because the old cap-8 defect measured multiple
+seconds for a strictly *smaller* 40,320-ordering search, so 5 s leaves wide margin while still
+catching a regression back toward unbounded materialization),
+`recommend_optimization_preservesExpectedSchedule` (a two-activity scenario where only a
+multi-ordering search, not a single greedy pass, finds the schedule that fits both). Commit
+`ae9e2fc`.
+
+**3. Architecture: two genuine package dependency cycles removed.**
+- `command.activity.crud.EditCommand` imported `parser.common.DateTimeParser` for
+  `requireNotPastIfToday` (a pre-execution re-check run after the confirmation prompt), while
+  `parser` already depends on `command` everywhere (parsers construct commands) - `command ->
+  parser -> command`. Fixed by moving the rule into a new neutral `logic.validation.ActivityTimeValidator`;
+  `DateTimeParser.requireNotPastIfToday` now delegates to it (zero behavioural or call-site change
+  for its many existing parser-internal callers - `parseNotBeforeNow`, `AddCommandParser`,
+  `EditCommandParser`, `RecommendCommandParser` all still call `DateTimeParser` exactly as before),
+  and `EditCommand` calls `ActivityTimeValidator` directly instead of reaching into `parser`.
+- `ui.accessibility.RouteFormatter` imported `command.accessibility.common.AccessibilityDisclaimer`,
+  while `command` already depends on `ui` broadly (formatters) - `ui -> command -> ui`. Fixed by
+  moving `AccessibilityDisclaimer` to `ui.accessibility` (it is presentation content - text appended
+  to formatted output - not command logic, and `RouteFormatter`, also in `ui.accessibility`, needs it
+  too); every command that displays it (`ConnectionFindCommand`, `ConnectionListCommand`,
+  `ConnectionViewCommand`, `FacilityFindCommand`, `FacilityListCommand`, `FacilityViewCommand`,
+  `GuideCommand`) now imports it from there instead - `command -> ui` for this content, same
+  direction as every other formatter dependency, no new cycle introduced.
+
+Dependency direction is now the documented one: `parser -> command`, `command -> logic/ui`, no path
+back from either into `parser`, and no path from `ui` into `command` for this content.
+`command.accessibility.common.ValidationReportFormatter` was checked and found *not* to be part of a
+cycle (only used within `command` itself) - left in place, not moved speculatively. Commit `d3e6298`.
+
+**4. Readability: `TimetableView.getFixedEntries()` renamed to `getScheduledEntries()`.**
+The returned list contains both fixed activities and adopted flexible activities (the backing field
+was already named `scheduledEntries`); the accessor name was misleading about what the collection
+actually holds. Renamed the accessor plus the local-variable and helper-method names that referred
+to the same concept (`TimetableService.build`'s `scheduledEntries` local,
+`TimetableFormatter.appendFixedEntries`/`appendFixedEntry` -> `appendScheduledEntries`/
+`appendScheduledEntry`), and updated every production caller, test caller
+(`TimetableServiceTest`, `TimetableIntegrationTest`), and the stale "fixed entry"/"fixed start"
+wording in `TimetableEntry`'s JavaDoc to match. Developer-readability refactor only - confirmed via
+the full test suite and a manual `timetable today`/`timetable this week` smoke test that output is
+byte-for-byte unchanged. Commit `7a31050`.
+
+**5. Stale JavaDoc/comments corrected; one dead constant removed.**
+- `ActivityManager.add`/`replace`/`checkNoConflicts`, `ActivityCommandParser.parseEdit`,
+  `EditCommandParser.parse`, and `ActivityStorage.validateAgainstAlreadyLoaded` all still said
+  "(for a `FixedActivity`) overlaps another fixed activity" - stale since conflict detection was
+  widened (Section 0j finding C) to cover any two activities' *occupied intervals* (fixed or adopted
+  flexible), not just fixed-vs-fixed. Reworded to the precise current rule throughout.
+- `UniEnable.java`'s `run(...)` JavaDoc said "the directory containing... the five data files" - the
+  application persists more than five files now and the exact count was never load-bearing to the
+  parameter's meaning; reworded to "the application data directory" without embedding a count, per
+  this file's own "avoid hardcoding facts that will drift" discipline.
+- `GuideCommand.COMING_SOON_NOTE` was an unused constant (confirmed via full-codebase search - zero
+  references anywhere outside its own declaration) - removed. A codebase-wide search for
+  `TODO`/`FIXME`/`XXX`/"coming soon"/"not yet implemented"/"future release" found nothing else.
+- `ActivityManager.sort`'s `TIME`/`CHRONOLOGICAL` comment narrated a past bug fix ("TIME used to
+  compare only time-of-day, which caused...", from Section 0m) instead of stating the current
+  invariant; reworded to explain *why* the two cases intentionally share one comparator, leaving the
+  bug narrative in git history/Section 0m where it already lives, per this file's own Section 10
+  discipline (own instruction in this session's task spec).
+
+Not swept codebase-wide: a broader grep for "used to"/"previously"/"in v1./v2." across all of
+`src/main` returned 19 files, nearly all false positives (ordinary present-tense "used to reject...",
+not historical narration) - only the one genuine case above was rewritten, per the task's own "do
+this selectively" instruction; the rest were read and confirmed not to need it, not skipped
+unreviewed. Commit `92fd841`.
+
+**6. Overdue exact-end-instant semantics: confirmed correct, documented, not changed.**
+`ActivityManager.isOverdue` uses `end.isBefore(now)` (strictly exclusive) while
+`DashboardService`'s completion eligibility uses `!eligibleFrom.isAfter(now)` (inclusive of the
+exact end instant) - so an activity becomes completion-eligible/"due" exactly at its own end time,
+but does not become overdue until one instant later. Confirmed both the implementation and an
+existing exact-boundary regression test (`countOverdueIncomplete_nowExactlyAtEndTime_isNotYetOverdue`,
+already present before this session) are correct and unchanged - per the task's explicit instruction
+not to change this behaviour absent a specification/test contradiction, and none was found. Only the
+documentation was underspecified: `docs/UserGuide.md`'s `list overdue` bullet gained an explicit
+sentence stating the exact-end-instant rule; `docs/DeveloperGuide.md`'s glossary gained
+`Completion-eligible`/`Overdue` entries spelling out the two boundary conditions and why they
+intentionally differ by one instant. Included in commit `2effa59`.
+
+**Test-count change:** 1312 -> **1319** (7 net new tests: 4 bug-fix regressions + 3 performance
+regressions), zero deleted or weakened. `RecommendationServiceTest`'s `ArrayList` import was added
+alongside the new performance tests (no other change to that file's existing cases).
+
+**Verification, this session's own HEAD (`2effa59`):**
+```
+JUnit tests:      1319, 0 failures (./gradlew clean test)
+Checkstyle:       clean (checkstyleMain, checkstyleTest)
+Javadoc:          clean (./gradlew javadoc, 0 errors)
+text-ui-test:     Test passed! (bash text-ui-test/runtest.sh - zero EXPECTED.TXT changes needed,
+                  confirming none of this session's changes altered any existing scripted CLI output)
+releaseZip:       clean (./gradlew releaseZip)
+verifyReleaseZip: clean (./gradlew verifyReleaseZip)
+```
+Also ran a codebase-wide search for `TODO`/`FIXME`/`XXX`/`System.out`/`catch (Exception`/
+`catch (Throwable`/`@SuppressWarnings`: the only `System.out` hit is `ui.Ui`'s own legitimate CLI
+output boundary; nothing else matched anywhere in `src/main`.
+
+**Manual CLI smoke test**, fresh-extracted `unienable.zip`, fixed clock
+(`-Dunienable.fixedNow=2026-08-19T15:00`, a Wednesday), two runs:
+- **Bug-fix reproduction (the primary deliverable):** seeded `data/activities.txt` directly with a
+  `FIXED|1|Morning briefing|ACADEMIC|2026-08-19|09:00|10:00|2|2|COMPLETE` activity (bypassing `add`'s
+  own not-in-the-past validation, which correctly rejects constructing a fresh past-dated activity -
+  a real activity would already exist in storage from before now). `dashboard today` showed
+  `Completion [##########] 100% (1/1)`; `recommend today`'s embedded dashboard showed the *identical*
+  `Completion [##########] 100% (1/1)` line - matching, not the old "No activities are due yet."
+- **Flexible recommend/view/adopt end to end:** added two `FLEXIBLE` activities, `recommend today`
+  proposed both (`Reading 16:00->16:45`, `Essay draft 17:00->18:00`), `recommend view` re-displayed
+  identically, `recommend adopt` succeeded and `timetable today` showed both as `[R]` adopted-flexible
+  entries at those exact times.
+- **`getScheduledEntries` rename regression check:** `timetable today`/`timetable this week` output
+  inspected directly - unaffected by the internal rename.
+- **Adopted-flexible edit placement preservation:** `edit 2 note/Bring laptop` showed `Before: note =
+  None` / `After: note = Bring laptop`; the following `timetable today` still showed activity 2 at
+  its original adopted `17:00-18:00`, confirming the placement survived a non-scheduling edit
+  (pre-existing Section 0j behaviour, re-confirmed not regressed by this session's changes).
+- **Duplicate marker rejection:** `find k/Study k/Assignment` -> `[Error] Invalid input: Duplicate
+  option "k/".` (pre-existing Section 0j behaviour, re-confirmed).
+- **Preference change invalidates a stale proposal:** generated a `recommend date/2026-08-27`
+  proposal with one real placement, then `preference set start/12:00` (confirmed `y`), then
+  `recommend adopt` -> `[Error] Invalid input: This recommendation proposal no longer fits your
+  current preferred daily start/end - preferences changed since it was generated. Generate a new
+  recommendation with recommend.` (pre-existing Section 0j behaviour, re-confirmed).
+
+No new functional defect was found during this session beyond the one already supplied as this
+session's task.
+
+**Documentation and diagrams synced:** `docs/UserGuide.md` (overdue exact-boundary wording),
+`docs/DeveloperGuide.md` (recommend preview responsibility split, performance-hardening benchmark
+paragraph, `EditCommand`'s validator-move paragraph, `Completion-eligible`/`Overdue` glossary
+entries), `RecommendationClassDiagram` and `RecommendationGenerationSequence` (`.puml` + regenerated
+`.png`, via the same local `plantuml.jar` toolchain prior sessions used - still present in this
+environment at `C:\Users\lukel\AppData\Local\Temp\unienable-plantuml-tool\tp-master\tools\plantuml.jar`,
+reused without a fresh download; both diagrams visually verified rendered correctly, not error
+placeholders, before committing).
+
+**A note on commit/file overlap:** `RecommendationService.java`'s bug-fix change (`buildPreview`) and
+performance change (`exhaustiveSearch`/`searchOrderings`, lowered `PERMUTATION_CAP`) both landed in
+the same file at different points in this session; the bug-fix commit (`59a50b8`) happened to be
+staged first and so carries both hunks together (the perf commit `ae9e2fc` only added the new test
+file, since the production file was already fully committed) - same reasoning this file's Section 0j
+already documented for exactly this kind of unavoidable single-file overlap under non-interactive
+git tooling: both commits' own test suites still pass standalone at that point in history, and
+splitting the file's hunks would need interactive patching this environment doesn't support.
+Similarly, `GuideCommand.java`'s `AccessibilityDisclaimer` import-path update and its unrelated dead
+`COMING_SOON_NOTE` removal both landed in the dependency-cycle commit (`d3e6298`) rather than the
+JavaDoc-cleanup commit, for the same reason.
+
+**Commits, in order:**
+| Commit | Message |
+|---|---|
+| `59a50b8` | fix: use actual current time in recommendation dashboard preview |
+| `ae9e2fc` | perf: avoid factorial recommendation ordering materialization |
+| `d3e6298` | refactor: remove parser/command package dependency cycle |
+| `7a31050` | refactor: rename timetable fixed entries to scheduled entries |
+| `92fd841` | docs: align JavaDoc and comments with occupied-schedule conflict semantics |
+| `2effa59` | docs: clarify overdue boundary and architecture updates |
+
+**Release/tag rule followed.** This session was quality hardening, not a release; per explicit
+instruction, the `v2.1.0` tag/release was **not** moved, deleted, recreated, or republished, and
+nothing was pushed. `v2.1.0` remains at `451fd93` (Section 0m), untouched.
+
+**Final state.** `git rev-parse HEAD` is `2effa59`. `git status`: clean except the same two
+pre-existing untracked presentation files flagged since Section 0f - left untouched, out of this
+session's scope. `origin/main` was **not** updated (no push performed, none requested). The
+corrected `HEAD` is ready for review/push/release at the user's discretion - no release action was
+taken or implied by this session.
+
 ## 0m. `v2.1.0` retagged/republished for the `order/time` fix, verified (2026-08-14, Claude Code) — read this first
 
 Follow-up to Section 0l, same session: records the actual retag/republish once the fix there was

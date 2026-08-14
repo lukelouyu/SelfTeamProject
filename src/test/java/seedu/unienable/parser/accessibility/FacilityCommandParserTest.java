@@ -126,4 +126,26 @@ class FacilityCommandParserTest {
 
         assertThrows(InvalidCommandException.class, () -> parser.parseValidate(storage, "ignored-text"));
     }
+
+    @Test
+    public void parseFind_duplicateTypeMarker_throwsInvalidCommandException() {
+        // Bug F regression: "facility find type/LIFT type/RAMP" previously let the first "type/"
+        // silently absorb the second as literal text instead of being rejected.
+        FacilityManager manager = new FacilityManager(List.of());
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "type/LIFT type/RAMP"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"type/\""));
+    }
+
+    @Test
+    public void parseFind_duplicateStatusMarker_throwsInvalidCommandException() {
+        FacilityManager manager = new FacilityManager(List.of());
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "type/LIFT status/YES status/NO"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"status/\""));
+    }
 }

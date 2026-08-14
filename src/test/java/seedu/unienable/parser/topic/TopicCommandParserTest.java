@@ -236,4 +236,49 @@ class TopicCommandParserTest {
 
         assertThrows(InvalidActivityException.class, () -> parser.parseDelete(manager, "c/BOGUS n/CG3207"));
     }
+
+    // Bug F regression coverage: topic add/list/rename/delete previously silently absorbed a
+    // repeated marker's second occurrence as literal text instead of rejecting it.
+
+    @Test
+    public void parseAdd_duplicateNameMarker_throwsInvalidCommandException() {
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseAdd(manager, "c/ACADEMIC n/CG3207 n/CG3208"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"n/\""));
+    }
+
+    @Test
+    public void parseList_duplicateCategoryMarker_throwsInvalidCommandException() {
+        TopicManager manager = new TopicManager(new ActivityManager());
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseList(manager, "c/ACADEMIC c/CCA"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"c/\""));
+    }
+
+    @Test
+    public void parseRename_duplicateNewMarker_throwsInvalidCommandException() throws Exception {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "Foo");
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseRename(manager, "c/ACADEMIC old/Foo new/Baz new/Qux"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"new/\""));
+    }
+
+    @Test
+    public void parseDelete_duplicateNameMarker_throwsInvalidCommandException() throws Exception {
+        TopicManager manager = new TopicManager(new ActivityManager());
+        manager.add(ActivityCategory.ACADEMIC, "CG3207");
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseDelete(manager, "c/ACADEMIC n/CG3207 n/Other"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"n/\""));
+    }
 }

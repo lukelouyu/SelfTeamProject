@@ -67,4 +67,22 @@ class RouteCommandParserTest {
         assertThrows(InvalidCommandException.class,
                 () -> parser.parse(facilityManager, connectionManager, "bogus from/AS6 to/AS8"));
     }
+
+    @Test
+    public void parse_duplicateFromMarker_throwsInvalidCommandException() {
+        // Bug F regression: "route from/AS6 from/AS8 to/AS9" previously let the first "from/"
+        // silently absorb the second as literal text instead of being rejected.
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(facilityManager, connectionManager, "from/AS6 from/AS8 to/AS9"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"from/\""));
+    }
+
+    @Test
+    public void parse_duplicateToMarker_throwsInvalidCommandException() {
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(facilityManager, connectionManager, "from/AS6 to/AS8 to/AS9"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"to/\""));
+    }
 }

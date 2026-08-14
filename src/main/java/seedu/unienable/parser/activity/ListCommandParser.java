@@ -35,13 +35,14 @@ class ListCommandParser {
      * @throws InvalidActivityException if the category is invalid
      * @throws InvalidCommandException if status or order is invalid, a relative-date phrase is
      *     unrecognised, a relative-date phrase is combined with date/ or another relative-date
-     *     phrase, status/ is combined with overdue, or unrecognised text follows a relative-date
-     *     phrase
+     *     phrase, status/ is combined with overdue, unrecognised text follows a relative-date
+     *     phrase, or any marker is supplied more than once
      * @throws InvalidDateTimeException if the date is invalid
      */
     ListCommand parse(ActivityManager activityManager, LocalDateTime now, String args)
             throws InvalidActivityException, InvalidCommandException, InvalidDateTimeException {
         RelativeDateAndRemainder parsed = extractRelativeDate(now, args);
+        FieldParser.rejectDuplicateMarkers(parsed.remainder, LIST_MARKERS);
         Map<String, String> fields = FieldParser.extractPresentFields(parsed.remainder, LIST_MARKERS);
         if (parsed.hasRelativeDate() && fields.containsKey("date/")) {
             throw new InvalidCommandException(

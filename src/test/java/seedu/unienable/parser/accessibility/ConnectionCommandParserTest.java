@@ -195,4 +195,27 @@ class ConnectionCommandParserTest {
 
         assertThrows(InvalidCommandException.class, () -> parser.parseValidate(storage, "ignored-text"));
     }
+
+    @Test
+    public void parseFind_duplicateFromMarker_throwsInvalidCommandException() {
+        // Bug F regression: "connection find from/AS6 from/AS8" previously let the first "from/"
+        // silently absorb the second as literal text, then matched no connection at all, instead
+        // of being rejected as a repeated field.
+        ConnectionManager manager = new ConnectionManager(List.of());
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "from/AS6 from/AS8"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"from/\""));
+    }
+
+    @Test
+    public void parseFind_duplicateTypeMarker_throwsInvalidCommandException() {
+        ConnectionManager manager = new ConnectionManager(List.of());
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parseFind(manager, "type/RAMP type/LIFT"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"type/\""));
+    }
 }

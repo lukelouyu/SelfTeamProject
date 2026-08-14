@@ -582,4 +582,26 @@ class ListCommandParserTest {
         assertTrue(feedback.contains("Fixed-date lecture"));
     }
 
+    @Test
+    public void parseList_duplicateTopicMarker_throwsInvalidCommandException() {
+        // Bug F regression: "list topic/CG2020 topic/CG3216" previously let the first "topic/"
+        // silently absorb the second as literal text instead of being rejected.
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, NOW, "topic/CG2020 topic/CG3216"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"topic/\""));
+    }
+
+    @Test
+    public void parseList_duplicateCategoryMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, NOW, "c/ACADEMIC c/CCA"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"c/\""));
+    }
+
 }

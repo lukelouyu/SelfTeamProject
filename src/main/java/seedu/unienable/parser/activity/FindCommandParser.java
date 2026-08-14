@@ -40,8 +40,8 @@ class FindCommandParser {
      *     supplied
      * @throws InvalidActivityException if the category is invalid
      * @throws InvalidCommandException if order is invalid, k/ contains more than two words, a
-     *     relative-date phrase is unrecognised or combined with date/, or unrecognised text
-     *     follows a relative-date phrase
+     *     relative-date phrase is unrecognised or combined with date/, unrecognised text follows
+     *     a relative-date phrase, or any marker is supplied more than once
      * @throws InvalidDateTimeException if the date is invalid
      */
     FindCommand parse(ActivityManager activityManager, LocalDateTime now, String args)
@@ -49,6 +49,7 @@ class FindCommandParser {
             InvalidDateTimeException {
         RelativeDateAndRemainder relative = extractRelativeDate(now, args);
         FieldParser.rejectUnrecognisedLeadingText(relative.remainder, FIND_MARKERS);
+        FieldParser.rejectDuplicateMarkers(relative.remainder, FIND_MARKERS);
         Map<String, String> fields = FieldParser.extractPresentFields(relative.remainder, FIND_MARKERS);
         if (relative.isPresent() && fields.containsKey("date/")) {
             throw new InvalidCommandException(

@@ -64,11 +64,13 @@ public class ConnectionCommandParser {
      * @param args the text after the "connection find" command words
      * @return the parsed ConnectionFindCommand
      * @throws MissingInputException if no filter is supplied
-     * @throws InvalidCommandException if type, status, or shelter is invalid
+     * @throws InvalidCommandException if type, status, or shelter is invalid, or any marker is
+     *     supplied more than once
      */
     public ConnectionFindCommand parseFind(ConnectionManager connectionManager, String args)
             throws MissingInputException, InvalidCommandException {
         FieldParser.rejectUnrecognisedLeadingText(args, FIND_MARKERS);
+        FieldParser.rejectDuplicateMarkers(args, FIND_MARKERS);
         Map<String, String> fields = FieldParser.extractPresentFields(args, FIND_MARKERS);
         String from = blankToNull(fields.get("from/"));
         String to = blankToNull(fields.get("to/"));

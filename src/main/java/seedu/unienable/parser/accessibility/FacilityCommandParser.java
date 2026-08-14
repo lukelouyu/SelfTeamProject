@@ -54,11 +54,13 @@ public class FacilityCommandParser {
      * @param args the text after the "facility find" command words
      * @return the parsed FacilityFindCommand
      * @throws MissingInputException if type/ is missing
-     * @throws InvalidCommandException if type or status is invalid
+     * @throws InvalidCommandException if type or status is invalid, or either marker is supplied
+     *     more than once
      */
     public FacilityFindCommand parseFind(FacilityManager facilityManager, String args)
             throws MissingInputException, InvalidCommandException {
         FieldParser.rejectUnrecognisedLeadingText(args, "type/", "status/");
+        FieldParser.rejectDuplicateMarkers(args, "type/", "status/");
         boolean hasStatus = FieldParser.indexOfMarker(args, "status/", 0) != -1;
         String typeEndMarker = hasStatus ? "status/" : null;
         String typeText = FieldParser.extractField(args, "type/", typeEndMarker);

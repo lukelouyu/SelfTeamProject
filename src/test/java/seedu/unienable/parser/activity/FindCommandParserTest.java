@@ -354,4 +354,26 @@ class FindCommandParserTest {
         assertTrue(feedback.contains("Plan for today"));
     }
 
+    @Test
+    public void parseFind_duplicateKeywordMarker_throwsInvalidCommandException() {
+        // Bug F regression: "find k/Study k/Assignment" previously let the first "k/" silently
+        // absorb the second as literal text instead of being rejected as a repeated field.
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, NOW, "k/Study k/Assignment"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"k/\""));
+    }
+
+    @Test
+    public void parseFind_duplicateCategoryMarker_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, NOW, "c/ACADEMIC c/CCA"));
+
+        assertTrue(exception.getMessage().contains("Duplicate option \"c/\""));
+    }
+
 }

@@ -28,6 +28,7 @@ public class TopicCommandParser {
     public TopicAddCommand parseAdd(TopicManager topicManager, String args)
             throws MissingInputException, InvalidActivityException, InvalidCommandException {
         FieldParser.rejectUnrecognisedLeadingText(args, "c/", "n/");
+        FieldParser.rejectDuplicateMarkers(args, "c/", "n/");
         ActivityCategory category = FieldParser.parseCategory(
                 FieldParser.requireField(args, "c/", "n/", "category"));
         String name = FieldParser.requireField(args, "n/", null, "topic name");
@@ -47,6 +48,7 @@ public class TopicCommandParser {
     public TopicListCommand parseList(TopicManager topicManager, String args)
             throws InvalidActivityException, InvalidCommandException {
         FieldParser.rejectUnrecognisedLeadingText(args, "c/");
+        FieldParser.rejectDuplicateMarkers(args, "c/");
         if (FieldParser.indexOfMarker(args, "c/", 0) == -1) {
             return new TopicListCommand(topicManager, null);
         }
@@ -71,6 +73,7 @@ public class TopicCommandParser {
             throws MissingInputException, InvalidActivityException, InvalidIndexException,
             DuplicateActivityException, InvalidCommandException {
         FieldParser.rejectUnrecognisedLeadingText(args, "c/", "old/", "new/");
+        FieldParser.rejectDuplicateMarkers(args, "c/", "old/", "new/");
         ActivityCategory category = FieldParser.parseCategory(
                 FieldParser.requireField(args, "c/", "old/", "category"));
         String oldName = FieldParser.requireField(args, "old/", "new/", "old topic name");
@@ -97,6 +100,7 @@ public class TopicCommandParser {
             throws MissingInputException, InvalidActivityException, InvalidIndexException,
             DuplicateActivityException, InvalidCommandException {
         FieldParser.rejectUnrecognisedLeadingText(args, "c/", "n/");
+        FieldParser.rejectDuplicateMarkers(args, "c/", "n/");
         ActivityCategory category = FieldParser.parseCategory(
                 FieldParser.requireField(args, "c/", "n/", "category"));
         String name = FieldParser.requireField(args, "n/", null, "topic name");

@@ -28,11 +28,11 @@ public final class TimetableEntry {
      * @param id permanent activity ID
      * @param description activity description
      * @param date activity date
-     * @param startTime fixed start or flexible-window start
-     * @param endTime fixed end or flexible-window end
-     * @param durationMinutes required flexible duration, or zero for fixed entries
+     * @param startTime scheduled start (fixed or adopted flexible) or unscheduled-flexible-window start
+     * @param endTime scheduled end (fixed or adopted flexible) or unscheduled-flexible-window end
+     * @param durationMinutes required flexible duration, or zero for scheduled entries
      * @param type display-entry type
-     * @param overlapping whether this fixed entry overlaps another fixed entry
+     * @param overlapping whether this scheduled entry overlaps another scheduled entry
      * @param complete whether the source activity is complete
      * @param category activity category
      * @param energyRating energy-demand rating value
@@ -75,17 +75,17 @@ public final class TimetableEntry {
         return date;
     }
 
-    /** Returns the fixed start or flexible-window start. */
+    /** Returns the scheduled start (fixed or adopted flexible) or unscheduled-flexible-window start. */
     public LocalTime getStartTime() {
         return startTime;
     }
 
-    /** Returns the fixed end or flexible-window end. */
+    /** Returns the scheduled end (fixed or adopted flexible) or unscheduled-flexible-window end. */
     public LocalTime getEndTime() {
         return endTime;
     }
 
-    /** Returns the required flexible duration, or zero for fixed entries. */
+    /** Returns the required flexible duration, or zero for scheduled entries. */
     public int getDurationMinutes() {
         return durationMinutes;
     }
@@ -95,7 +95,7 @@ public final class TimetableEntry {
         return type;
     }
 
-    /** Returns whether this fixed entry overlaps another fixed entry. */
+    /** Returns whether this scheduled entry overlaps another scheduled entry. */
     public boolean isOverlapping() {
         return overlapping;
     }

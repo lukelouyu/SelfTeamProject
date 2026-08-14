@@ -134,8 +134,9 @@ public class ActivityStorage {
 
     /**
      * Rejects a candidate activity that conflicts with one already accepted earlier in this same
-     * load() call: a reused ID, an exact duplicate (same description/date/timing), or (for a
-     * fixed activity) a timing overlap with another fixed activity on the same date.
+     * load() call: a reused ID, an exact duplicate (same description/date/timing), or a timing
+     * overlap between the two activities' occupied intervals (fixed or adopted flexible) on the
+     * same date.
      *
      * @param candidate the just-parsed activity, not yet added to alreadyLoaded
      * @param alreadyLoaded every activity accepted so far in this load() call

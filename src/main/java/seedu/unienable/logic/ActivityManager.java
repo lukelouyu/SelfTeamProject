@@ -137,8 +137,8 @@ public class ActivityManager {
      * Adds the given activity and consumes its ID from the assignment counter.
      *
      * @param activity the activity to add, constructed using getNextId()'s current value
-     * @throws DuplicateActivityException if it exactly duplicates an existing activity, or (for a
-     *     FixedActivity) overlaps another fixed activity on the same date
+     * @throws DuplicateActivityException if it exactly duplicates an existing activity, or overlaps
+     *     another activity's occupied interval (fixed or adopted flexible) on the same date
      * @throws IllegalArgumentException if the activity does not carry the current next ID
      * @throws IllegalStateException if every int ID has already been consumed
      */
@@ -233,7 +233,8 @@ public class ActivityManager {
      * @param newActivity the replacement activity, constructed with the same ID
      * @throws InvalidIndexException if no activity has that ID
      * @throws DuplicateActivityException if the replacement exactly duplicates another activity,
-     *     or (for a FixedActivity) overlaps another fixed activity on the same date
+     *     or overlaps another activity's occupied interval (fixed or adopted flexible) on the same
+     *     date
      * @throws IllegalArgumentException if the replacement does not carry the stable ID being
      *     replaced
      */
@@ -253,15 +254,15 @@ public class ActivityManager {
     /**
      * Checks whether the given candidate would be accepted as a replacement for the activity with
      * the given ID, without mutating any stored state. Used as a side-effect-free preflight check
-     * so a doomed edit (an exact duplicate, or a fixed-activity overlap) can be rejected before a
-     * confirmation prompt is shown, rather than only failing later when replace() itself runs
+     * so a doomed edit (an exact duplicate, or an occupied-interval overlap) can be rejected before
+     * a confirmation prompt is shown, rather than only failing later when replace() itself runs
      * after the user has already answered "y". replace() re-runs the same check at execution
      * time as defensive protection against state changes between the two calls.
      *
      * @param candidate the proposed replacement activity
      * @param excludeId the ID of the activity being replaced, excluded from the conflict check
      * @throws DuplicateActivityException if candidate exactly duplicates another activity, or
-     *     (for a FixedActivity) overlaps another fixed activity on the same date
+     *     overlaps another activity's occupied interval (fixed or adopted flexible) on the same date
      */
     public void checkNoConflicts(Activity candidate, int excludeId) throws DuplicateActivityException {
         conflictChecker.checkNoConflicts(candidate, excludeId, activities);
@@ -433,13 +434,11 @@ public class ActivityManager {
         switch (order) {
         case TIME:
         case CHRONOLOGICAL:
-            // TIME used to compare only time-of-day (no date term at all), so two matching
-            // activities sharing a start time on different dates fell through to an ID
-            // tie-break instead of the earlier date sorting first - list and find both call
-            // this same method, so the defect affected either command identically. TIME now
-            // shares CHRONOLOGICAL's exact comparator rather than maintaining a second, subtly
-            // different one; both marker strings ("order/time"/"order/chronological") remain
-            // separately valid input, they just resolve to the same ordering.
+            // TIME and CHRONOLOGICAL intentionally share this exact date -> start -> ID
+            // comparator rather than maintaining two subtly different ones; both marker strings
+            // ("order/time"/"order/chronological") remain separately valid input, they just
+            // resolve to the identical ordering. list and find both call this same method, so
+            // the ordering is identical for either command.
             matched.sort(Comparator.comparing(Activity::getDate)
                     .thenComparing(ActivityManager::getSortTime)
                     .thenComparingInt(Activity::getId));

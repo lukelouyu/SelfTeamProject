@@ -53,7 +53,7 @@ class EditCommandParser {
      *     before today; or a time value is invalid, or (when date/ or the start-time marker is
      *     actively supplied) the resulting start time is at or before now on today's date
      * @throws DuplicateActivityException if the resulting activity exactly duplicates another,
-     *     or (for a FixedActivity) overlaps another fixed activity on the same date
+     *     or overlaps another activity's occupied interval (fixed or adopted flexible) on the same date
      */
     EditCommand parse(ActivityManager activityManager, TopicManager topicManager, LocalDateTime now,
             String args)

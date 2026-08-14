@@ -28,7 +28,8 @@ public class UniEnable {
      * commands from the given input stream until "bye" or the stream ends. Separated from
      * main() so tests can point it at a temporary directory instead of the real "data" folder.
      *
-     * @param dataDirectory the directory containing (or to create) the five data files
+     * @param dataDirectory the application data directory, containing (or where UniEnable creates)
+     *     its persisted data files
      * @param input the source of command-line input, e.g. System.in
      */
     public static void run(Path dataDirectory, InputStream input) {
@@ -39,7 +40,8 @@ public class UniEnable {
      * Runs the full application with an injectable current-time source for deterministic scripted
      * testing.
      *
-     * @param dataDirectory the directory containing (or to create) the five data files
+     * @param dataDirectory the application data directory, containing (or where UniEnable creates)
+     *     its persisted data files
      * @param input the source of command-line input, e.g. System.in
      * @param nowSupplier the current-time source to use for command dispatch
      */

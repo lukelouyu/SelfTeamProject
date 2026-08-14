@@ -167,6 +167,33 @@ class ApplicationRunnerTest {
     }
 
     @Test
+    public void find_orderTime_sortsChronologicallyAcrossDatesEndToEnd() throws Exception {
+        // Ordering-semantics regression, application level, reproducing the exact independent QA
+        // report: two matching activities share the same 18:30 start time on different dates
+        // (2026-08-18 and 2026-08-25) - "find k/QA Lecture order/time" must list the earlier date
+        // first, not fall through to activity-ID order because both share a start time.
+        String input = String.join("\n",
+                "add n/QA Lecture c/ACADEMIC date/2026-08-25 type/FIXED from/18:30 to/19:00 "
+                        + "energy/2 sensory/2",
+                "add n/QA Lecture c/ACADEMIC date/2026-08-18 type/FIXED from/18:30 to/19:00 "
+                        + "energy/2 sensory/2",
+                "find k/QA Lecture order/time",
+                "bye") + "\n";
+
+        String output = run(input, new Storage(dataDirectory));
+
+        // Scope to the find results section only - both dates also appear earlier, in the two
+        // add confirmations, which are not what this test is about.
+        String findSection = output.substring(output.lastIndexOf("Found 2 activities:"));
+        int earlierDateIndex = findSection.indexOf("2026-08-18 18:30");
+        int laterDateIndex = findSection.indexOf("2026-08-25 18:30");
+        assertTrue(earlierDateIndex > 0 && laterDateIndex > 0, "both activities must appear: " + findSection);
+        assertTrue(earlierDateIndex < laterDateIndex,
+                "the earlier-dated activity (2026-08-18) must be listed before the later-dated "
+                        + "one (2026-08-25) despite sharing the same 18:30 start time: " + findSection);
+    }
+
+    @Test
     public void topicRename_duplicateNewMarker_rejectedEndToEnd() throws Exception {
         String input = String.join("\n",
                 "topic add c/ACADEMIC n/Foo",

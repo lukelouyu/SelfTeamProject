@@ -324,7 +324,17 @@ order set input|time|chronological
 ```
 
 `order view` shows the saved default order used by `list`/`find` when no one-shot `order/`
-override is given. `order set` changes that saved default.
+override is given. `order set` changes that saved default. The same three options are also
+available as a one-shot `order/input|time|chronological` filter on `list` and `find` themselves
+(Sections 6.3, 6.5), overriding the saved default for that one command only.
+
+- `input` — the order activities were added in (unaffected by date or time).
+- `time` / `chronological` — earliest date first; activities on the same date are then ordered by
+  their scheduled start time (a `FIXED` activity's `from/`, or a `FLEXIBLE` activity's adopted
+  start once adopted from a recommendation, otherwise its `earliest/`); activities with the exact
+  same date and start time are then ordered by their activity ID, for a fully deterministic result.
+  `time` and `chronological` are two names for the identical ordering — both sort by date first,
+  never by time-of-day alone across different dates.
 
 ### 6.7 Edit an Activity: `edit`
 

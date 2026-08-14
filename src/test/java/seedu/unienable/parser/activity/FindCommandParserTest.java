@@ -17,8 +17,10 @@ import seedu.unienable.logic.ActivityManager;
 import seedu.unienable.logic.TopicManager;
 import seedu.unienable.model.classes.EnergyRating;
 import seedu.unienable.model.classes.FixedActivity;
+import seedu.unienable.model.classes.FlexibleActivity;
 import seedu.unienable.model.classes.SensoryRating;
 import seedu.unienable.model.enums.ActivityCategory;
+import seedu.unienable.model.enums.ActivityOrder;
 
 class FindCommandParserTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 17, 10, 0);
@@ -374,6 +376,93 @@ class FindCommandParserTest {
                 () -> parser.parse(manager, NOW, "c/ACADEMIC c/CCA"));
 
         assertTrue(exception.getMessage().contains("Duplicate option \"c/\""));
+    }
+
+    // Ordering-semantics regression: ActivityOrder.TIME's comparator only ever compared
+    // time-of-day, never date - so two matching activities sharing the same start time on
+    // different dates fell through to an ID tie-break instead of the earlier date sorting
+    // first. list and find always shared the exact same ActivityManager.sort() method, so this
+    // was never a find-specific defect; it just went unnoticed because no existing scripted or
+    // JUnit scenario for either command exercised same-time-different-date results under
+    // order/time. Fixed by making the TIME case use the identical canonical
+    // date-then-time-then-id comparator CHRONOLOGICAL already used, rather than maintaining a
+    // second, subtly different one.
+
+    @Test
+    public void find_orderTime_sortsAcrossDifferentDatesChronologically() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "QA Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 25), LocalTime.of(18, 30), LocalTime.of(19, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "QA Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 18), LocalTime.of(18, 30), LocalTime.of(19, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/QA Lecture order/time").execute().getFeedback();
+
+        assertTrue(feedback.indexOf("[2]") < feedback.indexOf("[1]"),
+                "the earlier-dated activity (2026-08-18, id 2) must be listed before the "
+                        + "later-dated one (2026-08-25, id 1) even though both share the same "
+                        + "18:30 start time: " + feedback);
+    }
+
+    @Test
+    public void find_orderTime_sortsSameDateByStartTime() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "QA Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 18), LocalTime.of(16, 0), LocalTime.of(17, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "QA Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 18), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/QA Lecture order/time").execute().getFeedback();
+
+        assertTrue(feedback.indexOf("[2]") < feedback.indexOf("[1]"),
+                "the earlier-start-time activity (09:00, id 2) must be listed before the "
+                        + "later one (16:00, id 1) on the same date: " + feedback);
+    }
+
+    @Test
+    public void find_orderTimeMixedFixedFlexible_usesCanonicalOrdering() throws Exception {
+        // id 1: adopted flexible activity occupying 2026-08-18 09:00-10:00 (its adopted start,
+        // not its earliest/latest window, must be what's compared).
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FlexibleActivity(manager.getNextId(), "QA Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 18), LocalTime.of(8, 0), LocalTime.of(18, 0), 60,
+                EnergyRating.of(2), SensoryRating.of(2), null, null, LocalTime.of(9, 0)));
+        // id 2: fixed activity on the same date, later in the day.
+        manager.add(new FixedActivity(manager.getNextId(), "QA Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 18), LocalTime.of(16, 0), LocalTime.of(17, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/QA Lecture order/time").execute().getFeedback();
+
+        assertTrue(feedback.indexOf("[1]") < feedback.indexOf("[2]"),
+                "the adopted flexible activity's 09:00 placement must sort before the fixed "
+                        + "activity's 16:00 slot on the same date: " + feedback);
+    }
+
+    @Test
+    public void find_withoutOrderTime_preservesExistingDefaultOrdering() throws Exception {
+        // Regression guard: this fix only changes the TIME case's own comparator - the null
+        // order path (saved default) must be completely unaffected. Uses a saved INPUT default
+        // (not the out-of-the-box CHRONOLOGICAL default) specifically so a regression that
+        // silently forced every find onto chronological ordering would also be caught.
+        ActivityManager manager = new ActivityManager();
+        manager.setDefaultOrder(ActivityOrder.INPUT);
+        manager.add(new FixedActivity(manager.getNextId(), "QA Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 25), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "QA Lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 18), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/QA Lecture").execute().getFeedback();
+
+        assertTrue(feedback.indexOf("[1]") < feedback.indexOf("[2]"),
+                "with no order/ override and a saved INPUT default, insertion order must remain "
+                        + "unaffected by the order/time fix: " + feedback);
     }
 
 }

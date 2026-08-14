@@ -872,6 +872,16 @@ scope.
   whole-word-token parsers (not marker-extraction based) that already reject a second `date/`/
   `day/` token via their own "unexpected text after the period" checks, just with different
   wording - left as-is, since they were never silently mis-parsing, only phrased differently.
+- `ActivityManager.sort()`'s `ActivityOrder.TIME` case used to compare only time-of-day
+  (`getSortTime()`, no date term at all), so two activities sharing a start time on different
+  dates fell through to an ID tie-break instead of the earlier date sorting first - a real
+  ordering defect independently confirmed for both `list order/time` and `find order/time` (they
+  have always shared this one `sort()` method; it was never a `find`-specific inconsistency, just
+  first noticed via `find`, since no existing `list order/time` usage happened to span multiple
+  dates with a repeated time). Fixed by having `TIME` share `CHRONOLOGICAL`'s exact
+  date-then-time-then-id comparator rather than maintaining a second, subtly different one - both
+  marker strings (`order/time`/`order/chronological`) remain independently valid input and resolve
+  to the identical ordering.
 - `parser.common.DateTimeParser` and `storage.ActivityStorage` (plus `storage.preference
   .PreferenceStorage`) each define their own strict `uuuu-MM-dd`/`HH:mm` `DateTimeFormatter`
   constants and shape-then-strict-parse logic, which look like duplication worth extracting into

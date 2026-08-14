@@ -432,9 +432,14 @@ public class ActivityManager {
     private void sort(List<Activity> matched, ActivityOrder order) {
         switch (order) {
         case TIME:
-            matched.sort(Comparator.comparing(ActivityManager::getSortTime).thenComparingInt(Activity::getId));
-            break;
         case CHRONOLOGICAL:
+            // TIME used to compare only time-of-day (no date term at all), so two matching
+            // activities sharing a start time on different dates fell through to an ID
+            // tie-break instead of the earlier date sorting first - list and find both call
+            // this same method, so the defect affected either command identically. TIME now
+            // shares CHRONOLOGICAL's exact comparator rather than maintaining a second, subtly
+            // different one; both marker strings ("order/time"/"order/chronological") remain
+            // separately valid input, they just resolve to the same ordering.
             matched.sort(Comparator.comparing(Activity::getDate)
                     .thenComparing(ActivityManager::getSortTime)
                     .thenComparingInt(Activity::getId));

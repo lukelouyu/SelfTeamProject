@@ -172,4 +172,43 @@ class RouteCommandTest {
 
         assertTrue(feedback.contains("Sample local accessibility reference data."));
     }
+
+    @Test
+    public void route_parallelEdges_displaysChosenEdgeAndMatchingDistance() throws Exception {
+        // Bug B regression: two parallel accessible connections between the same facility pair -
+        // a longer 100m PATH and a shorter 50m RAMP. The displayed segment must be the 50m RAMP
+        // (the one Dijkstra actually used), and its distance must match the printed total exactly.
+        FacilityManager facilities = new FacilityManager(List.of(facility("A"), facility("B")));
+        ConnectionManager connections = new ConnectionManager(List.of(
+                connection(1, "A", "B", 100, AccessibilityStatus.YES, TraversalType.PATH, ShelterStatus.YES,
+                        null, "Long path"),
+                connection(2, "A", "B", 50, AccessibilityStatus.YES, TraversalType.RAMP, ShelterStatus.NO,
+                        null, "Short ramp")));
+        RouteCommand command = new RouteCommand(facilities, connections, "A", "B");
+
+        String feedback = command.execute().getFeedback();
+
+        assertTrue(feedback.contains("[1] A -> B | 50 m | RAMP | Shelter: NO | Notes: Short ramp"));
+        assertFalse(feedback.contains("100 m"));
+        assertFalse(feedback.contains("Long path"));
+        assertTrue(feedback.contains("Total distance: 50 m (1 segment)"));
+    }
+
+    @Test
+    public void route_parallelEdgesShorterListedFirst_stillDisplaysShorterChosenEdge() throws Exception {
+        // Same scenario with load order reversed, to confirm the fix isn't just "always the last
+        // one loaded" or "always the first one loaded" but genuinely the one Dijkstra chose.
+        FacilityManager facilities = new FacilityManager(List.of(facility("A"), facility("B")));
+        ConnectionManager connections = new ConnectionManager(List.of(
+                connection(1, "A", "B", 50, AccessibilityStatus.YES, TraversalType.RAMP, ShelterStatus.NO,
+                        null, "Short ramp"),
+                connection(2, "A", "B", 100, AccessibilityStatus.YES, TraversalType.PATH, ShelterStatus.YES,
+                        null, "Long path")));
+        RouteCommand command = new RouteCommand(facilities, connections, "A", "B");
+
+        String feedback = command.execute().getFeedback();
+
+        assertTrue(feedback.contains("[1] A -> B | 50 m | RAMP | Shelter: NO | Notes: Short ramp"));
+        assertTrue(feedback.contains("Total distance: 50 m (1 segment)"));
+    }
 }

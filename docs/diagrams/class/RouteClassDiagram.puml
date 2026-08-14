@@ -35,7 +35,9 @@ class AccessibilityGraph <<read-only>> {
 
 class GraphPath <<immutable>> {
   - facilityNames : List<String>
+  - connections : List<Connection>
   - totalDistanceInMetres : long
+  + getConnections() : List<Connection>
 }
 
 class FacilityManager <<read-only>>
@@ -54,6 +56,7 @@ AccessibleRouteGraphFactory ..> ConnectionManager : reads
 AccessibilityGraph ..> GraphPath : returns
 AccessibilityGraph "1" o-- "0..*" Facility
 AccessibilityGraph "1" o-- "0..*" Connection
+GraphPath "1" o-- "0..*" Connection
 RouteFormatter ..> GraphPath : reads
 RouteFormatter ..> Connection : reads
 FacilityManager "1" o-- "0..*" Facility
@@ -65,6 +68,16 @@ note bottom of AccessibleRouteGraphFactory
   kept out of the general-purpose
   AccessibilityGraph - see DeveloperGuide.md
   Section 12.
+end note
+
+note right of GraphPath
+  connections holds the exact Connection
+  Dijkstra selected per hop, recorded during
+  the same relaxation step that decides
+  totalDistanceInMetres - so RouteCommand no
+  longer needs to (ambiguously) re-derive a
+  connection between two facility names when
+  parallel connections exist between them.
 end note
 
 @enduml

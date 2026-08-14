@@ -171,7 +171,47 @@ class AccessibilityGraphTest {
         cyclicPrevious.put("a", "b");
         cyclicPrevious.put("b", "a");
 
-        assertThrows(IllegalStateException.class, () -> graph.reconstructPath("a", cyclicPrevious));
+        assertThrows(IllegalStateException.class,
+                () -> graph.reconstructPath("a", 0L, cyclicPrevious, Map.of()));
+    }
+
+    @Test
+    public void getShortestPath_parallelEdges_retainsExactChosenConnection() throws Exception {
+        // Bug B regression: A-B has two parallel connections, a longer 100m one (id 1) and a
+        // shorter 50m one (id 2). Dijkstra must choose the 50m connection, and GraphPath must
+        // retain that exact Connection object - not merely "some connection between A and B",
+        // which would be ambiguous between the two.
+        FacilityManager facilityManager = new FacilityManager(List.of(facility("A"), facility("B")));
+        Connection longer = new Connection(1, "A", "B", 100, AccessibilityStatus.YES, TraversalType.PATH,
+                ShelterStatus.YES, null, "Long path");
+        Connection shorter = new Connection(2, "A", "B", 50, AccessibilityStatus.YES, TraversalType.RAMP,
+                ShelterStatus.NO, null, "Short ramp");
+        ConnectionManager connectionManager = new ConnectionManager(List.of(longer, shorter));
+        AccessibilityGraph graph = new AccessibilityGraph(facilityManager, connectionManager);
+
+        GraphPath path = graph.getShortestPath("A", "B");
+
+        assertEquals(50L, path.getTotalDistanceInMetres());
+        assertEquals(List.of(shorter), path.getConnections());
+    }
+
+    @Test
+    public void getShortestPath_parallelEdgesOppositeLoadOrder_stillRetainsShorterConnection() throws Exception {
+        // Same as above but with the shorter connection listed (and therefore loaded) first, to
+        // confirm the fix picks the connection Dijkstra actually used rather than always
+        // preferring one particular load-order position.
+        FacilityManager facilityManager = new FacilityManager(List.of(facility("A"), facility("B")));
+        Connection shorter = new Connection(1, "A", "B", 50, AccessibilityStatus.YES, TraversalType.RAMP,
+                ShelterStatus.NO, null, "Short ramp");
+        Connection longer = new Connection(2, "A", "B", 100, AccessibilityStatus.YES, TraversalType.PATH,
+                ShelterStatus.YES, null, "Long path");
+        ConnectionManager connectionManager = new ConnectionManager(List.of(shorter, longer));
+        AccessibilityGraph graph = new AccessibilityGraph(facilityManager, connectionManager);
+
+        GraphPath path = graph.getShortestPath("A", "B");
+
+        assertEquals(50L, path.getTotalDistanceInMetres());
+        assertEquals(List.of(shorter), path.getConnections());
     }
 
     @Test

@@ -34,8 +34,14 @@ Command -> Graph : getShortestPath(from, to)
 
 alt both facilities known, confirmed-accessible path exists
     Graph --> Command : GraphPath
-    Command -> Command : resolveSegments(path, accessibleConnections)
-    Command -> Formatter : formatRoute(path, segments)
+    note over Command
+      GraphPath already carries the exact
+      Connection selected per hop (recorded
+      during Dijkstra's own relaxation step),
+      so no separate connection lookup is
+      needed or performed here.
+    end note
+    Command -> Formatter : formatRoute(path, path.getConnections())
     Formatter --> Command : route report text
     Command --> Runner : CommandResult
     Runner -> Ui : showFramed(feedback)

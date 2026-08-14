@@ -64,8 +64,8 @@ public final class AccessibilityGraph {
             graph.put(key, new ArrayList<>());
         }
         for (Connection connection : connections) {
-            addDirectedEdge(graph, connection.getFrom(), connection.getTo(), connection.getDistanceInMetres());
-            addDirectedEdge(graph, connection.getTo(), connection.getFrom(), connection.getDistanceInMetres());
+            addDirectedEdge(graph, connection.getFrom(), connection.getTo(), connection);
+            addDirectedEdge(graph, connection.getTo(), connection.getFrom(), connection);
         }
         Map<String, List<Edge>> frozenGraph = new HashMap<>();
         for (Map.Entry<String, List<Edge>> entry : graph.entrySet()) {
@@ -75,9 +75,9 @@ public final class AccessibilityGraph {
         this.canonicalNames = Map.copyOf(names);
     }
 
-    private void addDirectedEdge(Map<String, List<Edge>> graph, String from, String to, int distanceInMetres) {
+    private void addDirectedEdge(Map<String, List<Edge>> graph, String from, String to, Connection connection) {
         String key = from.toLowerCase(Locale.ROOT);
-        graph.get(key).add(new Edge(to.toLowerCase(Locale.ROOT), distanceInMetres));
+        graph.get(key).add(new Edge(to.toLowerCase(Locale.ROOT), connection));
     }
 
     /**
@@ -96,6 +96,7 @@ public final class AccessibilityGraph {
 
         Map<String, Long> bestDistance = new HashMap<>();
         Map<String, String> previous = new HashMap<>();
+        Map<String, Connection> viaConnection = new HashMap<>();
         Set<String> settled = new HashSet<>();
         PriorityQueue<QueueEntry> queue = new PriorityQueue<>();
 
@@ -114,11 +115,16 @@ public final class AccessibilityGraph {
                 // Individual connection distances stay int (bounded by ConnectionStorage's
                 // load-time validation), but a route may cross many edges, so the running total
                 // is accumulated as long to avoid silently wrapping past Integer.MAX_VALUE.
-                long candidate = current.distanceInMetres + (long) edge.distanceInMetres;
+                long candidate = current.distanceInMetres + (long) edge.connection.getDistanceInMetres();
                 Long known = bestDistance.get(edge.toKey);
                 if (known == null || candidate < known) {
                     bestDistance.put(edge.toKey, candidate);
                     previous.put(edge.toKey, current.key);
+                    // Recorded in the same relaxation step that decides bestDistance/previous, so
+                    // it can never disagree with the distance actually summed - unlike
+                    // re-deriving "some connection between these two facility names" afterwards,
+                    // which is ambiguous whenever parallel connections exist between the same pair.
+                    viaConnection.put(edge.toKey, edge.connection);
                     queue.add(new QueueEntry(edge.toKey, candidate));
                 }
             }
@@ -128,14 +134,16 @@ public final class AccessibilityGraph {
         if (totalDistance == null) {
             return null;
         }
-        return new GraphPath(reconstructPath(toKey, previous), totalDistance);
+        return reconstructPath(toKey, totalDistance, previous, viaConnection);
     }
 
     // Package-private (rather than private) so AccessibilityGraphTest can exercise the cycle
     // guard directly with a deliberately malformed "previous" map, without needing a corrupted
     // Dijkstra run to reach it.
-    List<String> reconstructPath(String toKey, Map<String, String> previous) {
-        List<String> path = new ArrayList<>();
+    GraphPath reconstructPath(String toKey, long totalDistanceInMetres, Map<String, String> previous,
+            Map<String, Connection> viaConnection) {
+        List<String> facilityNames = new ArrayList<>();
+        List<Connection> connections = new ArrayList<>();
         Set<String> visited = new HashSet<>();
         String step = toKey;
         while (step != null) {
@@ -143,11 +151,16 @@ public final class AccessibilityGraph {
                 throw new IllegalStateException(
                         "Cycle detected while reconstructing route path at facility \"" + step + "\".");
             }
-            path.add(canonicalNames.get(step));
+            facilityNames.add(canonicalNames.get(step));
+            Connection connection = viaConnection.get(step);
+            if (connection != null) {
+                connections.add(connection);
+            }
             step = previous.get(step);
         }
-        Collections.reverse(path);
-        return path;
+        Collections.reverse(facilityNames);
+        Collections.reverse(connections);
+        return new GraphPath(facilityNames, connections, totalDistanceInMetres);
     }
 
     private String requireKnownFacility(String name) throws InvalidIndexException {
@@ -158,14 +171,19 @@ public final class AccessibilityGraph {
         return key;
     }
 
-    /** One directed edge to a neighbouring facility (by lower-cased name) and its distance. */
+    /**
+     * One directed edge to a neighbouring facility (by lower-cased name), carrying the exact
+     * {@link Connection} it was built from so a winning relaxation can record precisely which
+     * connection produced it - not just the distance - even when parallel connections exist
+     * between the same two facilities.
+     */
     private static final class Edge {
         private final String toKey;
-        private final int distanceInMetres;
+        private final Connection connection;
 
-        private Edge(String toKey, int distanceInMetres) {
+        private Edge(String toKey, Connection connection) {
             this.toKey = toKey;
-            this.distanceInMetres = distanceInMetres;
+            this.connection = connection;
         }
     }
 

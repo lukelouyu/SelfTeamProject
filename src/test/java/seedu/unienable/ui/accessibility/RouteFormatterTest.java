@@ -21,9 +21,9 @@ class RouteFormatterTest {
 
     @Test
     public void formatRoute_singleSegment_exactText() {
-        GraphPath path = new GraphPath(List.of("A", "B"), 10);
         Connection segment = new Connection(1, "A", "B", 10, AccessibilityStatus.YES, TraversalType.PATH,
                 ShelterStatus.YES, null, null);
+        GraphPath path = new GraphPath(List.of("A", "B"), List.of(segment), 10);
 
         String result = RouteFormatter.formatRoute(path, List.of(segment));
 
@@ -35,9 +35,9 @@ class RouteFormatterTest {
 
     @Test
     public void formatRoute_segmentWithBarrierAndNotes_includesBoth() {
-        GraphPath path = new GraphPath(List.of("A", "B"), 10);
         Connection segment = new Connection(1, "A", "B", 10, AccessibilityStatus.YES, TraversalType.RAMP,
                 ShelterStatus.NO, "Steps", "Avoid peak hours");
+        GraphPath path = new GraphPath(List.of("A", "B"), List.of(segment), 10);
 
         String result = RouteFormatter.formatRoute(path, List.of(segment));
 
@@ -49,7 +49,7 @@ class RouteFormatterTest {
 
     @Test
     public void formatRoute_zeroLengthSameFacility_exactText() {
-        GraphPath path = new GraphPath(List.of("A"), 0);
+        GraphPath path = new GraphPath(List.of("A"), List.of(), 0);
 
         String result = RouteFormatter.formatRoute(path, List.of());
 

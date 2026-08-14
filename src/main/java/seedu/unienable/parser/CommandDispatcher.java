@@ -124,7 +124,7 @@ public class CommandDispatcher {
         case "order":
             return activityCommandParser.parseOrder(activityManager, args);
         case "recur":
-            return recurCommandParser.parse(activityManager, args);
+            return recurCommandParser.parse(activityManager, now, args);
         case "topic":
             return dispatchTopic(args);
         case "facility":

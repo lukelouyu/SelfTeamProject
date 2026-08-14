@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -32,7 +33,7 @@ class RecurrencePlannerTest {
 
         RecurrencePlan plan = planner.plan(source,
                 List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13),
-                RecurrenceTestData.calendar(), manager);
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
 
         assertEquals(11, plan.getOccurrencesToCreate().size());
         assertEquals(LocalDate.of(2026, 9, 18),
@@ -50,7 +51,7 @@ class RecurrencePlannerTest {
         manager.add(source);
 
         RecurrencePlan plan = planner.plan(source, List.of(3, 7, 9, 11),
-                RecurrenceTestData.calendar(), manager);
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
 
         assertEquals(List.of(LocalDate.of(2027, 3, 2), LocalDate.of(2027, 3, 16),
                         LocalDate.of(2027, 3, 30)),
@@ -65,7 +66,7 @@ class RecurrencePlannerTest {
         manager.add(source);
 
         assertThrows(InvalidActivityException.class, () -> planner.plan(source,
-                List.of(7, 9, 11), RecurrenceTestData.calendar(), manager));
+                List.of(7, 9, 11), RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW));
         assertEquals(1, manager.size());
         assertEquals(2, manager.getNextId());
     }
@@ -77,7 +78,7 @@ class RecurrencePlannerTest {
         manager.add(source);
 
         assertThrows(InvalidActivityException.class, () -> planner.plan(source,
-                List.of(1, 14), RecurrenceTestData.calendar(), manager));
+                List.of(1, 14), RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW));
     }
 
     @Test
@@ -90,7 +91,8 @@ class RecurrencePlannerTest {
                 LocalTime.of(19, 0), EnergyRating.of(2), SensoryRating.of(2), null, null));
 
         DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
-                () -> planner.plan(source, List.of(1, 2, 3), RecurrenceTestData.calendar(), manager));
+                () -> planner.plan(source, List.of(1, 2, 3), RecurrenceTestData.calendar(), manager,
+                        RecurrenceTestData.NOW));
 
         // Atomicity: the whole plan is rejected before any mutation - not just the one conflicting
         // week - and the message identifies exactly which teaching week and calendar date failed.
@@ -113,7 +115,7 @@ class RecurrencePlannerTest {
 
         DuplicateActivityException exception = assertThrows(DuplicateActivityException.class,
                 () -> planner.plan(source, List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13),
-                        RecurrenceTestData.calendar(), manager));
+                        RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW));
 
         assertTrue(exception.getMessage().contains("Week 13"));
         assertTrue(exception.getMessage().contains("2026-11-13"));
@@ -135,11 +137,12 @@ class RecurrencePlannerTest {
                 EnergyRating.of(3), SensoryRating.of(3), "CG3201", null);
         manager.add(tutorial);
 
-        RecurrencePlan labPlan = planner.plan(lab, List.of(3, 7, 9, 11), RecurrenceTestData.calendar(), manager);
+        RecurrencePlan labPlan = planner.plan(lab, List.of(3, 7, 9, 11), RecurrenceTestData.calendar(), manager,
+                RecurrenceTestData.NOW);
         manager.addAllAtomically(labPlan.getOccurrencesToCreate().stream()
                 .map(RecurrencePlan.PlannedOccurrence::getActivity).toList());
         RecurrencePlan tutorialPlan = planner.plan(tutorial, List.of(3, 7, 9, 11),
-                RecurrenceTestData.calendar(), manager);
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
 
         assertEquals(List.of(LocalDate.of(2027, 3, 2), LocalDate.of(2027, 3, 16), LocalDate.of(2027, 3, 30)),
                 labPlan.getOccurrencesToCreate().stream().map(item -> item.getActivity().getDate()).toList());
@@ -162,7 +165,8 @@ class RecurrencePlannerTest {
         assertEquals(Integer.MAX_VALUE, manager.getNextId());
 
         InvalidActivityException exception = assertThrows(InvalidActivityException.class, () -> planner.plan(source,
-                List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), RecurrenceTestData.calendar(), manager));
+                List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), RecurrenceTestData.calendar(), manager,
+                RecurrenceTestData.NOW));
 
         assertTrue(exception.getMessage().contains("not enough activity IDs remain"));
     }
@@ -175,7 +179,7 @@ class RecurrencePlannerTest {
         manager.add(source);
 
         FixedActivity generated = planner.plan(source, List.of(1, 2),
-                RecurrenceTestData.calendar(), manager)
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW)
                 .getOccurrencesToCreate().get(0).getActivity();
 
         assertEquals(source.getDescription(), generated.getDescription());
@@ -184,5 +188,81 @@ class RecurrencePlannerTest {
         assertEquals(source.getEnergyRating(), generated.getEnergyRating());
         assertEquals(source.getSensoryRating(), generated.getSensoryRating());
         assertFalse(generated.isComplete());
+    }
+
+    // Bug D regression coverage: recur must reuse add/edit's "not in the past" philosophy and
+    // reject the whole plan atomically - nothing created - the moment any requested week would
+    // resolve to a new occurrence dated at or before "now".
+
+    @Test
+    public void recur_occurrenceBeforeToday_rejectedAtomically() throws Exception {
+        // CS2113 lecture: source Week 1 = 2026-08-14, Week 2 = 2026-08-21, Week 3 = 2026-08-28.
+        // "now" is set after Week 2's date but before Week 3's, so Week 2 alone is the offending
+        // occurrence - the error must name it specifically.
+        ActivityManager manager = new ActivityManager();
+        FixedActivity source = RecurrenceTestData.cs2113Lecture(manager.getNextId());
+        manager.add(source);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 25, 9, 0);
+
+        InvalidActivityException exception = assertThrows(InvalidActivityException.class,
+                () -> planner.plan(source, List.of(1, 2, 3), RecurrenceTestData.calendar(), manager, now));
+
+        assertTrue(exception.getMessage().contains("Week 2"));
+        assertTrue(exception.getMessage().contains("2026-08-21"));
+        assertTrue(exception.getMessage().contains("already passed"));
+    }
+
+    @Test
+    public void recur_todayFixedOccurrenceAlreadyStarted_rejected() throws Exception {
+        // Week 2's target date (2026-08-21) is "today" relative to now, and its inherited start
+        // time (16:00, from the CS2113 lecture fixture) has already started at "now" - the same
+        // same-day-time-of-day rule add/edit already enforce must reject this too.
+        ActivityManager manager = new ActivityManager();
+        FixedActivity source = RecurrenceTestData.cs2113Lecture(manager.getNextId());
+        manager.add(source);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 21, 16, 0);
+
+        InvalidActivityException exception = assertThrows(InvalidActivityException.class,
+                () -> planner.plan(source, List.of(1, 2), RecurrenceTestData.calendar(), manager, now));
+
+        assertTrue(exception.getMessage().contains("Week 2"));
+        assertTrue(exception.getMessage().contains("2026-08-21"));
+        assertTrue(exception.getMessage().contains("already passed today"));
+    }
+
+    @Test
+    public void recur_invalidOccurrence_createsNothing() throws Exception {
+        // Atomicity: a mixed plan with both valid-future weeks (1, 3) and one past week (2) must
+        // reject the entire plan before confirmation - nothing gets added, not even the valid
+        // future weeks either side of the offending one.
+        ActivityManager manager = new ActivityManager();
+        FixedActivity source = RecurrenceTestData.cs2113Lecture(manager.getNextId());
+        manager.add(source);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 25, 9, 0);
+        int nextIdBefore = manager.getNextId();
+
+        assertThrows(InvalidActivityException.class,
+                () -> planner.plan(source, List.of(1, 2, 3), RecurrenceTestData.calendar(), manager, now));
+
+        assertEquals(1, manager.size());
+        assertEquals(nextIdBefore, manager.getNextId());
+    }
+
+    @Test
+    public void recur_allFutureOccurrences_stillSucceeds() throws Exception {
+        // Regression guard: the new past-occurrence check must not reject a plan whose every
+        // requested week resolves to a genuinely future date.
+        ActivityManager manager = new ActivityManager();
+        FixedActivity source = RecurrenceTestData.cs2113Lecture(manager.getNextId());
+        manager.add(source);
+        LocalDateTime now = LocalDateTime.of(2026, 8, 1, 0, 0);
+
+        RecurrencePlan plan = planner.plan(source, List.of(1, 2, 3), RecurrenceTestData.calendar(), manager, now);
+
+        assertEquals(2, plan.getOccurrencesToCreate().size());
+        assertEquals(LocalDate.of(2026, 8, 21),
+                plan.getOccurrencesToCreate().get(0).getActivity().getDate());
+        assertEquals(LocalDate.of(2026, 8, 28),
+                plan.getOccurrencesToCreate().get(1).getActivity().getDate());
     }
 }

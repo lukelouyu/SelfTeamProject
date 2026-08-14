@@ -18,6 +18,7 @@ import seedu.unienable.model.recur.AcademicCalendar;
 import seedu.unienable.model.recur.RecurrencePlan;
 import seedu.unienable.parser.activity.ActivityCommandParser;
 import seedu.unienable.storage.recur.AcademicCalendarStorage;
+import seedu.unienable.testutil.recur.RecurrenceTestData;
 
 /**
  * B09 coverage: verifies recur-created occurrences interact correctly with list's "next week"
@@ -36,7 +37,8 @@ class RecurNextWeekIntegrationTest {
         manager.add(source);
         AcademicCalendar calendar = new AcademicCalendarStorage().load(java.nio.file.Path.of("data",
                 "academic-calendar.txt"));
-        RecurrencePlan plan = new RecurrencePlanner().plan(source, List.of(1, 2, 3), calendar, manager);
+        RecurrencePlan plan = new RecurrencePlanner().plan(source, List.of(1, 2, 3), calendar, manager,
+                RecurrenceTestData.NOW);
         manager.addAllAtomically(plan.getOccurrencesToCreate().stream()
                 .map(RecurrencePlan.PlannedOccurrence::getActivity).toList());
 

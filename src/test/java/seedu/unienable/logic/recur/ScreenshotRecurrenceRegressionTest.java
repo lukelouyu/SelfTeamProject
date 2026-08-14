@@ -17,6 +17,7 @@ import seedu.unienable.model.enums.ActivityCategory;
 import seedu.unienable.model.recur.AcademicCalendar;
 import seedu.unienable.model.recur.RecurrencePlan;
 import seedu.unienable.storage.recur.AcademicCalendarStorage;
+import seedu.unienable.testutil.recur.RecurrenceTestData;
 
 /** Regression fixtures transcribed from the supplied Semester 1 and Semester 2 NUSMods images. */
 class ScreenshotRecurrenceRegressionTest {
@@ -45,13 +46,15 @@ class ScreenshotRecurrenceRegressionTest {
         ActivityManager manager = new ActivityManager();
         FixedActivity cg2028 = fixed(manager, "CG2028 TUT", LocalDate.of(2026, 8, 13),
                 LocalTime.of(13, 0), LocalTime.of(14, 0));
-        RecurrencePlan first = planner.plan(cg2028, List.of(1, 2, 3, 4, 5, 6), calendar, manager);
+        RecurrencePlan first = planner.plan(cg2028, List.of(1, 2, 3, 4, 5, 6), calendar, manager,
+                RecurrenceTestData.NOW);
         manager.addAllAtomically(first.getOccurrencesToCreate().stream()
                 .map(RecurrencePlan.PlannedOccurrence::getActivity).toList());
 
         FixedActivity cg2027 = fixed(manager, "CG2027 TUT", LocalDate.of(2026, 10, 8),
                 LocalTime.of(13, 0), LocalTime.of(14, 0));
-        RecurrencePlan second = planner.plan(cg2027, List.of(8, 9, 10, 11, 12, 13), calendar, manager);
+        RecurrencePlan second = planner.plan(cg2027, List.of(8, 9, 10, 11, 12, 13), calendar, manager,
+                RecurrenceTestData.NOW);
 
         assertEquals(5, second.getOccurrencesToCreate().size());
     }
@@ -64,7 +67,8 @@ class ScreenshotRecurrenceRegressionTest {
         FixedActivity second = fixed(manager, "CG2028 LEC second", LocalDate.of(2026, 8, 11),
                 LocalTime.of(15, 0), LocalTime.of(17, 0));
 
-        RecurrencePlan plan = planner.plan(second, List.of(1, 2, 3, 4, 5, 6), calendar, manager);
+        RecurrencePlan plan = planner.plan(second, List.of(1, 2, 3, 4, 5, 6), calendar, manager,
+                RecurrenceTestData.NOW);
 
         assertEquals(5, plan.getOccurrencesToCreate().size());
     }
@@ -85,7 +89,7 @@ class ScreenshotRecurrenceRegressionTest {
         ActivityManager manager = new ActivityManager();
         FixedActivity source = fixed(manager, description, sourceDate, start, end);
 
-        RecurrencePlan plan = planner.plan(source, weeks, calendar, manager);
+        RecurrencePlan plan = planner.plan(source, weeks, calendar, manager, RecurrenceTestData.NOW);
 
         assertEquals(expectedDates, plan.getOccurrencesToCreate().stream()
                 .map(item -> item.getActivity().getDate().toString()).toList());

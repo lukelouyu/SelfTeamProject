@@ -397,8 +397,10 @@ Before creating anything, a preview lists every date to be created
 and every date skipped (already the source week, an identical
 session that already exists, or a date with no classes in the
 calendar file) and asks Continue? (y/n). Only y creates the
-sessions; if a target date would overlap another fixed activity,
-the whole command is rejected instead of creating a partial batch.
+sessions; if a target date would overlap another activity's
+occupied time (a fixed activity, or one already adopted from a
+recommendation) or resolve to a date/time already in the past, the
+whole command is rejected instead of creating a partial batch.
 Running the same recur command again creates nothing new.
 
 If data/academic-calendar.txt is missing or cannot be read, recur

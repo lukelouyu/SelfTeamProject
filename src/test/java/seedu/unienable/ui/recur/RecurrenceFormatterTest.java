@@ -19,7 +19,7 @@ class RecurrenceFormatterTest {
         FixedActivity source = RecurrenceTestData.cs2113Lecture(manager.getNextId());
         manager.add(source);
         RecurrencePlan plan = new RecurrencePlanner().plan(source,
-                List.of(1, 2, 8), RecurrenceTestData.calendar(), manager);
+                List.of(1, 2, 8), RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
 
         String preview = RecurrenceFormatter.formatPreview(plan);
 
@@ -36,7 +36,7 @@ class RecurrenceFormatterTest {
         FixedActivity source = RecurrenceTestData.cg3201Lab(manager.getNextId());
         manager.add(source);
         RecurrencePlan plan = new RecurrencePlanner().plan(source, List.of(3, 7, 9, 11),
-                RecurrenceTestData.calendar(), manager);
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
 
         String output = RecurrenceFormatter.formatSuccess(plan);
 

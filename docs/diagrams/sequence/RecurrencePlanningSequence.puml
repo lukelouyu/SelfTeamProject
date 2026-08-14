@@ -18,7 +18,7 @@ participant ActivityConflictChecker as Checker
 
 User -> Runner : recur 1 week 1 to 6
 Runner -> Dispatcher : dispatch(input, now)
-Dispatcher -> Parser : parse(manager, arguments)
+Dispatcher -> Parser : parse(manager, now, arguments)
 Parser -> Manager : getById(1)
 Manager --> Parser : source Activity
 Parser -> Policy : isClassSchedule(source)
@@ -29,11 +29,16 @@ opt first recur command in this run
   Parser -> CalendarStorage : load(calendarFile)
   CalendarStorage --> Parser : AcademicCalendar
 end
-Parser -> Planner : plan(source, weeks, calendar, manager)
+Parser -> Planner : plan(source, weeks, calendar, manager, now)
 Planner -> Planner : find source week; require it in request
 loop each requested week
   Planner -> Planner : resolve matching weekday
-  alt source, no-class, or identical occurrence
+  alt is the source's own date
+    Planner -> Planner : record SkippedOccurrence
+  else target date before now, or today at/before now's time
+    Planner -> Planner : requireNotPast(week, targetDate, sourceStartTime, now)
+    Planner --> Parser : throws InvalidActivityException\n(whole plan rejected, nothing recorded)
+  else no-class date, or identical occurrence already exists
     Planner -> Planner : record SkippedOccurrence
   else new occurrence
     Planner -> Manager : checkNoConflicts(candidate, -1)

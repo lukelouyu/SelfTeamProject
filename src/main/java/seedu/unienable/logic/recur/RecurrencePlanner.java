@@ -1,6 +1,8 @@
 package seedu.unienable.logic.recur;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -21,11 +23,19 @@ public class RecurrencePlanner {
     /**
      * Plans all requested occurrences and preflights every conflict before confirmation.
      *
-     * @throws InvalidActivityException if the source/calendar/week selection is ineligible
+     * <p>Reuses the same "not in the past" philosophy as normal add/edit (see
+     * {@code DateTimeParser.parseNotBeforeDate}/{@code requireNotPastIfToday}): a requested week
+     * that would resolve to a new occurrence dated before {@code now}'s date, or dated today with
+     * the source's start time not after {@code now}'s time, is rejected atomically - the whole
+     * plan is rejected before the confirmation prompt and nothing is created, rather than silently
+     * creating the past occurrence or skipping just that one week.
+     *
+     * @throws InvalidActivityException if the source/calendar/week selection is ineligible, or any
+     *     requested week would resolve to a new occurrence dated at or before {@code now}
      * @throws DuplicateActivityException if any new occurrence overlaps a fixed activity
      */
     public RecurrencePlan plan(FixedActivity source, List<Integer> requestedWeeks,
-            AcademicCalendar calendar, ActivityManager activityManager)
+            AcademicCalendar calendar, ActivityManager activityManager, LocalDateTime now)
             throws InvalidActivityException, DuplicateActivityException {
         AcademicWeek sourceWeek = calendar.findInstructionalWeekContaining(source.getDate())
                 .orElseThrow(() -> new InvalidActivityException(
@@ -50,6 +60,8 @@ public class RecurrencePlanner {
                         "source activity [" + source.getId() + "]"));
                 continue;
             }
+
+            requireNotPast(weekNumber, targetDate, source.getStartTime(), now);
 
             Optional<String> noClassReason = calendar.findNoClassReason(targetDate);
             if (noClassReason.isPresent()) {
@@ -88,6 +100,25 @@ public class RecurrencePlanner {
         }
 
         return new RecurrencePlan(source, sourceWeek, requestedWeeks, toCreate, skipped);
+    }
+
+    /**
+     * Rejects a candidate occurrence dated before {@code now}'s date, or dated today with the
+     * source's start time not strictly after {@code now}'s time - the same two-tier "not in the
+     * past" check {@code DateTimeParser.parseNotBeforeDate}/{@code requireNotPastIfToday} apply to
+     * a freshly typed {@code add}/{@code edit} date.
+     */
+    private void requireNotPast(int weekNumber, LocalDate targetDate, LocalTime sourceStartTime, LocalDateTime now)
+            throws InvalidActivityException {
+        LocalDate today = now.toLocalDate();
+        if (targetDate.isBefore(today)) {
+            throw new InvalidActivityException("Week " + weekNumber + " resolves to " + targetDate
+                    + ", which has already passed.\nNo recurring activities were created.");
+        }
+        if (targetDate.equals(today) && !sourceStartTime.isAfter(now.toLocalTime())) {
+            throw new InvalidActivityException("Week " + weekNumber + " resolves to " + targetDate + " "
+                    + sourceStartTime + ", which has already passed today.\nNo recurring activities were created.");
+        }
     }
 
     private AcademicWeek findTargetWeek(AcademicCalendar calendar, AcademicWeek sourceWeek,

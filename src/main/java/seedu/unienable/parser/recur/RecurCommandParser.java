@@ -1,6 +1,7 @@
 package seedu.unienable.parser.recur;
 
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,8 +43,11 @@ public class RecurCommandParser {
 
     /**
      * Parses, validates, and preflights one recurrence command without mutating activities.
+     *
+     * @param now the current date and time, used to reject any requested week that would resolve
+     *     to a new occurrence dated at or before now
      */
-    public RecurCommand parse(ActivityManager activityManager, String arguments)
+    public RecurCommand parse(ActivityManager activityManager, LocalDateTime now, String arguments)
             throws MissingInputException, InvalidCommandException, InvalidIndexException,
             InvalidActivityException, DuplicateActivityException, StorageException {
         if (arguments == null || arguments.isBlank()) {
@@ -65,7 +69,7 @@ public class RecurCommandParser {
         List<Integer> requestedWeeks = weekParser.parse(matcher.group(2));
         AcademicCalendar calendar = getCalendar();
         RecurrencePlan plan = recurrencePlanner.plan((FixedActivity) source,
-                requestedWeeks, calendar, activityManager);
+                requestedWeeks, calendar, activityManager, now);
         return new RecurCommand(activityManager, plan);
     }
 

@@ -23,7 +23,7 @@ class RecurCommandTest {
         FixedActivity source = RecurrenceTestData.cg3201Lab(manager.getNextId());
         manager.add(source);
         RecurrencePlan plan = new RecurrencePlanner().plan(source, List.of(3, 7, 9, 11),
-                RecurrenceTestData.calendar(), manager);
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
 
         CommandResult result = new RecurCommand(manager, plan).execute();
 
@@ -41,12 +41,12 @@ class RecurCommandTest {
         manager.add(source);
         RecurrencePlanner planner = new RecurrencePlanner();
         RecurrencePlan first = planner.plan(source, List.of(3, 7, 9, 11),
-                RecurrenceTestData.calendar(), manager);
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
         new RecurCommand(manager, first).execute();
         int nextId = manager.getNextId();
 
         RecurrencePlan repeated = planner.plan(source, List.of(3, 7, 9, 11),
-                RecurrenceTestData.calendar(), manager);
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
 
         assertTrue(!repeated.hasOccurrencesToCreate());
         assertEquals(nextId, manager.getNextId());
@@ -58,7 +58,7 @@ class RecurCommandTest {
         FixedActivity source = RecurrenceTestData.cg3201Lab(manager.getNextId());
         manager.add(source);
         RecurrencePlan plan = new RecurrencePlanner().plan(source, List.of(3, 7, 9, 11),
-                RecurrenceTestData.calendar(), manager);
+                RecurrenceTestData.calendar(), manager, RecurrenceTestData.NOW);
         int nextIdBeforeExecution = manager.getNextId();
         source.setDate(plan.getOccurrencesToCreate().get(0).getActivity().getDate());
 

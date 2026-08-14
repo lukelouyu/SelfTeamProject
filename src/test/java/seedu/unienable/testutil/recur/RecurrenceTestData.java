@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,15 @@ import seedu.unienable.model.recur.NoClassDate;
 
 /** Shared screenshot-derived calendar and activity fixtures for recurrence tests. */
 public final class RecurrenceTestData {
+    /**
+     * A fixed "now" strictly before every source/generated-occurrence date this class's fixtures
+     * and the bundled {@code data/academic-calendar.txt} produce, for {@link RecurrencePlanner
+     * #plan}'s past-occurrence check. Shared so every recurrence test injects the same
+     * deterministic clock instead of using the real wall clock (see HANDOVER.md's standing "no
+     * real-clock calls in tests" convention).
+     */
+    public static final LocalDateTime NOW = LocalDate.of(2026, 8, 1).atStartOfDay();
+
     private RecurrenceTestData() {
     }
 

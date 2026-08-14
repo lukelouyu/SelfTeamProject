@@ -36,6 +36,7 @@ class RecommendGenerateCommand <<Command>> {
 class RecommendViewCommand <<Command>> {
   - activityManager : ActivityManager
   - recommendationManager : RecommendationManager
+  - now : LocalDateTime
   + execute() : CommandResult
 }
 
@@ -66,15 +67,22 @@ class RecommendationService <<static>> {
       date : LocalDate) : RecommendationProposal
   + {static} applyPreview(activities : List<Activity>,
       proposal : RecommendationProposal) : List<Activity>
+  + {static} buildPreview(activityManager : ActivityManager,
+      proposal : RecommendationProposal, now : LocalDateTime) : RecommendationPreview
   + {static} hasOutOfPreferredRangePlacement(proposal : RecommendationProposal,
       preferences : PreferenceProfile) : boolean
 }
 
 class ActivityCopyFactory <<static>>
 
+class RecommendationPreview <<immutable>> {
+  - proposal : RecommendationProposal
+  - timetable : TimetableView
+  - dashboard : DashboardSummary
+}
+
 class RecommendationFormatter <<static>> {
-  + {static} formatPreview(proposal : RecommendationProposal,
-      previewActivities : List<Activity>) : String
+  + {static} formatPreview(preview : RecommendationPreview) : String
   + {static} formatAdoptSuccess(proposal : RecommendationProposal) : String
   + {static} formatCancel() : String
   + {static} formatMissingProposal() : String
@@ -95,6 +103,8 @@ class PreferenceProfile <<immutable>>
 class FlexibleActivity
 class TimetableService <<static>>
 class DashboardService <<static>>
+class TimetableView <<immutable>>
+class DashboardSummary <<immutable>>
 
 RecommendCommandParser ..> RecommendGenerateCommand : creates
 RecommendCommandParser ..> RecommendViewCommand : creates
@@ -111,15 +121,15 @@ ReadOnlyCommand <|-- RecommendViewCommand
 ReadOnlyCommand <|-- RecommendCancelCommand
 Command <|-- RecommendAdoptCommand
 
-RecommendGenerateCommand --> RecommendationService : build preview
+RecommendGenerateCommand --> RecommendationService : build proposal,\nthen buildPreview()
 RecommendGenerateCommand --> RecommendationManager : store proposal
-RecommendGenerateCommand --> RecommendationFormatter : formatPreview()
+RecommendGenerateCommand --> RecommendationFormatter : formatPreview(preview)
 RecommendGenerateCommand --> ActivityManager
 RecommendGenerateCommand --> PreferenceManager
 
 RecommendViewCommand --> RecommendationManager : read proposal
-RecommendViewCommand --> RecommendationService : applyPreview()
-RecommendViewCommand --> RecommendationFormatter : formatPreview()
+RecommendViewCommand --> RecommendationService : buildPreview()
+RecommendViewCommand --> RecommendationFormatter : formatPreview(preview)
 RecommendViewCommand --> ActivityManager
 
 RecommendCancelCommand --> RecommendationManager : clear()
@@ -135,10 +145,14 @@ RecommendationService ..> RecommendationProposal : builds
 RecommendationService ..> RecommendedPlacement : builds
 RecommendationService ..> FlexibleActivity : reads/copies/adopts preview
 RecommendationService ..> ActivityCopyFactory : copies preview activities
-RecommendationFormatter ..> TimetableService : build()
-RecommendationFormatter ..> DashboardService : summarize()
-RecommendationFormatter ..> RecommendationProposal : reads
+RecommendationService ..> TimetableService : build() (via buildPreview)
+RecommendationService ..> DashboardService : summarize() (via buildPreview,\nusing actual now)
+RecommendationService ..> RecommendationPreview : builds
+RecommendationFormatter ..> RecommendationPreview : reads only, no calculation
 RecommendationProposal "1" *-- "0..*" RecommendedPlacement
+RecommendationPreview "1" *-- "1" RecommendationProposal
+RecommendationPreview "1" *-- "1" TimetableView
+RecommendationPreview "1" *-- "1" DashboardSummary
 
 note bottom of RecommendationManager
   Proposal state is in-memory only for the

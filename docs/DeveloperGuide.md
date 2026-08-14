@@ -178,11 +178,15 @@ the confirmation preview never lets a placement disappear silently. A `type/` ch
 If this edit actively supplies a new `date/` or start-time field, `EditCommand` also implements
 `PreExecutionValidatable`: immediately after the user answers "Save changes? (y/n)" and
 immediately before execution, `ApplicationRunner` calls `validateBeforeExecution(now)` with a
-freshly-sampled `now`, re-running `DateTimeParser.requireNotPastIfToday` against the
-newly-requested start time - since the original check at parse time ran before the confirmation
-prompt was shown, and a real amount of time can pass before the user answers it. An edit that
-never touches timing skips this re-check entirely, since its (unchanged) carried-over start time
-is allowed to already be in the past.
+freshly-sampled `now`, re-running `logic.validation.ActivityTimeValidator.requireNotPastIfToday`
+against the newly-requested start time - since the original check at parse time ran before the
+confirmation prompt was shown, and a real amount of time can pass before the user answers it. An
+edit that never touches timing skips this re-check entirely, since its (unchanged) carried-over
+start time is allowed to already be in the past. `ActivityTimeValidator` (not
+`parser.common.DateTimeParser`, which `EditCommand` would otherwise need to reach only for this one
+rule) is the neutral home for this check specifically so `command` never depends on `parser`:
+`DateTimeParser`'s own `requireNotPastIfToday` now just delegates to it, so every existing
+parse-time caller is unaffected.
 
 After confirmation, `EditCommand.execute` calls `ActivityManager.replace`. `replace` finds the
 target by permanent ID and repeats the same conflict check immediately before replacing the list
@@ -620,8 +624,21 @@ state.
 application run only; no recommendation history file is introduced. `RecommendationService` is
 stateless and deterministic: it reads current activities, global preferences, and the requested
 period, then returns one immutable proposal containing ordered `RecommendedPlacement`s and any
-unscheduled flexible activity IDs. `RecommendationFormatter` renders that proposal together with a
-preview timetable and dashboard built from copied activities, never from in-place mutation.
+unscheduled flexible activity IDs.
+
+**Preview responsibility: logic calculates, UI only formats.** `RecommendationService.buildPreview`
+(not `RecommendationFormatter`) builds the preview: it applies the proposal's placements to copied
+activities (never in-place mutation), then calls `TimetableService.build`/`DashboardService.summarize`
+to produce the preview `TimetableView`/`DashboardSummary`, bundled with the proposal into one
+immutable `RecommendationPreview`. Both `RecommendGenerateCommand` and `RecommendViewCommand` call
+`buildPreview` with the actual injected `now` and hand the resulting `RecommendationPreview` straight
+to `RecommendationFormatter.formatPreview`, which does no calculation of its own - matching this
+guide's UI-formats/logic-calculates layering. This replaced an earlier design where
+`RecommendationFormatter` called `DashboardService`/`TimetableService` directly and, critically, used
+the selected period's own `start` (midnight) as the dashboard's completion-eligibility basis instead
+of the real `now` - `recommend today`'s preview dashboard could disagree with an equivalent plain
+`dashboard today` about which activities were already due. `now` flowing through
+`RecommendationService.buildPreview` fixes both the layering and the defect at once.
 
 **Generating, viewing, and cancelling a proposal.** `recommend`/`recommend view`/`recommend
 cancel` all deal only with the in-memory `RecommendationManager` proposal store - none of them
@@ -674,17 +691,46 @@ schedule containing it existed.
 
 `RecommendationService` now groups each period's eligible flexible activities by date and searches
 each date independently (dates never interact, since every buffer/overlap check in `fits` is
-already scoped to a single date). For up to `PERMUTATION_CAP` (8) remaining activities on a date -
-comfortably more than a real day's flexible workload - it exhaustively tries every ordering
-(`permute`, 8! = 40320 worst case) and, for each ordering, places its activities in that exact
-sequence at each one's own earliest feasible slot given the activities already placed earlier in
-the same ordering (`placeInOrder`/`earliestValidSlot`). This is provably at least as good as any
-other placement of that ordering's activities: placing each one as early as possible can only
-free up room for the activities considered afterwards, never take room away, so trying every
+already scoped to a single date). For up to `PERMUTATION_CAP` (7) remaining activities on a date -
+comfortably more than a real day's flexible workload - it exhaustively tries every ordering and,
+for each ordering, places its activities in that exact sequence at each one's own earliest feasible
+slot given the activities already placed earlier in the same ordering. This is provably at least as
+good as any other placement of that ordering's activities: placing each one as early as possible can
+only free up room for the activities considered afterwards, never take room away, so trying every
 ordering explores every combination of which activities end up schedulable together. Beyond the
 cap, `heuristicOrderings` substitutes a small, fixed set of orderings (tightest window first,
 longest duration first, earliest own-window first, stable ID order) to keep the search bounded,
 trading a guaranteed-optimal result for implausibly large single days.
+
+**Performance hardening: no more factorial memory/time spike at the cap boundary.** An independent
+QA benchmark found an abnormal cliff at exactly `PERMUTATION_CAP` remaining activities: ~34 ms at 5,
+~342 ms at 7, then ~3.2 s at 8 (40,320 = 8! orderings, each fully re-evaluated from scratch and every
+ordering first materialized into a `List<List<FlexibleActivity>>`), dropping back to ~5 ms at 9 once
+`heuristicOrderings` took over - the exhaustive path was both allocating memory proportional to
+`n!` and never sharing work between orderings that share a prefix. `exhaustiveSearch`/
+`searchOrderings` replaced the old materialize-then-evaluate `permute`/`placeInOrder` pair with
+in-place swap backtracking (the same permutation-generation algorithm as before) fused directly with
+greedy placement: each recursive call places exactly one activity using the commitments already
+built up by its ancestors, so no ordering is ever materialized as a full list, and a branch is
+pruned outright once `placedSoFar.size() + remainingDepth` can no longer reach the best item count
+already found (`DaySchedule.betterThan`'s top-priority criterion) - a safe bound, since an
+ordering's final item count can never exceed already-placed items plus however many candidates
+remain. `PERMUTATION_CAP` was also lowered from 8 to 7 (5,040 worst-case orderings, consistently
+well under a second even when the item-count pruning above never triggers, e.g. every candidate
+activity fits so no branch is ever prunable) after benchmarking confirmed pruning alone does not
+bound the true adversarial case (all activities mutually compatible, maximal branching). Re-measured
+on the same machine, before/after the algorithmic change, with `PERMUTATION_CAP` still at 8 to
+isolate the incremental-generation effect: n=8 was ~2.7 s unfixed vs. ~2.65 s fixed-but-unpruned
+-benefiting little from pruning alone under this adversarial all-fit workload, which is exactly why
+the cap was also lowered. With the cap at 7 (the shipped configuration): n=7 (still exhaustive)
+~316 ms, n=8 (now heuristic) ~7 ms - no more cliff. Scheduling output is unchanged for every
+`n <= PERMUTATION_CAP` case: the set of orderings explored is identical to the old `permute`
+output, evaluated via the identical greedy `earliestValidSlot` logic, so `DaySchedule.betterThan`
+selects the same winner. `RecommendationServiceTest`'s `recommend_eightFlexibleActivities_
+returnsDeterministically`, `recommend_largeFlexibleSet_doesNotMaterializeAllPermutations`, and
+`recommend_optimization_preservesExpectedSchedule` cover determinism, the bounded-time guarantee (a
+generous CI-safe threshold, not a brittle near-actual-runtime one), and placement correctness
+respectively.
 
 Every resulting `DaySchedule` (which activities were placed, and when) is compared via
 `DaySchedule.betterThan` using the fix's priority order: (1) more scheduled activities beats fewer,
@@ -1093,8 +1139,19 @@ confirmation and rollback rules while restoring all documented defaults.
   uses only these as graph edges, never `NO` or `UNKNOWN`.
 - **Nominal buffer:** `dashboard`'s arithmetic capacity-minus-workload metric; not a guarantee of
   actually-usable free time.
-- **Completion-eligible:** An activity whose own scheduled time has fully passed as of the
-  injected `now`; only eligible activities count toward `dashboard`'s completion percentage.
+- **Completion-eligible:** An activity whose scheduled end is not after the injected `now`
+  (`end.isAfter(now)` is false, i.e. `now >= end`) - only eligible activities count toward
+  `dashboard`'s completion percentage. Deliberately inclusive of the exact end instant: an
+  activity is completion-eligible ("due") starting exactly at its own end time, one instant before
+  `list overdue`'s strictly-exclusive `end.isBefore(now)` check (see Overdue below) would mark the
+  same activity overdue. This is why a completed activity's dashboard percentage can already read
+  100% at the moment `list overdue` still reports it as not yet overdue.
+- **Overdue:** An incomplete activity whose scheduled end is strictly before the injected `now`
+  (`end.isBefore(now)`) - `list overdue`'s definition. At the exact end instant an activity is
+  already completion-eligible/due but not yet overdue; it becomes overdue only one instant later.
+  Not changed without a documented product-rule reason: `end.isBefore(now)` (exclusive) rather than
+  `!end.isAfter(now)` (inclusive) is an intentional, narrower boundary than completion-eligibility's,
+  not an oversight.
 - **Preference profile:** One immutable, global set of preferred daily bounds, minimum buffer, and
   advisory Tomato/Pomodoro flag used by `recommend`.
 

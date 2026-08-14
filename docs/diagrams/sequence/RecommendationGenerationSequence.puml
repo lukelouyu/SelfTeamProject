@@ -39,9 +39,10 @@ Manager --> Service : activities
 Service -> Service : build deterministic placements,\nclamping today's candidates to now,\nand unscheduled IDs
 Service --> Generate : RecommendationProposal
 Generate -> ProposalStore : setProposal(proposal)
-Generate -> Service : applyPreview(activityManager.getAll(), proposal)
-Service --> Generate : copied preview activities
-Generate -> Formatter : formatPreview(proposal, previewActivities)
+Generate -> Service : buildPreview(activityManager, proposal, now)
+Service -> Service : applyPreview, then build\ntimetable + dashboard\n(dashboard uses actual now,\nnot the period's own start)
+Service --> Generate : RecommendationPreview
+Generate -> Formatter : formatPreview(preview)
 Formatter --> Generate : preview text
 Generate --> Runner : CommandResult
 Runner -> Ui : showFramed(feedback)
@@ -61,9 +62,9 @@ end note
 Runner -> View : execute()
 View -> ProposalStore : getProposal()
 ProposalStore --> View : active proposal
-View -> Service : applyPreview(activityManager.getAll(), proposal)
-Service --> View : copied preview activities
-View -> Formatter : formatPreview(proposal, previewActivities)
+View -> Service : buildPreview(activityManager, proposal, now)
+Service --> View : RecommendationPreview
+View -> Formatter : formatPreview(preview)
 Formatter --> View : preview text
 View --> Runner : CommandResult
 Runner -> Ui : showFramed(feedback)

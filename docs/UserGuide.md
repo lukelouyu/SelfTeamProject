@@ -254,7 +254,9 @@ list overdue
   every activity regardless of overdue status. A completed activity, and any activity that hasn't
   started yet, never appears here. `overdue` cannot be combined with `status/`, since it already
   means "incomplete" by definition; it can still be combined with `c/`, `topic/`, `date/`,
-  `view/`, and `order/`.
+  `view/`, and `order/`. An incomplete activity becomes overdue only strictly after its scheduled
+  end time - at the exact end timestamp it is already due (see `dashboard`'s completion tracking)
+  but not yet overdue.
 
 A relative-date phrase can be freely combined with the other filters above (except `overdue` with
 `status/`, see above), but not with `date/YYYY-MM-DD` (which still works on its own) or with

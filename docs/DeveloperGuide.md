@@ -128,14 +128,27 @@ Conflict rules are applied in this order:
    date and schedule type must match. Fixed activities additionally compare start and end;
    flexible activities compare earliest start, latest end, and duration. ID, category, topic,
    note, ratings, and completion are ignored.
-2. If no duplicate exists and the candidate is fixed, find the first fixed activity on the same
-   date that overlaps in list order. The half-open predicate is
-   `existing.start < candidate.end && candidate.start < existing.end`.
+2. If no duplicate exists, compute the candidate's *effective occupied interval* - a private
+   `effectiveInterval(Activity)` helper returning `Optional<ScheduledInterval>` (a small
+   `record(LocalDate date, LocalTime start, LocalTime end)`): a `FixedActivity` always has one; a
+   `FlexibleActivity` has one only once `hasAdoptedPlacement()` is true (start/end become the
+   adopted start/end, not the earliest/latest window); an unadopted `FlexibleActivity` has none. If
+   the candidate has no effective interval, the overlap check is skipped entirely - a mere
+   scheduling window is never occupied time. Otherwise, find the first *other* activity in list
+   order that also has an effective interval and overlaps it. The half-open predicate is unchanged:
+   `existing.start < candidate.end && candidate.start < existing.end`, now compared against each
+   side's effective interval rather than raw `FixedActivity` fields.
 
-Consequently, adjacent fixed activities are accepted, flexible-window overlaps are accepted, and
-fixed/flexible pairs never overlap for this policy. Exact flexible duplicates are still rejected.
+Consequently, adjacent occupied intervals are accepted, an unadopted flexible activity's window
+overlapping anything is always accepted (it is never occupied time), and two activities only
+conflict when *both* have a real committed schedule - fixed, or flexible-and-adopted, in any
+combination. Exact flexible duplicates (adopted or not) are still separately rejected by rule 1.
 Completed activities participate exactly like incomplete ones. Duplicate failure takes precedence
-over overlap failure.
+over overlap failure. `storage.ActivityStorage.validateAgainstAlreadyLoaded` mirrors this same
+effective-interval concept independently (storage deliberately does not import `logic`, the same
+layering rule Section 11 documents for date/time parsing), so a hand-edited `activities.txt`
+containing a `FIXED` line that overlaps an already-loaded adopted `FLEXIBLE` line is rejected at
+load time too, not just through `add`/`edit`/`recur`.
 
 Edit validation excludes every activity whose permanent ID equals the supplied exclusion ID. This
 prevents an activity from conflicting with itself without relying on list position. For batches,
@@ -148,6 +161,19 @@ by one; permanent-ID validation therefore remains a manager responsibility.
 complete replacement object, validates type-specific requirements and topic membership, and calls
 `ActivityManager.checkNoConflicts(replacement, id)` before a confirmation is shown. A doomed edit
 therefore does not ask the user to approve it.
+
+**Adopted-placement carry-over.** `EditCommandParser.buildFlexible` always constructs a brand-new
+`FlexibleActivity` for the replacement (the runtime type can't be mutated in place across a
+possible `type/` change), which by construction starts unadopted. If the edit is on an already
+same-type `FlexibleActivity` (`typeChanged == false`), `buildFlexible` explicitly re-applies the
+old object's `adoptedStartTime` via `FlexibleActivity.canAdoptAt`/`setAdoptedStartTime` once the
+new window/duration is resolved - preserving it whenever it still fits, and leaving it cleared
+(never re-applied) when a scheduling edit (`date/`, `earliest/`, `latest/`, `dur/`) narrows the
+window out from under it. `MessageFormatter.appendTimingChanges` mirrors this with its own
+`adopted` Before/After line whenever the resulting adopted state differs (including to `None`), so
+the confirmation preview never lets a placement disappear silently. A `type/` change away from
+`FLEXIBLE`, or the source activity already being `FixedActivity`, has no adopted state to carry -
+`buildFixed` is unaffected.
 
 If this edit actively supplies a new `date/` or start-time field, `EditCommand` also implements
 `PreExecutionValidatable`: immediately after the user answers "Save changes? (y/n)" and
@@ -183,6 +209,17 @@ week. For each requested week, the planner finds the matching weekday from the c
 range rather than adding seven-day offsets. It skips the source date, a no-class date, or the first
 existing fixed occurrence with the same description, date, start, and end. Generated copies retain
 the source metadata but start incomplete.
+
+`RecurrencePlanner.plan` also takes `now` (threaded from `CommandDispatcher.dispatch` through
+`RecurCommandParser.parse`, the same seam every other time-sensitive command uses - no direct
+`.now()` call anywhere in this path), and `requireNotPast` rejects any target date - other than
+the source's own, already-skipped date - that resolves before `now`'s date, or to `now`'s own date
+at a time not after `now`'s time (reusing the exact two-tier shape of
+`DateTimeParser.parseNotBeforeDate`/`requireNotPastIfToday`, just applied to the source's inherited
+start time rather than a freshly typed one). This runs inline in the same per-week loop as the
+no-class/duplicate skip checks, so it inherits their existing "this happens entirely inside
+`plan()`, before `RecurCommand` exists" atomicity guarantee for free - no restructuring was needed
+to make a past occurrence reject the whole batch before the confirmation preview is ever built.
 
 Each remaining candidate is preflighted through `ActivityManager.checkNoConflicts`; a conflict
 aborts the entire `plan()` call immediately (before `RecurCommand` even exists, so nothing has been
@@ -253,9 +290,12 @@ claimed to be fully crash-atomic.
 <p align="center"><img src="diagrams/class/StorageClassDiagram.png" width="760" alt="Storage class diagram"></p>
 
 `ActivityStorage` treats persisted lines as untrusted. It validates each accepted record against
-earlier accepted records for duplicate IDs, exact scheduling duplicates, and fixed overlap, in
-addition to field, timing, rating, status, and topic-reference checks. Invalid lines become
-line-specific load warnings rather than entering the manager.
+earlier accepted records for duplicate IDs, exact scheduling duplicates, and occupied-interval
+overlap (a fixed activity, or a flexible activity whose persisted trailing `adoptedStartTime`
+field is non-empty - the same effective-occupied-interval concept Section 7 defines, mirrored here
+independently since storage does not depend on `logic`), in addition to field, timing, rating,
+status, and topic-reference checks. Invalid lines become line-specific load warnings rather than
+entering the manager.
 
 Storage deliberately does not depend on `ActivityConflictChecker`. The checker is a logic-layer
 policy for proposed mutations, while storage is an independent trust boundary responsible for
@@ -288,15 +328,28 @@ with `accessibility == YES` as eligible edges.
 
 <p align="center"><img src="diagrams/class/RouteClassDiagram.png" width="700" alt="Route class diagram"></p>
 
-**Cumulative distance is `long`, individual edges stay `int`.** `Connection.distanceInMetres` and
-`AccessibilityGraph.Edge.distanceInMetres` remain `int`, since a single persisted connection
-distance is already bounded by that type. `AccessibilityGraph`'s Dijkstra frontier
-(`QueueEntry.distanceInMetres`), its `bestDistance` map, and `GraphPath.totalDistanceInMetres` are
-all `long`, because a multi-hop route's *cumulative* distance can exceed `Integer.MAX_VALUE` even
-when no individual edge does - a plain `int` running total would silently wrap and could corrupt
-the shortest-path comparison. `reconstructPath` additionally tracks a `visited` set while walking
-the predecessor chain and throws `IllegalStateException` if a facility is revisited, so a corrupted
-`previous` map fails fast instead of looping indefinitely.
+**Cumulative distance is `long`, individual edges stay `int`.** `Connection.distanceInMetres`
+remains `int`, since a single persisted connection distance is already bounded by that type.
+`AccessibilityGraph`'s Dijkstra frontier (`QueueEntry.distanceInMetres`), its `bestDistance` map,
+and `GraphPath.totalDistanceInMetres` are all `long`, because a multi-hop route's *cumulative*
+distance can exceed `Integer.MAX_VALUE` even when no individual edge does - a plain `int` running
+total would silently wrap and could corrupt the shortest-path comparison. `reconstructPath`
+additionally tracks a `visited` set while walking the predecessor chain and throws
+`IllegalStateException` if a facility is revisited, so a corrupted `previous` map fails fast
+instead of looping indefinitely.
+
+**`Edge`/`GraphPath` carry the actual `Connection` used per hop, not just distances and names.**
+`AccessibilityGraph.Edge` holds the originating `Connection` object (not a bare `int` distance);
+the relaxation loop that updates `bestDistance`/`previous` on a winning candidate now also records
+that hop's `Connection` into a parallel `Map<String, Connection> viaConnection`, and
+`reconstructPath` walks both maps together to build `GraphPath`'s `List<Connection> connections`
+(one entry per consecutive facility pair, in travel order) alongside its facility-name list. This
+closes a real bug: when two facilities have more than one confirmed-accessible connection between
+them (parallel edges, e.g. a shorter ramp and a longer path), the distance actually summed into
+`totalDistanceInMetres` and the connection object shown for that hop are now guaranteed to be the
+same one Dijkstra selected, since both are recorded at the exact moment a shorter distance is
+found - there is no longer a separate, later re-lookup that could disagree with Dijkstra's own
+choice among several connections sharing an endpoint pair.
 
 **Why the `YES`-only filter lives in `logic.route.AccessibleRouteGraphFactory`, not in
 `logic.graph.AccessibilityGraph`.** `AccessibilityGraph` was built during v1.0 hardening as
@@ -326,13 +379,17 @@ matching endpoints. Two known facilities with no confirmed-accessible path betwe
 only that UniEnable's local dataset has no confirmed path - never that no real-world accessible
 route exists. Only an unrecognised facility name raises `InvalidIndexException`.
 
-`RouteCommand` resolves each consecutive pair in the returned path's facility chain against the
-same `YES`-only connection list the graph was built from, to recover each segment's own distance,
-traversal type, shelter status, and optional barrier/notes for display - segment display direction
-always follows the path's own travel direction, not a connection's stored (and irrelevant, since
-every connection is two-way) `from`/`to` order. `ui.accessibility.RouteFormatter` is pure text
-formatting with no routing decisions of its own. `route` never estimates travel time and never
-claims real-time verification or a guarantee of real-world accessibility.
+`RouteCommand` reads `GraphPath.getConnections()` directly to obtain each segment's own distance,
+traversal type, shelter status, and optional barrier/notes for display - it no longer performs any
+connection lookup of its own. (Before the parallel-edge fix above, `RouteCommand.resolveSegments`/
+`findConnectionBetween` used to re-derive a connection per consecutive facility pair by scanning
+the `YES`-only connection list for the first endpoint match, with no way to prefer the specific
+connection Dijkstra had actually used when several shared an endpoint pair - that method no longer
+exists.) Segment display direction always follows the path's own travel direction, not a
+connection's stored (and irrelevant, since every connection is two-way) `from`/`to` order.
+`ui.accessibility.RouteFormatter` is pure text formatting with no routing decisions of its own.
+`route` never estimates travel time and never claims real-time verification or a guarantee of
+real-world accessibility.
 
 <p align="center"><img src="diagrams/sequence/RouteSequence.png" width="760" alt="Route sequence diagram"></p>
 
@@ -714,6 +771,19 @@ pre-adoption snapshot and reports the error instead of showing a false success. 
 the active in-memory proposal is cleared; on failure, it remains available because adoption never
 committed.
 
+**Proposal lifecycle vs. other mutating commands.** `ApplicationRunner.processCommand` clears
+`RecommendationManager`'s stored proposal after every *other* successful mutating command too
+(`add`, `edit`, `delete`, `mark`, `unmark`, `order set`, `recur`, `reset all`, every `topic`
+mutation, and `recommend adopt`'s own success above) - `isPreferenceMutation(command)` is checked
+first and is the one deliberate exception: `preference set`/`preference reset` succeeding does
+*not* clear the proposal, since preference changes have their own documented contract (Section 15,
+`guide preference`) that an existing proposal survives a preference change and is re-validated
+against the *current* profile only at adopt time (stage 4 of the boundary-enforcement pipeline
+above) - not discarded out from under the user the moment they adjust a preference. This is a
+narrow, explicit exception; every other mutating command still invalidates an active proposal on
+success, on the working assumption that any other state change could have altered what a sensible
+recommendation looks like, which this fix does not attempt to re-litigate per command.
+
 Route-aware recommendation remains deliberately out of scope here. Activities still do not carry
 approved facility/location bindings, so recommendation cannot incorporate campus travel time or
 accessibility graph constraints without expanding the v1.0/v2.0 activity model beyond what this
@@ -765,6 +835,17 @@ outside this refactor because recurrence's identical-occurrence skip has differe
 storage must not depend on logic. A later change should first define one boundary-neutral policy
 contract and preserve each caller's distinct error and recovery behaviour.
 
+The same trade-off applies to the effective-occupied-interval concept itself (Section 7): both
+`logic.ActivityConflictChecker` and `storage.ActivityStorage` now independently define "a fixed
+activity always occupies time; a flexible activity only does once adopted" via their own private
+`ScheduledInterval`-shaped helper, for the same storage-must-not-depend-on-logic reason. A third,
+older, differently-shaped version of the same idea already existed before this pair - `logic
+.ActivityManager`'s private `scheduledStart`/`scheduledEnd` (next-activity selection) and
+`logic.timetable.TimetableService`'s private `ScheduledEntrySource` (the `[OVERLAP]` timetable
+marker) - neither of which was consolidated into the new helper, since both serve a different
+concern (display/selection, not mutation validation) and touching them was outside this fix's
+scope.
+
 ### Other decisions
 
 - Academic weeks are resolved from explicit calendar ranges so recess and other gaps do not break
@@ -776,16 +857,21 @@ contract and preserve each caller's distinct error and recovery behaviour.
   preparatory utility from the same hardening session, is no longer unused - v2.0's `route` is its
   first real caller, via
   `logic.route.AccessibleRouteGraphFactory` (Section 12).
-- `add`/`edit` also reject a repeated declared field prefix (e.g. `n/A n/B`), but through
+- `add`/`edit`, and (as of the second-pass QA audit below) `find`, `list`, `route`,
+  `connection find`, `facility find`, and every `topic` subcommand, all reject a repeated declared
+  field prefix (e.g. `n/A n/B`, `k/Study k/Assignment`, `from/A from/B to/C`), through
   `FieldParser.rejectDuplicateMarkers` rather than by migrating them onto `ArgumentTokenizer`.
   `ArgumentTokenizer` additionally rejects any *undeclared* marker-shaped token
   (`[A-Za-z][A-Za-z0-9]*/`) found unquoted in the text, which would force free-text description/
   note values containing an incidental `word/` (e.g. `n/Meeting w/ friends`) to be quoted -
   acceptable for `preference set`'s small fixed-value fields, but a materially larger behavioural
-  change than this fix calls for on `add`/`edit`'s free-text fields.
+  change than this fix calls for on any parser's free-text fields.
   `FieldParser.rejectDuplicateMarkers` only scans for the command's own declared markers occurring
   twice, leaving undeclared free text untouched, and reuses `ArgumentTokenizer`'s
-  `Duplicate option "..."` wording for consistency.
+  `Duplicate option "..."` wording for consistency. `dashboard`/`timetable`/`recommend` are
+  whole-word-token parsers (not marker-extraction based) that already reject a second `date/`/
+  `day/` token via their own "unexpected text after the period" checks, just with different
+  wording - left as-is, since they were never silently mis-parsing, only phrased differently.
 - `parser.common.DateTimeParser` and `storage.ActivityStorage` (plus `storage.preference
   .PreferenceStorage`) each define their own strict `uuuu-MM-dd`/`HH:mm` `DateTimeFormatter`
   constants and shape-then-strict-parse logic, which look like duplication worth extracting into

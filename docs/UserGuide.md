@@ -92,10 +92,14 @@ accessibility information, or medical advice.
   restart from ID `[1]`.
 - Commands documented as taking no arguments (`next`, `bye`, `order view`, `facility list`,
   `connection list`) reject any trailing text rather than silently ignoring it.
-- Every field prefix (e.g. `n/`, `c/`, `date/`) may appear at most once in a single `add` or `edit`
-  command. Supplying the same prefix twice (e.g. `n/A n/B`) is rejected with
-  `Duplicate option "n/".` rather than the second occurrence being silently absorbed into the
-  first's value.
+- Every field prefix (e.g. `n/`, `c/`, `date/`) may appear at most once in a single command that
+  accepts it, across `add`, `edit`, `find`, `list`, `route`, `connection find`, `facility find`,
+  and every `topic` subcommand. Supplying the same prefix twice (e.g. `n/A n/B`, `k/Study
+  k/Assignment`, `from/A from/B to/C`) is rejected with `Duplicate option "n/".` (naming the
+  repeated prefix) rather than the second occurrence being silently absorbed into the first's
+  value or mismatched against nothing. This does not affect incidental `word/`-shaped text inside
+  a free-text field the command doesn't declare as a marker (e.g. `n/Meeting w/ friends` is still
+  accepted as-is, since `w/` is not one of `add`'s own markers).
 
 ## 5. Command Overview
 
@@ -158,11 +162,15 @@ Required fields: `n/`, `c/`, `date/`, `type/FIXED`, `from/`, `to/`, `energy/`, `
 Optional: `topic/`, `note/`.
 
 The application rejects the activity when a required field is missing or invalid, the end time
-is not later than the start time, an exact duplicate exists, or it overlaps another fixed activity
-on the same date. Fixed activities are exact scheduling duplicates when their descriptions match
-exactly (including letter case), and their date, start, and end are the same. Category, topic,
-note, ratings, completion, and ID do not make otherwise identical scheduling details distinct.
-Two fixed activities are accepted when one starts exactly when the other ends. If `topic/` is
+is not later than the start time, an exact duplicate exists, or its 09:00-11:00-style interval
+overlaps another activity's occupied time on the same date — another fixed activity, or a
+flexible activity you have already adopted from a recommendation (section 12). An unadopted
+flexible activity's window is never occupied time and never blocks a new fixed activity, however
+much they overlap on paper. Fixed activities are exact scheduling duplicates when their
+descriptions match exactly (including letter case), and their date, start, and end are the same.
+Category, topic, note, ratings, completion, and ID do not make otherwise identical scheduling
+details distinct. Two occupied intervals are accepted when one starts exactly when the other
+ends. If `topic/` is
 supplied, that topic must already exist under the given category (create it first with `topic add`)
 — otherwise the activity is rejected with a "does not exist" error rather than silently accepting
 an unregistered topic name.
@@ -354,6 +362,16 @@ timing instead of comparing individual fields that no longer correspond (e.g.
 If every supplied field's new value is identical to the stored value, no confirmation is asked
 and the application reports `"No changes to activity [ID]."` instead.
 
+**Editing a flexible activity you have already adopted from a recommendation** (section 12)
+keeps its adopted placement whenever the edit doesn't invalidate it — a non-scheduling edit
+(`n/`, `c/`, `energy/`, `sensory/`, `topic/`, `note/`) always keeps it, and a scheduling edit
+(`date/`, `earliest/`, `latest/`, `dur/`) keeps it as long as the adopted start still fits the
+resulting window. If a scheduling edit would move the window out from under the adopted start,
+the placement is cleared instead of silently carried over with a now-invalid time — the
+confirmation preview shows this explicitly with its own `adopted` line
+(`Before: adopted = 10:00 -> 11:00` / `After : adopted = None`) so you see it before answering
+`y`.
+
 After `y`:
 
 ```text
@@ -363,8 +381,10 @@ ____________________________________________________________
 ```
 
 The update is atomic: if any supplied value is invalid, or the resulting activity would exactly
-duplicate or (for a fixed activity) overlap another activity, the entire edit is rejected before
-any confirmation is shown.
+duplicate or overlap another activity's occupied time — a fixed activity, or a flexible activity
+you have already adopted from a recommendation — the entire edit is rejected before any
+confirmation is shown. An unadopted flexible activity's window never counts as occupied time and
+can never trigger this rejection either way.
 
 ### 6.8 Delete an Activity: `delete`
 
@@ -542,6 +562,13 @@ syntax needed to skip it. Whichever form you use, the whole command is all-or-no
 candidate date is resolved and checked for conflicts before anything is created, and if any one
 candidate fails, the error names its teaching week and calendar date, and no activities are added
 at all - not even the ones for weeks that would have succeeded.
+
+`recur` reuses `add`/`edit`'s own "not in the past" rule (Section 4): if any requested week would
+resolve to a new occurrence dated before today, or dated today at a time that has already started,
+the entire plan is rejected before the preview is shown, the same all-or-nothing way a conflicting
+date is — `[Error] Week 1 resolves to 2026-08-11, which has already passed. No recurring activities
+were created.` The source activity's own (already-created) date is exempt from this check, since it
+is never itself a new occurrence.
 
 Only a `FIXED` activity in the `ACADEMIC` category is eligible, and only if its description
 contains one of these whole-word, case-insensitive session terms: `lecture`/`lec`,
@@ -832,7 +859,10 @@ route from/AS6 to/AS8
 
 Output shows the ordered facility chain, each segment's own distance, traversal type, shelter
 status, and any recorded barrier/notes, plus the total distance — followed by the same disclaimer
-every facility/connection command ends with. `from`/`to` naming the same known facility is a
+every facility/connection command ends with. When two facilities have more than one confirmed-
+accessible connection between them, the segment shown is always the exact one the shortest-path
+search actually used, so its distance always agrees with the printed total — never an arbitrarily
+chosen parallel connection with a different distance. `from`/`to` naming the same known facility is a
 **successful** zero-length result (single-facility chain, `0 m`, no travel required), not an
 error. Two known facilities with no confirmed-accessible path between them get a clear message
 beginning "No supported accessible route was found..." rather than suggesting an unconfirmed one;

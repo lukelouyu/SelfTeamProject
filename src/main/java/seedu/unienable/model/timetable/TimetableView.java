@@ -28,7 +28,7 @@ public final class TimetableView {
     }
 
     /** Returns the immutable ordered scheduled-entry list. */
-    public List<TimetableEntry> getFixedEntries() {
+    public List<TimetableEntry> getScheduledEntries() {
         return scheduledEntries;
     }
 
@@ -37,7 +37,7 @@ public final class TimetableView {
         return unscheduledFlexibleEntries;
     }
 
-    /** Returns whether any fixed entry is marked as overlapping. */
+    /** Returns whether any scheduled entry (fixed or adopted flexible) is marked as overlapping. */
     public boolean hasOverlaps() {
         return scheduledEntries.stream().anyMatch(TimetableEntry::isOverlapping);
     }

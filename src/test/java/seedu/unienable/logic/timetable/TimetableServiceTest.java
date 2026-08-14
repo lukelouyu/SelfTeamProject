@@ -105,7 +105,7 @@ class TimetableServiceTest {
 
         TimetableView view = TimetableService.build(activities, TimetableService.resolveWeek(MONDAY));
 
-        assertEquals(List.of(2, 3), view.getFixedEntries().stream()
+        assertEquals(List.of(2, 3), view.getScheduledEntries().stream()
                 .map(TimetableEntry::getId).toList());
     }
 
@@ -119,7 +119,7 @@ class TimetableServiceTest {
 
         TimetableView view = TimetableService.build(activities, TimetableService.resolveWeek(MONDAY));
 
-        assertEquals(List.of(2, 3, 4, 9), view.getFixedEntries().stream()
+        assertEquals(List.of(2, 3, 4, 9), view.getScheduledEntries().stream()
                 .map(TimetableEntry::getId).toList());
     }
 
@@ -131,9 +131,9 @@ class TimetableServiceTest {
 
         TimetableView view = TimetableService.build(activities, TimetableService.resolveDay(MONDAY));
 
-        assertEquals(List.of(1, 2), view.getFixedEntries().stream()
+        assertEquals(List.of(1, 2), view.getScheduledEntries().stream()
                 .map(TimetableEntry::getId).toList());
-        assertTrue(view.getFixedEntries().stream().allMatch(TimetableEntry::isOverlapping));
+        assertTrue(view.getScheduledEntries().stream().allMatch(TimetableEntry::isOverlapping));
     }
 
     @Test
@@ -146,7 +146,7 @@ class TimetableServiceTest {
         TimetableView view = TimetableService.build(activities, TimetableService.resolveDay(MONDAY));
 
         assertTrue(view.hasOverlaps());
-        assertTrue(view.getFixedEntries().stream().allMatch(TimetableEntry::isOverlapping));
+        assertTrue(view.getScheduledEntries().stream().allMatch(TimetableEntry::isOverlapping));
     }
 
     @Test
@@ -180,7 +180,7 @@ class TimetableServiceTest {
 
         TimetableView view = TimetableService.build(activities, TimetableService.resolveWeek(MONDAY));
 
-        assertTrue(view.getFixedEntries().isEmpty());
+        assertTrue(view.getScheduledEntries().isEmpty());
         assertEquals(List.of(1, 2, 3), view.getUnscheduledFlexibleEntries().stream()
                 .map(TimetableEntry::getId).toList());
     }
@@ -192,11 +192,11 @@ class TimetableServiceTest {
 
         TimetableView view = TimetableService.build(List.of(flexible), TimetableService.resolveDay(MONDAY));
 
-        assertEquals(1, view.getFixedEntries().size());
+        assertEquals(1, view.getScheduledEntries().size());
         assertTrue(view.getUnscheduledFlexibleEntries().isEmpty());
-        assertEquals(TimetableEntryType.ADOPTED_FLEXIBLE, view.getFixedEntries().get(0).getType());
-        assertEquals(LocalTime.of(10, 0), view.getFixedEntries().get(0).getStartTime());
-        assertEquals(LocalTime.of(11, 0), view.getFixedEntries().get(0).getEndTime());
+        assertEquals(TimetableEntryType.ADOPTED_FLEXIBLE, view.getScheduledEntries().get(0).getType());
+        assertEquals(LocalTime.of(10, 0), view.getScheduledEntries().get(0).getStartTime());
+        assertEquals(LocalTime.of(11, 0), view.getScheduledEntries().get(0).getEndTime());
     }
 
     @Test
@@ -207,9 +207,9 @@ class TimetableServiceTest {
 
         activity.setDescription("Changed later");
 
-        assertEquals("Fixed 1", view.getFixedEntries().get(0).getDescription());
+        assertEquals("Fixed 1", view.getScheduledEntries().get(0).getDescription());
         assertThrows(UnsupportedOperationException.class,
-                () -> view.getFixedEntries().add(view.getFixedEntries().get(0)));
+                () -> view.getScheduledEntries().add(view.getScheduledEntries().get(0)));
     }
 
     @Test

@@ -32,7 +32,7 @@ public final class TimetableFormatter {
             result.append("\n\nWarning: overlapping scheduled commitments are marked [OVERLAP].");
         }
 
-        appendFixedEntries(result, view, mode);
+        appendScheduledEntries(result, view, mode);
         appendFlexibleEntries(result, view.getUnscheduledFlexibleEntries(), mode);
 
         if (mode != TimetableMode.COMPACT) {
@@ -42,13 +42,13 @@ public final class TimetableFormatter {
         return result.toString();
     }
 
-    private static void appendFixedEntries(StringBuilder result, TimetableView view,
+    private static void appendScheduledEntries(StringBuilder result, TimetableView view,
             TimetableMode mode) {
         TimetablePeriod period = view.getPeriod();
         boolean wroteDay = false;
         for (LocalDate date = period.getStartDate(); !date.isAfter(period.getEndDate());
                 date = date.plusDays(1)) {
-            List<TimetableEntry> entries = entriesOn(view.getFixedEntries(), date);
+            List<TimetableEntry> entries = entriesOn(view.getScheduledEntries(), date);
             if (mode == TimetableMode.COMPACT && entries.isEmpty()) {
                 continue;
             }
@@ -60,7 +60,7 @@ public final class TimetableFormatter {
             }
             for (TimetableEntry entry : entries) {
                 result.append('\n');
-                appendFixedEntry(result, entry, mode);
+                appendScheduledEntry(result, entry, mode);
             }
         }
         if (!wroteDay) {
@@ -78,7 +78,7 @@ public final class TimetableFormatter {
         return day + " | " + date;
     }
 
-    private static void appendFixedEntry(StringBuilder result, TimetableEntry entry,
+    private static void appendScheduledEntry(StringBuilder result, TimetableEntry entry,
             TimetableMode mode) {
         String marker = entry.getType() == seedu.unienable.model.timetable.TimetableEntryType.FIXED ? "F" : "R";
         result.append("  ").append(entry.getStartTime()).append('-').append(entry.getEndTime())

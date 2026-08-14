@@ -89,13 +89,13 @@ public final class TimetableService {
                 .thenComparingInt(FlexibleActivity::getId));
 
         Set<Integer> overlapIds = findOverlapIds(scheduled);
-        List<TimetableEntry> fixedEntries = scheduled.stream()
+        List<TimetableEntry> scheduledEntries = scheduled.stream()
                 .map(activity -> activity.toEntry(overlapIds.contains(activity.id())))
                 .toList();
         List<TimetableEntry> flexibleEntries = flexible.stream()
                 .map(TimetableService::fromFlexible)
                 .toList();
-        return new TimetableView(period, fixedEntries, flexibleEntries);
+        return new TimetableView(period, scheduledEntries, flexibleEntries);
     }
 
     private static Set<Integer> findOverlapIds(List<ScheduledEntrySource> scheduled) {

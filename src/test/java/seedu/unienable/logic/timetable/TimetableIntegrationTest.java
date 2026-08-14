@@ -47,7 +47,7 @@ class TimetableIntegrationTest {
 
         TimetableView view = TimetableService.build(manager, TimetableService.resolveWeek(MONDAY));
 
-        assertEquals(1, view.getFixedEntries().size());
+        assertEquals(1, view.getScheduledEntries().size());
         assertEquals(1, view.getUnscheduledFlexibleEntries().size());
     }
 

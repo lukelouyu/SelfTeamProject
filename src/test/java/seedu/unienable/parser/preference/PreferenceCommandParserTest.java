@@ -136,6 +136,21 @@ class PreferenceCommandParserTest {
     }
 
     @Test
+    public void parse_setQuotedValueWithTrailingText_rejected() {
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, "set start/\"09:00\" garbage"));
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, "set start/\"09:00\"x"));
+        assertEquals(PreferenceProfile.defaults(), manager.getProfile());
+    }
+
+    @Test
+    public void parse_setQuotedValueWithWhitespaceOnlyBeforeNextMarker_succeeds() throws Exception {
+        assertProfile("set start/\"09:00\"   end/\"18:00\"", LocalTime.of(9, 0), LocalTime.of(18, 0), 15,
+                TomatoSuggestion.OFF);
+    }
+
+    @Test
     public void parse_caseInsensitiveMarkersAndTomato_succeeds() throws Exception {
         assertProfile("SET START/09:00 END/18:00 BUFFER/20 TOMATO/ON",
                 LocalTime.of(9, 0), LocalTime.of(18, 0), 20, TomatoSuggestion.ON);

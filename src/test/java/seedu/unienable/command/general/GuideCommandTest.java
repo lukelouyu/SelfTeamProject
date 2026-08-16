@@ -37,7 +37,7 @@ class GuideCommandTest {
 
         assertTrue(feedback.startsWith("Edit an activity"));
         assertTrue(feedback.contains("list"));
-        assertTrue(feedback.contains("edit 3 n/CG3207 tutorial date/2026-08-17 topic/CG3207"));
+        assertTrue(feedback.contains("edit 3 n/CG3207 tutorial date/YYYY-MM-DD topic/CG3207"));
         assertTrue(feedback.contains("edit 3 from/14:00 to/15:00"));
         assertTrue(feedback.contains("edit 3 note/"));
         assertTrue(feedback.contains("Stable IDs never"));
@@ -75,21 +75,21 @@ class GuideCommandTest {
                 + "your own values.\n"
                 + "\n"
                 + "Example - add a fixed activity:\n"
-                + "  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                + "  add n/PL1101E Lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 "
                 + "energy/1 sensory/1 note/Bring laptop and charger\n"
                 + "\n"
                 + "Example - add a flexible activity:\n"
-                + "  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 "
+                + "  add n/Finish assignment c/ACADEMIC date/YYYY-MM-DD type/FLEXIBLE earliest/12:00 "
                 + "latest/18:00 dur/90 energy/4 sensory/2\n"
                 + "\n"
                 + "Then view your activities:\n"
                 + "  list\n"
                 + "  list view/detail\n"
-                + "  list date/2026-08-15\n"
+                + "  list date/YYYY-MM-DD\n"
                 + "\n"
                 + "Optional - create and use a topic first:\n"
                 + "  topic add c/ACADEMIC n/PL1101E\n"
-                + "  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 "
+                + "  add n/PL1101E Tutorial c/ACADEMIC date/YYYY-MM-DD type/FIXED from/10:00 to/11:00 "
                 + "energy/2 sensory/2 topic/PL1101E", result.getFeedback());
     }
 
@@ -118,7 +118,7 @@ class GuideCommandTest {
                 + "  find k/PL1101E\n"
                 + "  find k/lecture\n"
                 + "  find c/ACADEMIC\n"
-                + "  find date/2026-08-15\n"
+                + "  find date/YYYY-MM-DD\n"
                 + "  find today\n"
                 + "  find next week c/ACADEMIC\n"
                 + "  find k/PL1101E c/ACADEMIC\n"
@@ -142,7 +142,7 @@ class GuideCommandTest {
                 + "Example - create and use a topic:\n"
                 + "  topic add c/ACADEMIC n/PL1101E\n"
                 + "  topic list c/ACADEMIC\n"
-                + "  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 "
+                + "  add n/PL1101E Lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 "
                 + "energy/1 sensory/1 topic/PL1101E\n"
                 + "\n"
                 + "Example - rename a topic:\n"

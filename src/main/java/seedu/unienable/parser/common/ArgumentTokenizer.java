@@ -26,8 +26,10 @@ import seedu.unienable.exception.MissingInputException;
  *       of silently being swallowed into the previous field's value.</li>
  *   <li><b>Basic quoting</b>: a value that starts with a double quote runs until the next double
  *       quote, taken literally - so it may contain spaces or another marker's prefix text without
- *       being split, e.g. {@code n/"CG3207 lecture"} or {@code note/"see c/o front desk"}. Outside
- *       quotes, a value still runs until the next recognised marker, exactly like
+ *       being split, e.g. {@code n/"CG3207 lecture"} or {@code note/"see c/o front desk"}. Any
+ *       non-whitespace text between that closing quote and the next recognised marker (or the end
+ *       of input) is rejected rather than silently discarded, e.g. {@code n/"CG3207" garbage} is
+ *       an error. Outside quotes, a value still runs until the next recognised marker, exactly like
  *       {@link FieldParser#extractField}; an unquoted value containing a marker-shaped token that
  *       isn't declared (e.g. free text with a bare "A/B" after a space) is rejected rather than
  *       silently accepted - callers who need that must quote the value.</li>
@@ -53,8 +55,8 @@ public final class ArgumentTokenizer {
      * @return a map from each present marker's declared-case prefix to its trimmed, unquoted value
      * @throws MissingInputException if a required marker is absent
      * @throws InvalidCommandException if args contains text before the first recognised marker, a
-     *     marker-shaped token that is not one of the declared markers, or a value with an
-     *     unterminated quote
+     *     marker-shaped token that is not one of the declared markers, a value with an unterminated
+     *     quote, or non-whitespace text trailing a quoted value before the next marker
      */
     public static Map<String, String> tokenize(String args, ArgumentMarker... markers)
             throws MissingInputException, InvalidCommandException {
@@ -74,6 +76,11 @@ public final class ArgumentTokenizer {
                 }
                 value = args.substring(valueStart + 1, closing);
                 next = scanForward(args, closing + 1, prefixes);
+                String trailing = args.substring(closing + 1, next.index);
+                if (!trailing.isBlank()) {
+                    throw new InvalidCommandException(
+                            "Unexpected text after " + current.prefix + " value: \"" + trailing.trim() + "\".");
+                }
             } else {
                 next = scanForward(args, valueStart, prefixes);
                 value = args.substring(valueStart, next.index).trim();

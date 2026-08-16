@@ -31,7 +31,9 @@ rm -rf -- "$script_dir/data"
 mkdir -- "$script_dir/data"
 cp -- "$script_dir/academic-calendar-test.txt" "$script_dir/data/academic-calendar.txt"
 
-java -jar "$jar_path" < "$script_dir/input.txt" > "$script_dir/ACTUAL.TXT"
+# A fixed clock keeps the fixture's activity dates from ever becoming "in the past" relative to
+# the real calendar date the test happens to run on.
+java -Dunienable.fixedNow=2026-08-10T12:00 -jar "$jar_path" < "$script_dir/input.txt" > "$script_dir/ACTUAL.TXT"
 
 cp -- "$script_dir/EXPECTED.TXT" "$script_dir/EXPECTED-UNIX.TXT"
 dos2unix "$script_dir/EXPECTED-UNIX.TXT" "$script_dir/ACTUAL.TXT"

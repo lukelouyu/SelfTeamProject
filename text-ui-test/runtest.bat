@@ -39,7 +39,9 @@ if errorlevel 1 (
     goto :fail
 )
 
-java -jar "..\build\libs\%jarloc%" < input.txt > ACTUAL.TXT
+rem A fixed clock keeps the fixture's activity dates from ever becoming "in the past" relative to
+rem the real calendar date the test happens to run on.
+java -Dunienable.fixedNow=2026-08-10T12:00 -jar "..\build\libs\%jarloc%" < input.txt > ACTUAL.TXT
 if errorlevel 1 (
     echo Application execution failed!
     goto :fail

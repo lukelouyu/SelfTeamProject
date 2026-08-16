@@ -45,19 +45,19 @@ Replace the description, date, times, and ratings below with
 your own values.
 
 Example - add a fixed activity:
-  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
+  add n/PL1101E Lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
 
 Example - add a flexible activity:
-  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
+  add n/Finish assignment c/ACADEMIC date/YYYY-MM-DD type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
 
 Then view your activities:
   list
   list view/detail
-  list date/2026-08-15
+  list date/YYYY-MM-DD
 
 Optional - create and use a topic first:
   topic add c/ACADEMIC n/PL1101E
-  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
+  add n/PL1101E Tutorial c/ACADEMIC date/YYYY-MM-DD type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
 ____________________________________________________________
 ____________________________________________________________
 Edit an activity
@@ -70,7 +70,7 @@ Example - list first, then edit one field:
   edit 3 energy/5
 
 Example - change several fields at once:
-  edit 3 n/CG3207 tutorial date/2026-08-17 topic/CG3207
+  edit 3 n/CG3207 tutorial date/YYYY-MM-DD topic/CG3207
 
 Example - change a fixed activity's time:
   edit 3 from/14:00 to/15:00
@@ -93,7 +93,7 @@ Examples:
   find k/PL1101E
   find k/lecture
   find c/ACADEMIC
-  find date/2026-08-15
+  find date/YYYY-MM-DD
   find today
   find next week c/ACADEMIC
   find k/PL1101E c/ACADEMIC
@@ -113,7 +113,7 @@ Related commands: topic add, topic list, topic rename, topic delete
 Example - create and use a topic:
   topic add c/ACADEMIC n/PL1101E
   topic list c/ACADEMIC
-  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
+  add n/PL1101E Lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
 
 Example - rename a topic:
   topic rename c/ACADEMIC old/PL1101E new/PL1101E Revision
@@ -190,8 +190,8 @@ use whichever you remember; timetable accepts the same pair.
 Examples:
   dashboard today
   dashboard tomorrow detail
-  dashboard date/2026-08-20
-  dashboard day/2026-08-20
+  dashboard date/YYYY-MM-DD
+  dashboard day/YYYY-MM-DD
   dashboard this week detail
   dashboard next week
 
@@ -220,10 +220,10 @@ detail adds completion, category, rating, topic, and note information.
 
 Examples:
   timetable today
-  timetable day/2026-08-17
-  timetable day/2026-08-17 detail
-  timetable date/2026-08-17
-  timetable week/2026-08-19 compact
+  timetable day/YYYY-MM-DD
+  timetable day/YYYY-MM-DD detail
+  timetable date/YYYY-MM-DD
+  timetable week/YYYY-MM-DD compact
   timetable this week detail
   timetable next week
 
@@ -310,8 +310,8 @@ Examples:
   recommend this week
   recommend next week
   recommend today
-  recommend date/2026-08-15
-  recommend day/2026-08-15
+  recommend date/YYYY-MM-DD
+  recommend day/YYYY-MM-DD
   recommend view
   recommend adopt
 
@@ -385,7 +385,7 @@ teaching, sectional teaching, or sec is eligible (see guide reset
 for the same rule used by reset's "keep class schedules" choice).
 
 Example:
-  add n/CG3207 Lecture c/ACADEMIC date/2026-08-14 type/FIXED from/16:00 to/18:00 energy/2 sensory/2
+  add n/CG3207 Lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/16:00 to/18:00 energy/2 sensory/2
   recur 1 week 1 to 6; 7 to 13
 
 Each new session becomes its own independent activity with its own
@@ -436,19 +436,19 @@ Replace the description, date, times, and ratings below with
 your own values.
 
 Example - add a fixed activity:
-  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
+  add n/PL1101E Lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 energy/1 sensory/1 note/Bring laptop and charger
 
 Example - add a flexible activity:
-  add n/Finish assignment c/ACADEMIC date/2026-08-15 type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
+  add n/Finish assignment c/ACADEMIC date/YYYY-MM-DD type/FLEXIBLE earliest/12:00 latest/18:00 dur/90 energy/4 sensory/2
 
 Then view your activities:
   list
   list view/detail
-  list date/2026-08-15
+  list date/YYYY-MM-DD
 
 Optional - create and use a topic first:
   topic add c/ACADEMIC n/PL1101E
-  add n/PL1101E Tutorial c/ACADEMIC date/2026-08-16 type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
+  add n/PL1101E Tutorial c/ACADEMIC date/YYYY-MM-DD type/FIXED from/10:00 to/11:00 energy/2 sensory/2 topic/PL1101E
 ____________________________________________________________
 ____________________________________________________________
 Getting started
@@ -472,7 +472,7 @@ delete - remove an activity by its stable ID. See: guide delete
 recur  - turn one FIXED class session into a whole semester of independent sessions. See: guide recur
 
 Quick examples:
-  add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1
+  add n/CG3207 lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 energy/1 sensory/1
   edit 1 energy/5
   delete 1
 ____________________________________________________________
@@ -495,7 +495,7 @@ Related commands: topic add, topic list, topic rename, topic delete
 Example - create and use a topic:
   topic add c/ACADEMIC n/PL1101E
   topic list c/ACADEMIC
-  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
+  add n/PL1101E Lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
 
 Example - rename a topic:
   topic rename c/ACADEMIC old/PL1101E new/PL1101E Revision
@@ -588,10 +588,10 @@ detail adds completion, category, rating, topic, and note information.
 
 Examples:
   timetable today
-  timetable day/2026-08-17
-  timetable day/2026-08-17 detail
-  timetable date/2026-08-17
-  timetable week/2026-08-19 compact
+  timetable day/YYYY-MM-DD
+  timetable day/YYYY-MM-DD detail
+  timetable date/YYYY-MM-DD
+  timetable week/YYYY-MM-DD compact
   timetable this week detail
   timetable next week
 
@@ -650,7 +650,7 @@ delete - remove an activity by its stable ID. See: guide delete
 recur  - turn one FIXED class session into a whole semester of independent sessions. See: guide recur
 
 Quick examples:
-  add n/CG3207 lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1
+  add n/CG3207 lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 energy/1 sensory/1
   edit 1 energy/5
   delete 1
 ____________________________________________________________
@@ -673,7 +673,7 @@ Related commands: topic add, topic list, topic rename, topic delete
 Example - create and use a topic:
   topic add c/ACADEMIC n/PL1101E
   topic list c/ACADEMIC
-  add n/PL1101E Lecture c/ACADEMIC date/2026-08-15 type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
+  add n/PL1101E Lecture c/ACADEMIC date/YYYY-MM-DD type/FIXED from/09:00 to/11:00 energy/1 sensory/1 topic/PL1101E
 
 Example - rename a topic:
   topic rename c/ACADEMIC old/PL1101E new/PL1101E Revision
@@ -703,8 +703,8 @@ use whichever you remember; timetable accepts the same pair.
 Examples:
   dashboard today
   dashboard tomorrow detail
-  dashboard date/2026-08-20
-  dashboard day/2026-08-20
+  dashboard date/YYYY-MM-DD
+  dashboard day/YYYY-MM-DD
   dashboard this week detail
   dashboard next week
 
@@ -758,8 +758,8 @@ Examples:
   recommend this week
   recommend next week
   recommend today
-  recommend date/2026-08-15
-  recommend day/2026-08-15
+  recommend date/YYYY-MM-DD
+  recommend day/YYYY-MM-DD
   recommend view
   recommend adopt
 
@@ -857,10 +857,10 @@ detail adds completion, category, rating, topic, and note information.
 
 Examples:
   timetable today
-  timetable day/2026-08-17
-  timetable day/2026-08-17 detail
-  timetable date/2026-08-17
-  timetable week/2026-08-19 compact
+  timetable day/YYYY-MM-DD
+  timetable day/YYYY-MM-DD detail
+  timetable date/YYYY-MM-DD
+  timetable week/YYYY-MM-DD compact
   timetable this week detail
   timetable next week
 

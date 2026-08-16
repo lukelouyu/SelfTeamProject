@@ -92,6 +92,41 @@ class ArgumentTokenizerTest {
     }
 
     @Test
+    public void tokenize_quotedValueWithTrailingWhitespaceOnly_succeeds() throws Exception {
+        String args = "n/\"CG3207 lecture\"   c/ACADEMIC";
+
+        Map<String, String> tokens = ArgumentTokenizer.tokenize(args,
+                ArgumentMarker.required("n/"), ArgumentMarker.required("c/"));
+
+        assertEquals("CG3207 lecture", tokens.get("n/"));
+        assertEquals("ACADEMIC", tokens.get("c/"));
+    }
+
+    @Test
+    public void tokenize_quotedValueTrailingText_throwsInvalidCommandException() {
+        String args = "n/\"CG3207 lecture\" garbage c/ACADEMIC";
+
+        assertThrows(InvalidCommandException.class, () -> ArgumentTokenizer.tokenize(args,
+                ArgumentMarker.required("n/"), ArgumentMarker.required("c/")));
+    }
+
+    @Test
+    public void tokenize_quotedValueImmediatelyFollowedByText_throwsInvalidCommandException() {
+        String args = "n/\"CG3207\"x c/ACADEMIC";
+
+        assertThrows(InvalidCommandException.class, () -> ArgumentTokenizer.tokenize(args,
+                ArgumentMarker.required("n/"), ArgumentMarker.required("c/")));
+    }
+
+    @Test
+    public void tokenize_quotedValueTrailingTextAtEndOfInput_throwsInvalidCommandException() {
+        String args = "n/\"CG3207 lecture\" garbage";
+
+        assertThrows(InvalidCommandException.class, () -> ArgumentTokenizer.tokenize(args,
+                ArgumentMarker.required("n/")));
+    }
+
+    @Test
     public void tokenize_unterminatedQuote_throwsInvalidCommandException() {
         String args = "n/\"CG3207 lecture c/ACADEMIC";
 

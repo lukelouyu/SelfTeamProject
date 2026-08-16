@@ -5,6 +5,84 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0r. External re-audit of Section 0q's own F2 claim: two real UserGuide.md contradictions found and fixed, `v2.1.0` retagged (2026-08-16, Claude Code) — read this first
+
+Section 0q closed F2 with "implementation already correct, no UserGuide.md change needed" - **that
+conclusion was wrong.** An independent re-audit of the tagged source (supplied as this session's
+task) found two live contradictions Section 0q missed, both confirmed by direct inspection before
+any edit (same "trust but verify" discipline, applied this time to checking someone else's claim -
+mine). Starting HEAD: `ace2337` (Section 0q's own closing commit). Ending HEAD: (this session's
+final commit, below).
+
+**Root cause of Section 0q's miss:** incomplete reading, not a logic error. UserGuide.md Section
+6.11 was read from its start through option 3's output block, which is where that read stopped -
+one paragraph later, immediately after "entering anything other than `1`, `2`, or `3` ... cancels",
+sat the actual stale sentence: "If there is nothing to reset at all (...), the menu is skipped
+entirely and the reset succeeds immediately as if you had picked option `1`." Section 0q's
+documentation-consistency sweep (Section 0q's own "documentation consistency audit" task) also used
+search patterns too narrow to catch this (`"silently ignor/accept/treat"` - this sentence uses
+neither word) or the second issue below (searched only within Section 6.5's own text, never Section
+4's general rules).
+
+**D1 (confirmed, fixed): UserGuide.md Section 6.11 still described the empty-state
+confirmation-skip as current behaviour.** The exact stale sentence quoted above remained live at
+lines 552-555, directly contradicting `ResetCommand.getMenuPrompt()`'s actual, already-fixed
+behaviour (Section 0p's DEFECT-01 fix: the menu is always shown, every count simply zero). Fixed by
+replacing it: "The three-option menu is always shown before anything is deleted, even when there is
+currently nothing to reset (...) - every count in the preview is simply zero, and you must still
+choose `1`, `2`, or `3` yourself; no option is ever applied automatically."
+
+**D2 (confirmed, fixed, newly found - not part of any prior session's F1-F3 or DEFECT-01/02
+scope): General Input Rules (Section 4) contradicted `find`'s own documented `k/` grammar.**
+Section 4's duplicate-prefix rule ("every field prefix may appear at most once... across `add`,
+`edit`, `find`, ...") used `k/Study k/Assignment` as a literal example of a rejected duplicate -
+text written before Section 0p's DEFECT-02 fix ever existed, never updated when that fix shipped
+and Section 6.5 was rewritten to correctly document `k/` as repeatable. Section 4 and Section 6.5
+therefore stated opposite rules for the exact same input. Fixed by removing the `k/Study
+k/Assignment` example and adding one sentence carving out the exception: "The one exception is
+`find`'s `k/`, which may be repeated any number of times to add further AND-combined keywords (see
+Section 6.5) - every other prefix, on every command including `find` itself (`c/`, `topic/`,
+`date/`, `order/`), still allows only one occurrence."
+
+**Swept for a third instance of either claim** (broader patterns than Section 0q used: reset+skip/
+automatic/immediately/nothing-to-reset combinations, k/+once/duplicate/repeat/twice/at-most/reject
+combinations, plus the reset-related FAQ entries) across UserGuide.md, DeveloperGuide.md, README.md,
+`GuideCommand.java`, and HANDOVER.md itself - found none beyond the two above. DeveloperGuide.md's
+own `k/Study k/Assignment` mention (its DEFECT-02 design note) and HANDOVER.md's four historical
+mentions (Sections describing what earlier, dated sessions verified at the time) are accurate as
+history, describing a past state a dated section header already scopes to its own session - left
+unchanged, unlike the two live, undated claims above which read as current and were wrong.
+Section 0q's own now-incorrect "no UserGuide.md change needed" sentence is annotated in place
+(struck through, corrected in place, pointing here) rather than deleted, matching this file's own
+established discipline for correcting a past claim without erasing the record of having made it.
+
+**No Java/runtime change.** Both fixes are documentation-only; F1/F3's actual behaviour was already
+correct and independently re-verified by the same external audit (blank `k/` rejection, and the
+null-prompt `NullPointerException` guard, both re-confirmed working).
+
+**Verification.** `./gradlew clean check javadoc verifyReleaseZip`: PASS, test count unchanged
+(1348, since no test file changed). `text-ui-test/runtest.sh`: PASS, 0-line diff (no scripted
+scenario touches either paragraph). Manual re-read of both corrected passages against
+`ResetCommand`/`FindCommandParser`'s actual current behaviour, word by word, before committing -
+not just a diff review - specifically to avoid repeating Section 0q's own mistake of not reading
+carefully enough.
+
+**Push, retag, and republish.** `git push origin main`: clean fast-forward from `ace2337`. Old
+`v2.1.0` target recorded first (`ace2337`, Section 0q's own tag target), then the same
+delete-tag/create-tag/push sequence Sections 0o/0p established, followed immediately by the
+combined `gh release edit v2.1.0 --tag v2.1.0 --target main --draft=false --latest --notes-file
+<notes>` call (Section 0o's fix for the tag-delete-orphans-the-release gotcha) in the same command
+sequence as the retag itself this time, rather than as a separate recovery step after discovering
+the orphan - no draft-orphan hit this time. `gh release upload v2.1.0 <jar> <zip> --clobber`
+replaced both assets; server digests matched the local build exactly. Release notes updated in
+place (old checksums removed, D1/D2 section appended). Downloaded the published jar fresh and
+smoke-tested it directly (`find k/` -> rejected; empty `reset all` -> full menu shown) to confirm
+the published artifact, not just its file hash, actually carries the fixes.
+
+**Final state.** `git rev-parse HEAD` / `origin/main` / `v2.1.0^{commit}` all match (see commit
+list below). `git status`: clean except the same two pre-existing untracked presentation files
+flagged since Section 0f. CI green on the tagged commit, all three platforms.
+
 ## 0q. Fifth independent QA pass: F1/F2/F3 fixed, no release/retag action taken this session (2026-08-16, Claude Code) — read this first
 
 This session originated from an **independent QA audit** (a bug report supplied as this session's
@@ -42,14 +120,19 @@ unrelated, still-valid parsing. UserGuide.md Section 6.5 and the DeveloperGuide.
 note both get a follow-up sentence/paragraph documenting the blank-rejection explicitly. Commits
 `e7062cf` (fix), `ffa6b1a` (docs).
 
-**F2 (implementation already correct; one stale doc entry found and fixed): `reset all`
-empty-state documentation.** Re-verified `ResetCommand.getMenuPrompt()` directly - it always
-returns the full menu (Section 0p's DEFECT-01 fix), confirmed by reading the source, not assuming
-last session's own claim was still true. Searched UserGuide.md, the built-in `guide reset` topic,
-DeveloperGuide.md, README.md, and the test tree for a stale "menu is skipped and reset succeeds
-automatically" claim - none of the currently-read documentation makes this claim; UserGuide.md
-Section 6.11 and `guide reset` already describe the always-shown menu generically with no
-empty-state exception. Found one genuinely stale entry instead: HANDOVER.md's own historical
+**F2 (implementation already correct; documentation claim below was WRONG, corrected in Section
+0r): `reset all` empty-state documentation.** Re-verified `ResetCommand.getMenuPrompt()` directly -
+it always returns the full menu (Section 0p's DEFECT-01 fix), confirmed by reading the source, not
+assuming last session's own claim was still true. Searched UserGuide.md, the built-in `guide reset`
+topic, DeveloperGuide.md, README.md, and the test tree for a stale "menu is skipped and reset
+succeeds automatically" claim - **incorrectly concluded none of the currently-read documentation
+makes this claim.** ~~UserGuide.md Section 6.11 and `guide reset` already describe the
+always-shown menu generically with no empty-state exception.~~ **This was wrong: an independent
+re-audit (Section 0r) found the exact stale sentence still present at UserGuide.md Section 6.11,
+one paragraph past where this session stopped reading - "If there is nothing to reset at all
+(...), the menu is skipped entirely and the reset succeeds immediately as if you had picked option
+`1`." Read too little of the section before concluding it was clean; see Section 0r for the actual
+fix.** Found one genuinely stale entry instead: HANDOVER.md's own historical
 `feature/v1.0-hardening-session2` note (line ~2202, from long before Section 0f) listed
 "skip-when-nothing-to-reset" as a shipped feature, written when that behaviour (the confirmation
 menu itself being skipped) was still considered correct - annotated in place to clarify what the

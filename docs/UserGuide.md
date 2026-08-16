@@ -94,12 +94,15 @@ accessibility information, or medical advice.
   `connection list`) reject any trailing text rather than silently ignoring it.
 - Every field prefix (e.g. `n/`, `c/`, `date/`) may appear at most once in a single command that
   accepts it, across `add`, `edit`, `find`, `list`, `route`, `connection find`, `facility find`,
-  and every `topic` subcommand. Supplying the same prefix twice (e.g. `n/A n/B`, `k/Study
-  k/Assignment`, `from/A from/B to/C`) is rejected with `Duplicate option "n/".` (naming the
-  repeated prefix) rather than the second occurrence being silently absorbed into the first's
-  value or mismatched against nothing. This does not affect incidental `word/`-shaped text inside
-  a free-text field the command doesn't declare as a marker (e.g. `n/Meeting w/ friends` is still
-  accepted as-is, since `w/` is not one of `add`'s own markers).
+  and every `topic` subcommand. Supplying the same prefix twice (e.g. `n/A n/B`, `from/A from/B
+  to/C`) is rejected with `Duplicate option "n/".` (naming the repeated prefix) rather than the
+  second occurrence being silently absorbed into the first's value or mismatched against nothing.
+  The one exception is `find`'s `k/`, which may be repeated any number of times to add further
+  AND-combined keywords (see Section 6.5) - every other prefix, on every command including `find`
+  itself (`c/`, `topic/`, `date/`, `order/`), still allows only one occurrence. This does not
+  affect incidental `word/`-shaped text inside a free-text field the command doesn't declare as a
+  marker (e.g. `n/Meeting w/ friends` is still accepted as-is, since `w/` is not one of `add`'s own
+  markers).
 
 ## 5. Command Overview
 
@@ -549,10 +552,11 @@ ____________________________________________________________
 ```
 
 Entering anything other than `1`, `2`, or `3` — including a blank line or the end of input —
-cancels the same way, with a message telling you to enter `1`, `2`, or `3`. If there is nothing to
-reset at all (no activities, no topics, the default order is already chronological, the next ID is
-`[1]`, and preferences are already at their defaults), the menu is skipped entirely and the reset
-succeeds immediately as if you had picked option `1`.
+cancels the same way, with a message telling you to enter `1`, `2`, or `3`. The three-option menu
+is always shown before anything is deleted, even when there is currently nothing to reset (no
+activities, no topics, the default order is already chronological, the next ID is `[1]`, and
+preferences are already at their defaults) — every count in the preview is simply zero, and you
+must still choose `1`, `2`, or `3` yourself; no option is ever applied automatically.
 
 ### 6.12 Create Recurring Class Sessions: `recur`
 

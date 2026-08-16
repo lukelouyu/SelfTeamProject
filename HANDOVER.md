@@ -5,6 +5,137 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0p. Fourth independent regression run: two confirmed defects fixed, `v2.1.0` corrective release, verified (2026-08-16, Claude Code) — read this first
+
+This session originated from an **independent regression report** (`UniEnable Regression Report.pdf`
+supplied as this session's task): a full manual pack executed end-to-end against the released
+`v2.1.0` jar, 20 batches / 200+ scripted CLI interactions, run with a fixed clock
+(`-Dunienable.fixedNow=2026-08-16T12:41`) against a sustained-load dataset (152 activities, 127
+recurring class sessions, a full app restart, 20+ deliberately malformed inputs). Structurally
+similar to the audits driving Sections 0f/0i/0j: a fresh set of findings, not a re-check of
+already-fixed ones - Batch 15 in the report explicitly reconfirmed BR-02 (quoted-preference
+trailing-garbage rejection) and BR-03 (guide-example date safety) from Section 0-BR-01/02/03 (this
+session's own starting-HEAD commit) as still fixed. Two new defects were reported (DEFECT-01,
+DEFECT-02); this session's own discipline (Section 0f's "trust but verify") was to reproduce each
+one against current source before writing any fix - **both reproduced and were confirmed real**.
+Starting HEAD: `97260c2` (the BR-01/02/03 corrective-release commit, itself this session's starting
+`v2.1.0` tag target). Ending HEAD: `5c6ac7a`.
+
+**DEFECT-02 (HIGH, confirmed, fixed): repeated `find` keyword prefixes rejected instead of
+AND-combined.** `find`'s own bundled help states "multiple keywords ... use AND", but `find
+k/CS2113 k/review` was rejected outright (`Duplicate option "k/".`) - the same uniform
+duplicate-prefix guard (`FieldParser.rejectDuplicateMarkers`) applied to every marker, including
+single-value ones like `c/`/`date/`, was also applied to `k/`, which the grammar requires to
+repeat. This was not a new oversight: the second-pass QA audit behind Section 0f had explicitly
+added `k/Study k/Assignment` as a *correctly-rejected* duplicate-marker example - a deliberate
+decision this report showed was actually wrong once weighed against `find`'s own documented AND
+semantics. Root cause traced deeper than the duplicate check alone: `FieldParser`'s extraction
+(`extractPresentFields`/`extractField`) fundamentally assumes one occurrence per marker, so merely
+skipping the check would have let a second `k/` get silently swallowed as literal text into the
+first occurrence's value (the exact Bug F failure mode this project fixed once already, long before
+Section 0f's stricter duplicate-rejection pass). Fixed with a new
+`FieldParser.extractAllOccurrences(text, marker, allMarkers...)`: a single forward-scan helper that
+collects every occurrence of a repeatable marker (each bounded by the next occurrence of any
+declared marker, including itself) and returns the marker-stripped remaining text, so `find`'s other
+markers (`c/`/`topic/`/`date/`/`order/`) still go through the exact same, unmodified
+duplicate-rejection/extraction pipeline as before. `FindCommandParser` flattens every `k/`
+occurrence's words into one AND-combined keyword list (each occurrence still capped at
+one-or-two words, unchanged); `k/` is now the one deliberate exception to the
+single-value-per-marker rule, not a general relaxation. `ActivityManager.matchesAllKeywords`
+already ANDs every keyword in the flat list, so no downstream search logic needed to change.
+Tests: `FieldParserTest` gains direct `extractAllOccurrences` coverage (single/repeated/interspersed
+with other markers/absent/still-enforces-other-marker-duplicates);
+`FindCommandParserTest`'s old duplicate-`k/`-rejection test (which asserted the now-wrong behavior)
+is replaced with tests asserting AND-narrowing across two and three repeated occurrences, the
+report's exact repro command with a three-activity A/B/AB dataset, a repeated-keyword + `c/`
+combination, and that the per-occurrence two-word cap still applies;
+`parseFind_duplicateCategoryMarker_throwsInvalidCommandException` is unchanged and still passes,
+confirming single-value prefixes are unaffected. A full-suite run afterward caught two more
+tests elsewhere encoding the same old contract that the targeted runs had missed -
+`ApplicationRunnerTest.find_duplicateKeywordMarker_rejectedEndToEnd` - both updated the same way.
+UserGuide.md Section 6.5, the built-in `guide find` topic, and the DeveloperGuide.md design note
+that had documented the old rejection as intentional are all updated to state the repeatability
+explicitly, with `find k/CS2113 k/review` as a concrete example. Commits `2efbcae` (fix),
+`e24adc9` (docs).
+
+**DEFECT-01 (MEDIUM, confirmed, fixed): `reset all` skipped its own confirmation menu on an empty
+state.** On a brand-new install (zero activities, zero topics), `reset all` silently performed a
+full reset with no preview or prompt at all, defaulting to `Selection.DELETE_ALL` since
+`applyMenuAnswer()` was never called; any digit typed next, expecting to answer the menu, was
+consumed as an unrelated command instead (a bare `1` resolves as a numeric guide-topic shortcut) -
+exactly what happened when the report's own Batch 0 fed a follow-up `1`. Root cause:
+`ResetCommand.getMenuPrompt()` returned `null` whenever `!hasAnythingToReset()`, and
+`CommandConfirmationHandler.confirmMenu()` treats a `null` prompt as "skip the menu, proceed
+immediately" - `MenuConfirmable`'s only current implementor. `guide reset`/UserGuide.md already
+documented "always show the preview and 3-choice menu" with no stated empty-state exception, so
+the defect was purely an implementation deviation from already-correct documentation - no doc
+changes were needed here. Fixed by removing the early-return-null branch entirely:
+`getMenuPrompt()` now always returns the full preview and menu, with every count simply at zero
+for an empty state - one shared pipeline for both cases, no second implementation. Options 1/2/3
+already ran through the same `execute()`/`executeKeepClassSchedule()` code paths regardless of
+prior state, so they needed no changes: option 2 on an empty state already retains 0 activities and
+reports "Kept 0 ... deleted 0 ..." via the exact same code as a populated reset.
+`hasAnythingToReset()` keeps its separate, unchanged role backing `hasStateChange()` (still
+correctly skips the storage snapshot/save when nothing was actually there to begin with, regardless
+of which menu option is chosen - verified explicitly, not assumed). Tests: `ResetCommandTest`'s old
+`getMenuPrompt_nothingToReset_returnsNull` (asserting the now-wrong null/skip contract) replaced
+with an assertion that the full menu, with zero counts, is still returned; added explicit
+empty-state option 1/2/3 tests. `ApplicationRunnerTest`'s `resetAll_nothingToReset_doesNotInvokeSave`
+(which fed no menu answer at all, relying on the bug) now feeds a real answer; added sibling
+end-to-end tests for options 2 and 3. A full-suite run afterward caught one more test the targeted
+runs had missed - `UniEnableTest.run_resetAllOnEmptyState_skipsConfirmationAndSucceedsImmediately`,
+whose name literally described the bug as intentional - renamed and fixed the same way. Commits
+`97f4188` (fix + ResetCommandTest/ApplicationRunnerTest), `5c6ac7a` (UniEnableTest, found via full
+suite).
+
+**Verification.** `./gradlew clean check javadoc verifyReleaseZip`: **1339 tests, 0 failures** (up
+from 1329 at this session's start), checkstyleMain/Test PASS, javadoc PASS (0 errors),
+verifyReleaseZip PASS. `text-ui-test/runtest.sh` (bash, `-Dunienable.fixedNow=2026-08-10T12:00`
+already wired in by the BR-01 fix): PASS, 0-line diff. `text-ui-test\runtest.bat` locally reported
+`Test failed!` via a plain `FC` byte comparison, but a diff of both files after EOL-normalizing
+(`dos2unix`) showed **zero content differences** - traced to `ACTUAL.TXT` genuinely containing a
+mix of CRLF (from each `println()` call's own line end) and bare LF (from `\n` embedded inside
+multi-line Java string literals, e.g. every `guide` topic's text, which `println()` never
+translates), combined with this local clone's `EXPECTED.TXT` still sitting on disk with LF from an
+earlier checkout before `core.autocrlf=true` took effect - `runtest.sh` already tolerates this via
+its own explicit `dos2unix` normalization step, `runtest.bat` does not. Rather than guess whether
+this is a real CI risk, pushed and checked the actual GitHub Actions run for this exact commit:
+**all three platforms (ubuntu-latest/macos-latest/windows-latest) passed, including the
+`windows-latest` job's own `runtest.bat` step** (run `31933166250`, 1m49s) - confirming this was a
+local-clone-only artifact, not a real defect, so `runtest.bat` was deliberately left unchanged
+(out of scope for DEFECT-01/02, and evidently not actually broken on a fresh checkout).
+Clean-directory smoke test against the extracted release ZIP (not `build/libs`/`build/classes`):
+`reset all` on a genuinely fresh empty state showed the full menu with all-zero counts; `find
+k/CS2113 k/review` against a seeded three-activity (A-only/B-only/A+B) dataset correctly returned
+only the one activity containing both keywords; exit and restart confirmed the retained activity
+(after an interleaved `reset all` option 2) persisted correctly. No obsolete JAR artifacts existed
+to remove - `build/release-smoke/unienable.jar` (the only other JAR anywhere in the tree besides
+the Gradle wrapper's own) turned out to be `verifyReleaseZip`'s own managed extraction directory,
+regenerated identically on every run, not a stray leftover.
+
+**Push, retag, and republish.** `git push origin main`: clean fast-forward `97260c2..5c6ac7a`;
+verified `git rev-parse HEAD`/`origin/main` both `5c6ac7a`. Old `v2.1.0` target recorded first
+(`97260c2`, this session's own starting HEAD), then `git tag -d v2.1.0` + `git push origin
+:refs/tags/v2.1.0` + `git tag -a v2.1.0 -m "..." ` + `git push origin v2.1.0`; verified
+`git rev-parse v2.1.0^{commit}` and the remote `refs/tags/v2.1.0^{}` both `5c6ac7a`. Deleting the
+tag again orphaned the GitHub release into a draft `untagged-...` state (the exact Section 0o
+gotcha, hit again despite reading about it first) - recovered with the same single combined call
+Section 0o's follow-up used: `gh release edit v2.1.0 --tag v2.1.0 --target main --draft=false
+--latest --notes-file <notes>`, confirmed `isDraft: false` immediately after. `gh release upload
+v2.1.0 <jar> <zip> --clobber` replaced both assets; server-computed digests matched the local build
+exactly (`unienable.jar` `15c8d5fa...`, `unienable.zip` `f9a2f8f1...`). Release notes updated in
+place (appended, old "Release assets" checksums removed rather than left stale, matching every
+prior retag's discipline). **Published-asset verification**: `gh release download v2.1.0` into a
+fresh directory, `sha256sum` matched exactly; the downloaded jar was smoke-tested directly
+(`reset all` -> `3` cancelled cleanly on an empty state with no error; `find k/CS2113 k/review`
+parsed without the old `Duplicate option "k/"` error) - the published asset is confirmed to be the
+corrected build.
+
+**Final state.** `git rev-parse HEAD` / `origin/main` / `v2.1.0^{commit}` all `5c6ac7a`. `git
+status`: clean except the same two pre-existing untracked presentation files flagged since Section
+0f. CI green on all three platforms for this exact commit. No stale release JAR/ZIP, temporary
+fixture, or copied GitHub asset left inside the repository.
+
 ## 0o. `v2.1.0` retagged/republished for the quality-hardening pass, verified (2026-08-14, Claude Code) — read this first
 
 Follow-up to Section 0n, same session: records the push and retag once the user explicitly

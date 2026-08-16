@@ -178,6 +178,79 @@ public class FieldParser {
     }
 
     /**
+     * Extracts every occurrence of a repeatable marker's value, in the order they appear, plus
+     * the text with each occurrence (marker and value) removed. Unlike {@link
+     * #extractPresentFields}, which assumes a marker appears at most once, this supports a marker
+     * whose command grammar explicitly allows it to repeat (e.g. find's "k/", combined with AND
+     * semantics). Each occurrence's value is bounded by the next occurrence of any marker in
+     * allMarkers - including marker itself, so consecutive occurrences are correctly split - or
+     * the end of input, the same boundary rule {@link #extractField} uses for a single occurrence.
+     *
+     * <p>The returned remaining text has every occurrence of marker (and its value) spliced out,
+     * so it can still be validated and extracted by {@link #rejectDuplicateMarkers} and {@link
+     * #extractPresentFields} for the command's other, non-repeatable markers exactly as if marker
+     * had never been declared at all.
+     *
+     * @param text the full argument text
+     * @param marker the repeatable marker to collect every occurrence of, e.g. "k/"
+     * @param allMarkers every marker this command recognises, including marker itself
+     * @return the extracted values (in order) and the marker-stripped remaining text
+     */
+    public static RepeatedField extractAllOccurrences(String text, String marker, String... allMarkers) {
+        List<String> values = new ArrayList<>();
+        StringBuilder remaining = new StringBuilder();
+        int cursor = 0;
+        while (true) {
+            int start = indexOfMarker(text, marker, cursor);
+            if (start == -1) {
+                remaining.append(text, cursor, text.length());
+                break;
+            }
+            remaining.append(text, cursor, start);
+            int valueStart = start + marker.length();
+            int end = nearestMarkerBoundary(text, valueStart, allMarkers);
+            values.add(text.substring(valueStart, end).trim());
+            cursor = end;
+        }
+        return new RepeatedField(values, remaining.toString());
+    }
+
+    private static int nearestMarkerBoundary(String text, int from, String[] markers) {
+        int nearest = text.length();
+        for (String candidate : markers) {
+            int index = indexOfMarker(text, candidate, from);
+            if (index != -1 && index < nearest) {
+                nearest = index;
+            }
+        }
+        return nearest;
+    }
+
+    /**
+     * The result of {@link #extractAllOccurrences}: every occurrence's value, in order, plus the
+     * marker-stripped remaining text.
+     */
+    public static final class RepeatedField {
+        private final List<String> values;
+        private final String remainingText;
+
+        private RepeatedField(List<String> values, String remainingText) {
+            this.values = values;
+            this.remainingText = remainingText;
+        }
+
+        /** Returns every occurrence's trimmed value, in the order they appeared in the text. */
+        public List<String> getValues() {
+            return values;
+        }
+
+        /** Returns the text with every occurrence of the repeatable marker (and its value) removed. */
+        public String getRemainingText() {
+            return remainingText;
+        }
+    }
+
+    /**
      * Extracts every marker (from the given candidates) that is actually present in the text,
      * into a map of marker to its value, using each field's neighbouring present marker (by
      * position) as its end boundary. Supports an arbitrary subset of markers in any order.

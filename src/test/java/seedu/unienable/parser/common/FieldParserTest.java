@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -180,5 +181,51 @@ class FieldParserTest {
         // "w/" is not one of the declared markers, so it must never be flagged, no matter how
         // many times it appears in ordinary free text.
         assertDoesNotThrow(() -> FieldParser.rejectDuplicateMarkers("n/Meeting w/ friends w/ family", "n/", "c/"));
+    }
+
+    @Test
+    public void extractAllOccurrences_singleOccurrence_returnsItsValueAndStripsIt() {
+        FieldParser.RepeatedField result = FieldParser.extractAllOccurrences(
+                "k/CS2113 c/ACADEMIC", "k/", "k/", "c/");
+
+        assertEquals(List.of("CS2113"), result.getValues());
+        assertEquals("c/ACADEMIC", result.getRemainingText());
+    }
+
+    @Test
+    public void extractAllOccurrences_repeatedOccurrences_returnsEachValueInOrder() {
+        FieldParser.RepeatedField result = FieldParser.extractAllOccurrences(
+                "k/CS2113 k/review", "k/", "k/", "c/");
+
+        assertEquals(List.of("CS2113", "review"), result.getValues());
+        assertEquals("", result.getRemainingText().trim());
+    }
+
+    @Test
+    public void extractAllOccurrences_repeatedOccurrencesInterspersedWithOtherMarkers_boundsEachCorrectly() {
+        FieldParser.RepeatedField result = FieldParser.extractAllOccurrences(
+                "c/ACADEMIC k/CS2113 topic/CG3207 k/review order/time", "k/", "k/", "c/", "topic/", "order/");
+
+        assertEquals(List.of("CS2113", "review"), result.getValues());
+        assertEquals("c/ACADEMIC topic/CG3207 order/time", result.getRemainingText().trim());
+    }
+
+    @Test
+    public void extractAllOccurrences_markerAbsent_returnsEmptyValuesAndUnchangedText() {
+        FieldParser.RepeatedField result = FieldParser.extractAllOccurrences(
+                "c/ACADEMIC", "k/", "k/", "c/");
+
+        assertTrue(result.getValues().isEmpty());
+        assertEquals("c/ACADEMIC", result.getRemainingText());
+    }
+
+    @Test
+    public void extractAllOccurrences_remainingTextStillRejectsDuplicatesOfOtherMarkers() {
+        FieldParser.RepeatedField result = FieldParser.extractAllOccurrences(
+                "k/CS2113 c/ACADEMIC k/review c/CCA", "k/", "k/", "c/");
+
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> FieldParser.rejectDuplicateMarkers(result.getRemainingText(), "c/"));
+        assertEquals("Duplicate option \"c/\".", exception.getMessage());
     }
 }

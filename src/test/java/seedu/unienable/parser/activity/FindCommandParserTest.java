@@ -357,15 +357,90 @@ class FindCommandParserTest {
     }
 
     @Test
-    public void parseFind_duplicateKeywordMarker_throwsInvalidCommandException() {
-        // Bug F regression: "find k/Study k/Assignment" previously let the first "k/" silently
-        // absorb the second as literal text instead of being rejected as a repeated field.
+    public void parseFind_repeatedKeywordMarker_andCombinesBothKeywordsAcrossOccurrences() throws Exception {
+        // History: "find k/Study k/Assignment" originally (Bug F) let the first "k/" silently
+        // absorb the second as literal text; a later pass (second-pass QA audit) closed that by
+        // rejecting any repeated "k/" outright as a duplicate marker, same as every other prefix.
+        // DEFECT-02 (regression report, 2026-08-16) found that rejection itself wrong: find's own
+        // documented grammar ("multiple keywords ... use AND") requires k/ to repeat. It must now
+        // narrow results to activities matching every repeated keyword, exactly like the existing
+        // two-words-in-one-k/ case already does.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "Study", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Assignment", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Study Assignment", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(13, 0), LocalTime.of(14, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/Study k/Assignment").execute().getFeedback();
+
+        assertTrue(feedback.contains("Found 1 activity"));
+        assertTrue(feedback.contains("Study Assignment"));
+    }
+
+    @Test
+    public void parseFind_repeatedKeywordMarker_reproducesReportCommandAndNarrowsResults() throws Exception {
+        // Exact reproduction command from the regression report's DEFECT-02.
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CS2113 lecture", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Peer review", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "CS2113 review session", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(13, 0), LocalTime.of(14, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/CS2113 k/review").execute().getFeedback();
+
+        assertTrue(feedback.contains("Found 1 activity"));
+        assertTrue(feedback.contains("CS2113 review session"));
+    }
+
+    @Test
+    public void parseFind_threeRepeatedKeywordMarkers_allMustMatch() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "one two", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "one two three", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/one k/two k/three").execute().getFeedback();
+
+        assertTrue(feedback.contains("Found 1 activity"));
+        assertTrue(feedback.contains("one two three"));
+    }
+
+    @Test
+    public void parseFind_repeatedKeywordMarkerCombinedWithCategoryFilter_andCombinesBoth() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CS2113 review session", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "CS2113 review session", ActivityCategory.CCA,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(2), SensoryRating.of(2), null, null));
+
+        String feedback = parser.parse(manager, NOW, "k/CS2113 k/review c/ACADEMIC").execute().getFeedback();
+
+        assertTrue(feedback.contains("Found 1 activity"));
+    }
+
+    @Test
+    public void parseFind_repeatedKeywordOccurrenceWithMoreThanTwoWords_throwsInvalidCommandException() {
+        // The one-or-two-word cap still applies per occurrence, even though the total number of
+        // occurrences is now unlimited.
         ActivityManager manager = new ActivityManager();
 
-        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
-                () -> parser.parse(manager, NOW, "k/Study k/Assignment"));
-
-        assertTrue(exception.getMessage().contains("Duplicate option \"k/\""));
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, NOW, "k/one two three k/four"));
     }
 
     @Test

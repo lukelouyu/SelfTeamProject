@@ -85,13 +85,16 @@ ____________________________________________________________
 Find activities
 Format: find [today|tomorrow|this week|next week] [k/KEYWORD ...] [FILTERS]
 Multiple keywords and filters use AND. k/ accepts one or two
-words; three or more words is rejected. An optional leading
-today/tomorrow/this week/next week phrase works the same as in
-list, and cannot be combined with date/.
+words per occurrence; three or more words in one k/ is rejected.
+k/ may also be repeated (e.g. k/CS2113 k/review) to add further
+keywords - there is no limit on how many times k/ may appear. An
+optional leading today/tomorrow/this week/next week phrase works
+the same as in list, and cannot be combined with date/.
 
 Examples:
   find k/PL1101E
   find k/lecture
+  find k/CS2113 k/review
   find c/ACADEMIC
   find date/YYYY-MM-DD
   find today

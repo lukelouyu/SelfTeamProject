@@ -905,8 +905,8 @@ scope.
   `logic.route.AccessibleRouteGraphFactory` (Section 12).
 - `add`/`edit`, and (as of the second-pass QA audit below) `find`, `list`, `route`,
   `connection find`, `facility find`, and every `topic` subcommand, all reject a repeated declared
-  field prefix (e.g. `n/A n/B`, `k/Study k/Assignment`, `from/A from/B to/C`), through
-  `FieldParser.rejectDuplicateMarkers` rather than by migrating them onto `ArgumentTokenizer`.
+  field prefix (e.g. `n/A n/B`, `from/A from/B to/C`), through `FieldParser.rejectDuplicateMarkers`
+  rather than by migrating them onto `ArgumentTokenizer`.
   `ArgumentTokenizer` additionally rejects any *undeclared* marker-shaped token
   (`[A-Za-z][A-Za-z0-9]*/`) found unquoted in the text, which would force free-text description/
   note values containing an incidental `word/` (e.g. `n/Meeting w/ friends`) to be quoted -
@@ -918,6 +918,14 @@ scope.
   whole-word-token parsers (not marker-extraction based) that already reject a second `date/`/
   `day/` token via their own "unexpected text after the period" checks, just with different
   wording - left as-is, since they were never silently mis-parsing, only phrased differently.
+  **`find`'s `k/` is the one deliberate exception to this rule (DEFECT-02, regression report,
+  2026-08-16):** the second-pass QA audit above had `k/Study k/Assignment` reject as a duplicate,
+  same as every other marker, but that contradicted `find`'s own documented grammar ("multiple
+  keywords ... use AND") and broke the exact multi-keyword search it describes. `k/` is now
+  extracted via the new `FieldParser.extractAllOccurrences` (every occurrence collected and
+  AND-combined, each still capped at one-or-two words), while `c/`/`topic/`/`date/`/`order/`
+  keep going through the unmodified `rejectDuplicateMarkers`/`extractPresentFields` pair over the
+  `k/`-stripped remainder - so `k/` is the only find marker that may repeat.
 - `ActivityManager.sort()`'s `ActivityOrder.TIME` case used to compare only time-of-day
   (`getSortTime()`, no date term at all), so two activities sharing a start time on different
   dates fell through to an ID tie-break instead of the earlier date sorting first - a real

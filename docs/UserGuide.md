@@ -306,10 +306,14 @@ find [today|tomorrow|this week|next week] [k/KEYWORD ...] [c/CATEGORY] [topic/TO
 
 At least one keyword, filter, or relative-date phrase is required. Matching is case-insensitive
 and partial (`assign` matches `assignment`); keywords search description, topic, and note. `k/`
-accepts exactly one or two words (e.g. `k/lecture` or `k/finish assignment`, both combined with
-AND); three or more words is rejected rather than silently searched. Leading, trailing, and
-repeated whitespace within `k/` don't count toward the word limit. Multiple keywords and filters
-all combine with AND. Header wording is `"Found N activity/activities:"`.
+accepts exactly one or two words per occurrence (e.g. `k/lecture` or `k/finish assignment`, both
+combined with AND); three or more words in one `k/` is rejected rather than silently searched.
+Leading, trailing, and repeated whitespace within one `k/` don't count toward its word limit.
+`k/` may also be repeated (e.g. `k/CS2113 k/review`) to add further keywords - there is no limit
+on the number of `k/` occurrences, only on the word count of each individual one. Multiple
+keywords - whether from one `k/`'s words or several repeated `k/` occurrences - and filters all
+combine with AND, so `find k/CS2113 k/review` only matches activities containing both terms.
+Header wording is `"Found N activity/activities:"`.
 
 An optional relative-date phrase - `today`, `tomorrow`, `this week`, or `next week` - may appear at
 the very start of the text, before any markers, exactly like `list` (Section 6.4): the same

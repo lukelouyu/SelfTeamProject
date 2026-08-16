@@ -925,7 +925,15 @@ scope.
   extracted via the new `FieldParser.extractAllOccurrences` (every occurrence collected and
   AND-combined, each still capped at one-or-two words), while `c/`/`topic/`/`date/`/`order/`
   keep going through the unmodified `rejectDuplicateMarkers`/`extractPresentFields` pair over the
-  `k/`-stripped remainder - so `k/` is the only find marker that may repeat.
+  `k/`-stripped remainder - so `k/` is the only find marker that may repeat. **A follow-up
+  independent audit (F1, 2026-08-16) found `FindCommandParser.collectKeywords` still silently
+  dropped a blank occurrence** (e.g. `find k/` or `find k/ c/ACADEMIC` ran a bare category search
+  instead of erroring) - repeatability had made the old single-occurrence "blank means no keyword
+  supplied" reading no longer correct, since the user had explicitly typed a `k/` with nothing in
+  it. Every occurrence is now required to be non-blank, checked in the same
+  `collectKeywords` loop that already enforces the one-or-two-word cap, so a blank `k/` fails
+  fast with its own message regardless of position (alone, before/after a filter, or either half
+  of a repeated pair).
 - `ActivityManager.sort()`'s `ActivityOrder.TIME` case used to compare only time-of-day
   (`getSortTime()`, no date term at all), so two activities sharing a start time on different
   dates fell through to an ID tie-break instead of the earlier date sorting first - a real

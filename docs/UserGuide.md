@@ -312,8 +312,10 @@ Leading, trailing, and repeated whitespace within one `k/` don't count toward it
 `k/` may also be repeated (e.g. `k/CS2113 k/review`) to add further keywords - there is no limit
 on the number of `k/` occurrences, only on the word count of each individual one. Multiple
 keywords - whether from one `k/`'s words or several repeated `k/` occurrences - and filters all
-combine with AND, so `find k/CS2113 k/review` only matches activities containing both terms.
-Header wording is `"Found N activity/activities:"`.
+combine with AND, so `find k/CS2113 k/review` only matches activities containing both terms. A
+`k/` supplied with no value (e.g. `find k/` or `find k/ c/ACADEMIC`) is rejected as invalid input,
+not silently treated as if no keyword had been given - this applies to every occurrence of a
+repeated `k/` as well. Header wording is `"Found N activity/activities:"`.
 
 An optional relative-date phrase - `today`, `tomorrow`, `this week`, or `next week` - may appear at
 the very start of the text, before any markers, exactly like `list` (Section 6.4): the same

@@ -153,10 +153,14 @@ class UniEnableTest {
     }
 
     @Test
-    public void run_resetAllOnEmptyState_skipsConfirmationAndSucceedsImmediately() {
-        String output = runWithInput("reset all\nbye\n");
+    public void run_resetAllOnEmptyState_stillShowsMenuThenSucceedsOnOptionOne() {
+        // DEFECT-01 (regression report, 2026-08-16): an empty state used to skip the menu
+        // entirely and perform the reset with no prompt at all; the menu must now be shown
+        // exactly as it would for a populated state, waiting for an explicit answer.
+        String output = runWithInput("reset all\n1\nbye\n");
 
-        assertTrue(!output.contains("Continue? (y/n)"));
+        assertTrue(output.contains("[1] Delete all user data"));
+        assertTrue(output.contains("Activities      : 0"));
         assertTrue(output.contains("All user data has been reset."));
         assertTrue(output.contains("Your next activity will use ID [1]."));
     }

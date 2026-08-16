@@ -5,6 +5,129 @@ project across sessions/tools — commit and push discipline, verification comma
 taste the user has been firm about are all in Section 4, and skipping them is the most common way
 a new session repeats a mistake an earlier one already made and documented here.
 
+## 0q. Fifth independent QA pass: F1/F2/F3 fixed, no release/retag action taken this session (2026-08-16, Claude Code) — read this first
+
+This session originated from an **independent QA audit** (a bug report supplied as this session's
+task, structurally similar to the audits driving Sections 0f/0i/0j/0p). It named three issues
+(F1-F3); the same "trust but verify" discipline applied - reproduce/inspect current source before
+writing any fix, not implement the report's prose on faith. **F1 and F3 were confirmed real; F2's
+underlying implementation was already correct (Section 0p, DEFECT-01), and inspection found one
+genuinely stale historical claim to correct instead.** Unlike Section 0p, this session's own task
+did **not** ask for a push-verify-retag-republish cycle - only fix, verify, and report - so `main`
+was pushed but `v2.1.0`'s tag and GitHub release were deliberately left untouched pointing at
+Section 0p's commit (`5c6ac7a`); retagging to this session's HEAD is a follow-up action for
+whoever/whatever next asks for a release, not assumed here. Starting HEAD: `c22234c` (Section 0p's
+own closing commit). Ending HEAD: `ffa6b1a`.
+
+**F1 (confirmed, fixed): blank `find` k/ occurrences were silently ignored instead of rejected.**
+`FindCommandParser.collectKeywords` (added in Section 0p's DEFECT-02 fix, which made k/ repeatable)
+carried over the pre-existing "a blank k/ contributes no keyword" rule from the single-occurrence
+era via `if (occurrence.isBlank()) { continue; }` - so `find k/` or `find k/ c/ACADEMIC` silently
+ran a broad category search instead of surfacing the malformed k/. The User Guide defines each
+supplied k/ occurrence as accepting exactly one or two words, so a k/ the user explicitly typed
+with zero words is malformed input, not an omitted one - the same fail-fast principle already
+applied to an over-long occurrence. Fixed by throwing
+`InvalidCommandException("k/ value must not be blank.")` for any blank occurrence, applying
+uniformly regardless of position (alone, before/after another filter, either half of a repeated
+pair) since the check runs once per extracted occurrence before any downstream filter logic sees
+it. Two existing tests encoded the old silently-ignored behaviour -
+`parseFind_whitespaceOnlyKeywordAlone_throwsMissingInputException` (wrong exception type: blank k/
+is malformed, not "nothing supplied") and
+`parseFind_whitespaceOnlyKeywordWithOtherFilter_ignoresKeywordUsesOtherFilter` (asserted success by
+silently falling back to the other filter) - both replaced with rejection tests. Added the audit's
+full required matrix (blank alone/before/after a filter, a several-spaces whitespace-only variant,
+first/second of a repeated pair blank) plus positive coverage (category-only search, and a valid
+repeated k/ combined with every other find marker at once) proving the new check didn't disturb
+unrelated, still-valid parsing. UserGuide.md Section 6.5 and the DeveloperGuide.md DEFECT-02 design
+note both get a follow-up sentence/paragraph documenting the blank-rejection explicitly. Commits
+`e7062cf` (fix), `ffa6b1a` (docs).
+
+**F2 (implementation already correct; one stale doc entry found and fixed): `reset all`
+empty-state documentation.** Re-verified `ResetCommand.getMenuPrompt()` directly - it always
+returns the full menu (Section 0p's DEFECT-01 fix), confirmed by reading the source, not assuming
+last session's own claim was still true. Searched UserGuide.md, the built-in `guide reset` topic,
+DeveloperGuide.md, README.md, and the test tree for a stale "menu is skipped and reset succeeds
+automatically" claim - none of the currently-read documentation makes this claim; UserGuide.md
+Section 6.11 and `guide reset` already describe the always-shown menu generically with no
+empty-state exception. Found one genuinely stale entry instead: HANDOVER.md's own historical
+`feature/v1.0-hardening-session2` note (line ~2202, from long before Section 0f) listed
+"skip-when-nothing-to-reset" as a shipped feature, written when that behaviour (the confirmation
+menu itself being skipped) was still considered correct - annotated in place to clarify what the
+phrase originally meant, that it was later reversed (DEFECT-01), and that it should not be confused
+with the separate, still-accurate "skip an unchanged save" persistence optimization the original
+phrasing conflated it with. Commit `b7f94a8`.
+
+**F3 (confirmed, fixed): `MenuConfirmable.getMenuPrompt()` still permitted the null-sentinel
+regression trap.** Inspected every implementation and caller first, per the audit's own
+requirement, before changing anything: `ResetCommand` is the sole implementor (and, post-Section-0p
+fix, never returns null), `CommandConfirmationHandler.confirmMenu()` is the interface's only
+caller. No command anywhere needs an optional/nullable menu prompt. The nullable contract - "null
+means nothing to confirm, proceed immediately" - was the exact mechanism DEFECT-01 exploited; fixing
+`ResetCommand` alone left the API itself able to reintroduce the same class of bug in a future
+command or a future edit to `ResetCommand`. Fixed by making the contract explicitly non-null
+(Javadoc rewritten) and replacing the handler's `if (prompt == null) return true;` short-circuit
+with `Objects.requireNonNull(...)`, so a future violation fails loudly with a clear message instead
+of silently bypassing confirmation - no behavioural change for the current sole implementor.
+`CommandConfirmationHandlerTest` had **zero direct coverage of the `MenuConfirmable` path at all**
+(only exercised indirectly through `ResetCommand` elsewhere) - added a locally-defined `FixedMenu`
+fake (mirroring the file's existing `FixedConfirmation` pattern) covering normal proceed/cancel
+menu flow, plus the core regression-proof case: a fake returning a null prompt must throw
+`NullPointerException` from `confirmIfNeeded` rather than silently returning true. Commit `196c729`.
+
+**Spec-derived regression review (no gaps found beyond F1-F3).** Reviewed existing test coverage
+for `recur` (`RecurCommandParserTest` + a dedicated `WeekSpecificationParserTest` covering
+duplicate/reversed/overlapping/zero-or-negative/blank/trailing-text/safety-limit cases),
+`recommend` (`parse_rejectsPastTrailingAndUnknownInputs` covers blank date/day value, trailing
+garbage, unknown token), `preference` (already thorough as of Section 0-BR-01/02/03), and
+`DateTimeParserTest` (extensive boundary/leap-year/format-vs-existence coverage) against the
+missing-required/blank-value/whitespace-only/duplicate/repeated/unknown-prefix/trailing-garbage/
+boundary-value checklist - all already well-protected. No new tests added outside F1/F3's own scope,
+per the audit's own "do not add hundreds of meaningless tests" instruction.
+
+**Deferred maintainability findings (inspected, not acted on - no correctness problem, non-trivial
+extraction, out of scope for a bug-fix pass):**
+- **`ActivityManager` -> `NextActivityFinder`.** The "next relevant activity" logic
+  (`next()`/`findScheduledInProgress()`/`findNearestUpcomingScheduled()`/`findSoonestEndingFlexible()`,
+  ~100-130 lines) is genuinely stateless (operates only on the activity list + `now`), a real
+  extraction candidate. But `scheduledStart()`/`scheduledEnd()` and `isOverdue()` are shared with
+  `countOverdueIncomplete()`, a different feature - Section 0j already considered and deliberately
+  declined consolidating these for exactly this reason (different concerns: selection vs.
+  display/counting). No new information changes that call; still deferred.
+- **`Storage` -> `AtomicFileTransaction`.** The backup/temp-file/commit/rollback machinery
+  (`commitAllWithRollback`/`tempSiblingOf`/`backupSiblingOf`/`checkWritable`/`backupIfExists`/
+  `restore`/`commit`/`deleteQuietly`, ~150-180 lines) is genuinely generic and reusable. But it is
+  core, already-hardened persistence machinery (multiple past sessions' rollback-correctness fixes
+  depend on its current shape) - extraction risk is disproportionate to the SRP benefit for a
+  bug-fix pass with no correctness driver. Worth a dedicated future session with its own full
+  regression pass, not bundled here.
+- **JaCoCo:** not currently configured. Assessed as a reasonable, low-risk future addition (a
+  reporting-only task, no coverage gate/threshold), but adding build tooling isn't necessary to fix
+  F1-F3 and risks unrelated churn during a stabilization pass - documented as a recommendation
+  rather than implemented, per the audit's own explicit permission to do so.
+- **Noted but explicitly out of this audit's scope, not touched:** a separate, older HANDOVER.md
+  entry (the `fix/v1.0-hardening-session` note, ~line 2183) flags `UniEnableTest.java`'s ~60
+  hardcoded-near-date scenarios as "still live" fragility - but `UniEnableTest` already injects a
+  fixed `TEST_NOW` (`2026-08-10T12:00`, strictly before every literal date it uses), so that
+  specific claim also appears stale. Left as-is since it's unrelated to F1-F3; flagged here for a
+  future documentation pass rather than fixed opportunistically mid-audit.
+
+**Verification.** `./gradlew clean check javadoc shadowJar verifyReleaseZip`: **1348 tests, 0
+failures** (up from 1339 at this session's start), checkstyleMain/Test PASS, javadoc PASS (0
+errors), verifyReleaseZip PASS. `text-ui-test/runtest.sh`: PASS, 0-line diff (no fixture changes
+were needed - F1/F2/F3 don't touch any scripted scenario). Manual smoke test against the freshly
+built, freshly extracted release ZIP (not `build/libs`/`build/classes`): all four blank-k/ variants
+(`find k/`, `find k/ c/ACADEMIC`, `find c/ACADEMIC k/`, `find k/foo k/`) rejected with the new
+message; `find k/CS2113 k/review` and `find c/ACADEMIC` (valid cases) still worked correctly;
+`reset all` showed the full zero-count menu on a genuinely empty state, cancelled cleanly on `3`,
+and completed correctly on `1` - repeated twice in the same session (reset-then-reset-again) to
+confirm the always-shown-menu behaviour holds robustly across repeated invocations, not just once.
+
+**Final state.** `git rev-parse HEAD` / `origin/main` both `ffa6b1a`; pushed, verified matching.
+`v2.1.0`'s tag and GitHub release remain at Section 0p's `5c6ac7a`, deliberately not moved (no
+retag/release request in this session's task). `git status`: clean except the same two
+pre-existing untracked presentation files flagged since Section 0f. No stale release JAR/ZIP,
+temporary fixture, or copied GitHub asset left inside the repository.
+
 ## 0p. Fourth independent regression run: two confirmed defects fixed, `v2.1.0` corrective release, verified (2026-08-16, Claude Code) — read this first
 
 This session originated from an **independent regression report** (`UniEnable Regression Report.pdf`

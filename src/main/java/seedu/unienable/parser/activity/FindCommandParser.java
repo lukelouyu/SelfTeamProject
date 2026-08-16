@@ -46,9 +46,10 @@ class FindCommandParser {
      * @throws MissingInputException if neither a keyword, a filter, nor a relative-date phrase is
      *     supplied
      * @throws InvalidActivityException if the category is invalid
-     * @throws InvalidCommandException if order is invalid, a k/ occurrence contains more than two
-     *     words, a relative-date phrase is unrecognised or combined with date/, unrecognised text
-     *     follows a relative-date phrase, or a non-repeatable marker is supplied more than once
+     * @throws InvalidCommandException if order is invalid, a k/ occurrence is blank or contains
+     *     more than two words, a relative-date phrase is unrecognised or combined with date/,
+     *     unrecognised text follows a relative-date phrase, or a non-repeatable marker is supplied
+     *     more than once
      * @throws InvalidDateTimeException if the date is invalid
      */
     FindCommand parse(ActivityManager activityManager, LocalDateTime now, String args)
@@ -86,18 +87,20 @@ class FindCommandParser {
 
     /**
      * Flattens every k/ occurrence's words into one AND-combined keyword list, in the order the
-     * occurrences and their words appear. A blank occurrence (e.g. {@code k/   }) contributes no
-     * words, the same way a single blank k/ previously contributed none.
+     * occurrences and their words appear. Every explicitly-supplied k/ occurrence must contain a
+     * real value: a user who types k/ (or k/ followed only by whitespace) has supplied a
+     * malformed keyword, not omitted one, so it is rejected here rather than silently contributing
+     * no words - the same fail-fast principle already applied to an over-long occurrence.
      *
      * @param occurrences each k/ occurrence's raw (already-trimmed) value
      * @return every occurrence's words, flattened and in order
-     * @throws InvalidCommandException if any single occurrence contains more than two words
+     * @throws InvalidCommandException if any occurrence is blank, or contains more than two words
      */
     private List<String> collectKeywords(List<String> occurrences) throws InvalidCommandException {
         List<String> keywords = new ArrayList<>();
         for (String occurrence : occurrences) {
             if (occurrence.isBlank()) {
-                continue;
+                throw new InvalidCommandException("k/ value must not be blank.");
             }
             String[] words = occurrence.split("\\s+");
             if (words.length > 2) {

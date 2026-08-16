@@ -199,30 +199,95 @@ class FindCommandParserTest {
     }
 
     @Test
-    public void parseFind_whitespaceOnlyKeywordAlone_throwsMissingInputException() {
-        // Regression test: a blank k/ does not count as a supplied keyword, same principle as
-        // topic/ and order/ above. Previously "find k/   " passed the "at least one keyword or
-        // filter" check (fields.containsKey("k/") was true) and String.split on the resulting
-        // trimmed-to-empty value produced a single empty-string "keyword" that every activity's
-        // description trivially contains, silently matching every activity instead of being
-        // rejected.
+    public void parseFind_blankKeywordAlone_throwsInvalidCommandException() {
+        // F1 (regression audit, 2026-08-16): a blank k/ used to be silently treated as "no
+        // keyword supplied" - but the user did supply k/, just with no value, which is malformed
+        // input (contradicting the User Guide's "exactly one or two words" contract for a
+        // supplied k/ occurrence), not an omission. It must now be rejected explicitly rather than
+        // falling through to the generic "at least one keyword or filter is required" message,
+        // which would misleadingly suggest nothing was typed at all.
         ActivityManager manager = new ActivityManager();
-        TopicManager topicManager = new TopicManager(manager);
 
-        assertThrows(MissingInputException.class, () -> parser.parse(manager, NOW, "k/   "));
+        InvalidCommandException exception = assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, NOW, "k/   "));
+        assertEquals("k/ value must not be blank.", exception.getMessage());
     }
 
     @Test
-    public void parseFind_whitespaceOnlyKeywordWithOtherFilter_ignoresKeywordUsesOtherFilter() throws Exception {
+    public void parseFind_blankKeywordBeforeFilter_throwsInvalidCommandException() {
         ActivityManager manager = new ActivityManager();
-        TopicManager topicManager = new TopicManager(manager);
-        manager.add(new FixedActivity(manager.getNextId(), "No-topic lecture", ActivityCategory.ACADEMIC,
+
+        assertThrows(InvalidCommandException.class, () -> parser.parse(manager, NOW, "k/ c/ACADEMIC"));
+    }
+
+    @Test
+    public void parseFind_blankKeywordAfterFilter_throwsInvalidCommandException() {
+        // F1: previously this exact command ("c/ACADEMIC k/   ") silently dropped the blank k/
+        // and ran a category-only search instead - now the blank k/ itself must be rejected.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parse(manager, NOW, "c/ACADEMIC k/   "));
+    }
+
+    @Test
+    public void parseFind_blankKeywordWithExtraInternalWhitespaceBeforeFilter_throwsInvalidCommandException() {
+        // Whitespace-only equivalent with several spaces between the blank k/ and the next marker.
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class,
+                () -> parser.parse(manager, NOW, "k/     c/ACADEMIC"));
+    }
+
+    @Test
+    public void parseFind_firstRepeatedKeywordOccurrenceBlank_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parse(manager, NOW, "k/ k/foo"));
+    }
+
+    @Test
+    public void parseFind_secondRepeatedKeywordOccurrenceBlank_throwsInvalidCommandException() {
+        ActivityManager manager = new ActivityManager();
+
+        assertThrows(InvalidCommandException.class, () -> parser.parse(manager, NOW, "k/foo k/"));
+    }
+
+    @Test
+    public void parseFind_categoryOnlyNoKeyword_isAccepted() throws Exception {
+        ActivityManager manager = new ActivityManager();
+        manager.add(new FixedActivity(manager.getNextId(), "CG3207 lecture", ActivityCategory.ACADEMIC,
                 LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
                 EnergyRating.of(4), SensoryRating.of(3), null, null));
+        manager.add(new FixedActivity(manager.getNextId(), "Basketball practice", ActivityCategory.CCA,
+                LocalDate.of(2026, 8, 15), LocalTime.of(18, 0), LocalTime.of(19, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
 
-        CommandResult result = parser.parse(manager, NOW, "c/ACADEMIC k/   ").execute();
+        String feedback = parser.parse(manager, NOW, "c/ACADEMIC").execute().getFeedback();
 
-        assertTrue(result.getFeedback().contains("No-topic lecture"));
+        assertTrue(feedback.contains("CG3207 lecture"));
+        assertTrue(!feedback.contains("Basketball practice"));
+    }
+
+    @Test
+    public void parseFind_validRepeatedKeywordCombinedWithEveryOtherFilter_preservesAllFilters() throws Exception {
+        // Preservation check: a well-formed repeated k/ alongside every other find marker must
+        // still parse and filter exactly as each marker does on its own - the blank-k/ rejection
+        // must not have disturbed any unrelated marker's handling.
+        ActivityManager manager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(manager);
+        topicManager.add(ActivityCategory.ACADEMIC, "CG3207");
+        manager.add(new FixedActivity(manager.getNextId(), "CS2113 review session", ActivityCategory.ACADEMIC,
+                LocalDate.of(2026, 8, 15), LocalTime.of(9, 0), LocalTime.of(10, 0),
+                EnergyRating.of(4), SensoryRating.of(3), "CG3207", null));
+        manager.add(new FixedActivity(manager.getNextId(), "CS2113 review session", ActivityCategory.CCA,
+                LocalDate.of(2026, 8, 15), LocalTime.of(11, 0), LocalTime.of(12, 0),
+                EnergyRating.of(4), SensoryRating.of(3), null, null));
+
+        String feedback = parser.parse(manager, NOW,
+                "k/CS2113 k/review c/ACADEMIC topic/CG3207 date/2026-08-15 order/time").execute().getFeedback();
+
+        assertTrue(feedback.contains("Found 1 activity"));
+        assertTrue(feedback.contains("CS2113 review session"));
     }
 
     @Test

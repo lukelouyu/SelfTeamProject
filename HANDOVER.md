@@ -2201,7 +2201,13 @@ Most recent sessions, newest first:
 
 - **`feature/v1.0-hardening-session2`** (merged): added `reset all` (with confirmation preview,
   skip-when-nothing-to-reset, and atomic multi-file save via the same `Storage.saveAll()`
-  mechanism above), `list today`/`tomorrow`/`this week` (relative dates threaded through
+  mechanism above) - **"skip-when-nothing-to-reset" here described the confirmation menu itself
+  being skipped on an empty state, which was later found to be a real defect (DEFECT-01, Section
+  0p) and reversed: the menu is now always shown, regardless of state. Persistence still correctly
+  skips a no-op save (see the `fix/v1.0-rc-retest-2026-08-01` entry above), which is a separate,
+  still-accurate mechanism this original phrasing conflated with the now-removed confirmation
+  skip.** Also shipped in this session: `list today`/`tomorrow`/`this week` (relative dates
+  threaded through
   `dispatch(input, now)`, no new clock call site), completed the built-in `guide` for every
   implemented v1.0 command, added remaining load-time storage validation (activity topic
   cross-check, connection/facility positivity and duplicate checks), and documented that activity

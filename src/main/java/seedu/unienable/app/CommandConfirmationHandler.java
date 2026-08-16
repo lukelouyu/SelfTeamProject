@@ -1,5 +1,6 @@
 package seedu.unienable.app;
 
+import java.util.Objects;
 import java.util.Scanner;
 
 import seedu.unienable.command.Command;
@@ -75,10 +76,10 @@ public class CommandConfirmationHandler {
     }
 
     private boolean confirmMenu(MenuConfirmable command) throws UniEnableException {
-        String prompt = command.getMenuPrompt();
-        if (prompt == null) {
-            return true;
-        }
+        String prompt = Objects.requireNonNull(command.getMenuPrompt(),
+                "MenuConfirmable.getMenuPrompt() must not return null - see its Javadoc "
+                        + "(DEFECT-01): a menu-confirmable command must always show its menu, "
+                        + "never silently auto-confirm because a prompt was absent.");
         ui.showFramed(prompt);
         String answer = scanner.hasNextLine() ? scanner.nextLine().trim() : "";
         MenuOutcome outcome = command.applyMenuAnswer(answer);

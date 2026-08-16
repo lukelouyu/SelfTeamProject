@@ -2,7 +2,6 @@ package seedu.unienable.command.general;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
@@ -63,8 +62,8 @@ class ResetCommandTest {
     @Test
     public void execute_defaultSelection_clearsActivitiesAndTopicsAndReturnsSuccessMessage() throws Exception {
         // execute() called without going through applyMenuAnswer() at all (e.g. a direct unit
-        // test, or the "nothing to reset" no-menu-shown path) must behave like the full-reset
-        // option, matching v1.0's original single-outcome reset.
+        // test) must behave like the full-reset option, matching v1.0's original single-outcome
+        // reset.
         ActivityManager activityManager = new ActivityManager();
         TopicManager topicManager = new TopicManager(activityManager);
         activityManager.add(newFixedActivity(activityManager.getNextId(), "Lecture", ActivityCategory.ACADEMIC,
@@ -112,11 +111,77 @@ class ResetCommandTest {
     }
 
     @Test
-    public void getMenuPrompt_nothingToReset_returnsNull() {
+    public void getMenuPrompt_nothingToReset_stillShowsFullMenuWithZeroCounts() {
+        // DEFECT-01 (regression report, 2026-08-16): this used to return null for an empty state,
+        // which CommandConfirmationHandler treats as "skip the menu, proceed immediately" -
+        // silently performing a full reset with no preview or prompt at all on a brand-new
+        // install. guide reset documents "always show the preview and 3-choice menu" with no
+        // stated empty-state exception, so the menu must be shown here exactly as it would be for
+        // a populated state, just with every count at zero.
         ActivityManager activityManager = new ActivityManager();
         TopicManager topicManager = new TopicManager(activityManager);
 
-        assertNull(newCommand(activityManager, topicManager).getMenuPrompt());
+        String prompt = newCommand(activityManager, topicManager).getMenuPrompt();
+
+        assertEquals("Reset user data\n\n"
+                + "Activities      : 0\n"
+                + "Class schedules : 0\n"
+                + "Other activities: 0\n"
+                + "Topics          : 0\n"
+                + "Preferences     : Default\n\n"
+                + "[1] Delete all user data\n"
+                + "[2] Delete other activities but keep class schedules\n"
+                + "[3] Do not delete anything\n\n"
+                + "Facility, connection, and academic-calendar reference data will be kept.\n"
+                + "Option 1 resets preferences; options 2 and 3 retain them.\n"
+                + "Enter 1, 2, or 3:", prompt);
+    }
+
+    @Test
+    public void resetAll_emptyStateOptionOne_showsMenuThenCompletesSuccessfully() throws Exception {
+        ActivityManager activityManager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(activityManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
+        assertFalse(command.hasAnythingToReset());
+
+        String prompt = command.getMenuPrompt();
+        MenuOutcome outcome = command.applyMenuAnswer("1");
+        CommandResult result = command.execute();
+
+        assertTrue(prompt.contains("[1] Delete all user data"), "menu must be shown before any answer is applied");
+        assertTrue(outcome.isProceed());
+        assertEquals("All user data has been reset.\nYour next activity will use ID [1].", result.getFeedback());
+    }
+
+    @Test
+    public void resetAll_emptyStateOptionTwo_showsMenuAndUsesNormalKeepClassScheduleCodePath() throws Exception {
+        ActivityManager activityManager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(activityManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
+
+        String prompt = command.getMenuPrompt();
+        MenuOutcome outcome = command.applyMenuAnswer("2");
+        CommandResult result = command.execute();
+
+        assertTrue(prompt.contains("[2] Delete other activities but keep class schedules"));
+        assertTrue(outcome.isProceed());
+        assertEquals(0, activityManager.size());
+        assertEquals("Reset complete. Kept 0 class-schedule activities and deleted 0 other activities."
+                + "\nYour next activity will use ID [1].", result.getFeedback());
+    }
+
+    @Test
+    public void resetAll_emptyStateOptionThree_showsMenuThenCancelsWithNoChange() {
+        ActivityManager activityManager = new ActivityManager();
+        TopicManager topicManager = new TopicManager(activityManager);
+        ResetCommand command = newCommand(activityManager, topicManager);
+
+        String prompt = command.getMenuPrompt();
+        MenuOutcome outcome = command.applyMenuAnswer("3");
+
+        assertTrue(prompt.contains("[3] Do not delete anything"));
+        assertFalse(outcome.isProceed());
+        assertEquals("Cancelled. No changes were made.", outcome.getMessage());
     }
 
     @Test

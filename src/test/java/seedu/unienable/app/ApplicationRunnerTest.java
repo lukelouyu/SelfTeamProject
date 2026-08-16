@@ -231,14 +231,26 @@ class ApplicationRunnerTest {
     }
 
     @Test
-    public void find_duplicateKeywordMarker_rejectedEndToEnd() throws Exception {
-        // Bug F regression, application level: "find k/Study k/Assignment" must be rejected as a
-        // duplicate marker, not silently mis-parsed into a garbled two-word keyword search.
-        String input = String.join("\n", "find k/Study k/Assignment", "bye") + "\n";
+    public void find_repeatedKeywordMarker_andCombinedEndToEnd() throws Exception {
+        // DEFECT-02 (regression report, 2026-08-16), application level: "find k/CS2113 k/review"
+        // must narrow to activities matching every repeated keyword, not be rejected as a
+        // duplicate marker (the prior, now-corrected behavior from the Bug F/second-pass-QA
+        // history - see FindCommandParserTest for the parser-level coverage).
+        String input = String.join("\n",
+                "add n/CS2113 lecture c/ACADEMIC date/2099-01-02 type/FIXED from/09:00 to/10:00 "
+                        + "energy/1 sensory/1",
+                "add n/Peer review c/ACADEMIC date/2099-01-02 type/FIXED from/11:00 to/12:00 "
+                        + "energy/1 sensory/1",
+                "add n/CS2113 review session c/ACADEMIC date/2099-01-02 type/FIXED from/13:00 to/14:00 "
+                        + "energy/1 sensory/1",
+                "find k/CS2113 k/review",
+                "bye") + "\n";
 
         String output = run(input, new Storage(dataDirectory));
 
-        assertTrue(output.contains("Duplicate option \"k/\"."));
+        assertFalse(output.contains("Duplicate option \"k/\"."));
+        assertTrue(output.contains("Found 1 activity"));
+        assertTrue(output.contains("CS2113 review session"));
     }
 
     @Test
@@ -838,15 +850,50 @@ class ApplicationRunnerTest {
     }
 
     @Test
-    public void resetAll_nothingToReset_doesNotInvokeSave() throws Exception {
-        String input = String.join("\n", "reset all", "bye") + "\n";
+    public void resetAll_emptyStateOptionOne_showsMenuFirstThenDoesNotInvokeSave() throws Exception {
+        // DEFECT-01 (regression report, 2026-08-16): a fresh install used to skip the menu
+        // entirely on an empty state and silently perform a full reset, so this test's own follow-
+        // up input ("1", intended as a menu answer) was instead swallowed as an unrelated command.
+        // The menu must now be shown and wait for an answer, exactly as it would for a populated
+        // state; only the counts differ.
+        String input = String.join("\n", "reset all", "1", "bye") + "\n";
         SaveCallCountingStorage storage = new SaveCallCountingStorage(dataDirectory);
 
         String output = run(input, storage);
 
+        assertTrue(output.contains("[1] Delete all user data")
+                        && output.contains("Activities      : 0"),
+                "the reset menu preview must be shown even when there is nothing to reset");
         assertEquals(0, storage.saveCallCount, "resetting already-empty state must never call Storage.saveAll()");
         assertTrue(output.contains("All user data has been reset."),
                 "the existing no-op message must still be shown even though nothing was actually saved");
+    }
+
+    @Test
+    public void resetAll_emptyStateOptionTwo_showsMenuAndCompletesViaNormalKeepClassScheduleCodePath()
+            throws Exception {
+        String input = String.join("\n", "reset all", "2", "bye") + "\n";
+        SaveCallCountingStorage storage = new SaveCallCountingStorage(dataDirectory);
+
+        String output = run(input, storage);
+
+        assertTrue(output.contains("[2] Delete other activities but keep class schedules"));
+        assertTrue(output.contains("Reset complete. Kept 0 class-schedule activities and deleted 0 "
+                + "other activities."));
+        assertEquals(0, storage.saveCallCount);
+    }
+
+    @Test
+    public void resetAll_emptyStateOptionThree_showsMenuAndCancelsWithNoChange() throws Exception {
+        String input = String.join("\n", "reset all", "3", "bye") + "\n";
+        SaveCallCountingStorage storage = new SaveCallCountingStorage(dataDirectory);
+
+        String output = run(input, storage);
+
+        assertTrue(output.contains("[3] Do not delete anything"));
+        assertTrue(output.contains("Cancelled. No changes were made."));
+        assertFalse(output.contains("All user data has been reset."));
+        assertEquals(0, storage.saveCallCount);
     }
 
     @Test

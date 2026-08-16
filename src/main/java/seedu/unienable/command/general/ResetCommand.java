@@ -91,8 +91,10 @@ public class ResetCommand extends Command implements MenuConfirmable {
     /**
      * Returns whether there is anything for this reset to actually change: any stored activity,
      * any stored topic, a saved default order other than chronological, a next-activity-ID
-     * counter already past 1, or a custom preference profile. Used to skip the menu entirely
-     * when nothing needs resetting.
+     * counter already past 1, or a custom preference profile. Backs {@link #hasStateChange()},
+     * so a snapshot/save is only taken when execution could genuinely change something - the menu
+     * itself is always shown regardless (see {@link #getMenuPrompt()}), even when this returns
+     * false, so an empty state still gets the same preview-then-choose confirmation as any other.
      *
      * @return true if executing this command could change any state
      */
@@ -106,9 +108,6 @@ public class ResetCommand extends Command implements MenuConfirmable {
 
     @Override
     public String getMenuPrompt() {
-        if (!hasAnythingToReset()) {
-            return null;
-        }
         return "Reset user data\n\n"
                 + "Activities      : " + getActivityCount() + "\n"
                 + "Class schedules : " + getClassScheduleCount() + "\n"

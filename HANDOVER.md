@@ -11,8 +11,7 @@ Section 0q closed F2 with "implementation already correct, no UserGuide.md chang
 conclusion was wrong.** An independent re-audit of the tagged source (supplied as this session's
 task) found two live contradictions Section 0q missed, both confirmed by direct inspection before
 any edit (same "trust but verify" discipline, applied this time to checking someone else's claim -
-mine). Starting HEAD: `ace2337` (Section 0q's own closing commit). Ending HEAD: (this session's
-final commit, below).
+mine). Starting HEAD: `ace2337` (Section 0q's own closing commit). Ending HEAD: `ce3e19e`.
 
 **Root cause of Section 0q's miss:** incomplete reading, not a logic error. UserGuide.md Section
 6.11 was read from its start through option 3's output block, which is where that read stopped -
